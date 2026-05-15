@@ -1,0 +1,27 @@
+@{
+    var status = ViewData["Status"] as string ?? "Unknown";
+    var (cssClass, label, icon) = status switch
+    {
+        // Mission statuses
+        "Pending"    => ("bg-warning text-dark",  "En attente",      "fa-clock"),
+        "Proposed"   => ("bg-purple text-white",  "Proposée",        "fa-paper-plane"),
+        "Accepted"   => ("bg-primary",             "Acceptée",        "fa-thumbs-up"),
+        "InProgress" => ("bg-success",             "En cours",        "fa-play"),
+        "Completed"  => ("bg-secondary",           "Terminée",        "fa-check"),
+        "Refused"    => ("bg-danger",              "Refusée",         "fa-times"),
+        "Cancelled"  => ("bg-secondary",           "Annulée",         "fa-ban"),
+        // Call statuses
+        "Open"          => ("bg-info text-dark",    "Ouvert",          "fa-phone"),
+        "MissionCreated"=> ("bg-primary",           "Mission créée",   "fa-car"),
+        "Closed"        => ("bg-secondary",         "Fermé",           "fa-lock"),
+        // Vehicle statuses
+        "Offline"    => ("bg-secondary",           "Hors ligne",      "fa-power-off"),
+        "Available"  => ("bg-success",             "Disponible",      "fa-circle-check"),
+        "Busy"       => ("bg-warning text-dark",   "Occupé",          "fa-exclamation"),
+        "OnMission"  => ("bg-danger",              "En mission",      "fa-location-crosshairs"),
+        _            => ("bg-secondary",           status,            "fa-question")
+    };
+}
+<span class="badge @cssClass">
+    <i class="fa-solid @icon me-1"></i>@label
+</span>

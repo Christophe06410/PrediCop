@@ -1,0 +1,27 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+packages/
+
+## MAUI
+*.apk
+*.aab
+*.ipa
+*.app
+
+## Entity Framework migrations output
+*.mdf
+*.ldf
+
+## IDE
+.idea/
+.vscode/
+
+## Secrets
+appsettings.*.json
+!appsettings.Development.json
+secrets.json

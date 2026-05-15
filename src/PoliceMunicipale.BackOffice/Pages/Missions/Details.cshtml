@@ -1,0 +1,205 @@
+@page "{id:guid}"
+@model PoliceMunicipale.BackOffice.Pages.Missions.DetailsModel
+@{
+    ViewData["Title"] = $"Mission {Model.Mission?.Reference}";
+    var mission = Model.Mission!;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Missions/Index">Missions</a></li>
+            <li class="breadcrumb-item active">@mission.Reference</li>
+        </ol>
+    </nav>
+    <a asp-page="/Missions/Index" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+<div class="row g-3">
+    <!-- En-tête mission -->
+    <div class="col-12">
+        <div class="card shadow-sm border-start border-4 border-success">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="fw-bold mb-1">
+                            <i class="fa-solid fa-car-side me-2 text-success"></i>@mission.Reference
+                        </h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            @{ ViewData["Status"] = mission.Status; }
+                            @await Html.PartialAsync("_StatusBadge")
+                            @if (!string.IsNullOrEmpty(mission.CallReference))
+                            {
+                                <a asp-page="/Calls/Details" asp-route-id="@mission.CallId"
+                                   class="badge bg-info text-dark text-decoration-none">
+                                    <i class="fa-solid fa-phone me-1"></i>@mission.CallReference
+                                </a>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                        @if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
+                        {
+                            <span class="badge bg-dark fs-6 py-2 px-3">
+                                <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Détails mission -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-circle-info me-2 text-primary"></i>Informations
+                </h6>
+            </div>
+            <div class="card-body">
+                <dl class="row g-1">
+                    <dt class="col-sm-4 text-muted">Adresse cible</dt>
+                    <dd class="col-sm-8 fw-semibold">@mission.TargetAddress</dd>
+
+                    <dt class="col-sm-4 text-muted">GPS</dt>
+                    <dd class="col-sm-8 font-monospace small">
+                        @mission.TargetLatitude.ToString("F6"), @mission.TargetLongitude.ToString("F6")
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted">Briefing</dt>
+                    <dd class="col-sm-8">@mission.BriefingText</dd>
+
+                    <dt class="col-sm-4 text-muted">Créée le</dt>
+                    <dd class="col-sm-8">@mission.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+
+                    @if (mission.AcceptedAt.HasValue)
+                    {
+                        <dt class="col-sm-4 text-muted">Acceptée le</dt>
+                        <dd class="col-sm-8">@mission.AcceptedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                    }
+
+                    @if (mission.CompletedAt.HasValue)
+                    {
+                        <dt class="col-sm-4 text-muted">Terminée le</dt>
+                        <dd class="col-sm-8">@mission.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(mission.CompletionReport))
+                    {
+                        <dt class="col-sm-4 text-muted">Rapport</dt>
+                        <dd class="col-sm-8">@mission.CompletionReport</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carte -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-map me-2 text-danger"></i>Localisation
+                </h6>
+            </div>
+            <div class="card-body p-2">
+                <div id="map-mission" style="height:240px; border-radius:.5rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline des assignments -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-timeline me-2 text-warning"></i>Timeline des propositions de véhicules
+                </h6>
+            </div>
+            <div class="card-body">
+                @if (mission.Assignments.Any())
+                {
+                    <div class="timeline">
+                        @foreach (var a in mission.Assignments.OrderBy(x => x.ProposalOrder))
+                        {
+                            var (borderColor, iconColor, icon) = a.Status switch
+                            {
+                                "Accepted" => ("border-success", "text-success", "fa-thumbs-up"),
+                                "Refused"  => ("border-danger",  "text-danger",  "fa-thumbs-down"),
+                                _          => ("border-secondary","text-secondary","fa-clock")
+                            };
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="me-3 text-center" style="min-width:40px">
+                                    <div class="rounded-circle border border-3 @borderColor d-flex align-items-center justify-content-center"
+                                         style="width:40px;height:40px;">
+                                        <i class="fa-solid @icon @iconColor"></i>
+                                    </div>
+                                    @if (a.ProposalOrder < mission.Assignments.Count)
+                                    {
+                                        <div class="border-start border-2 mx-auto mt-1" style="height:20px;width:0"></div>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="card border-start border-3 @borderColor shadow-sm">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <strong class="d-block">
+                                                        <span class="badge bg-secondary me-1">#@a.ProposalOrder</span>
+                                                        Véhicule @a.VehicleCallSign
+                                                    </strong>
+                                                    <small class="text-muted">
+                                                        Proposé à @a.ProposedAt.ToLocalTime().ToString("HH:mm:ss")
+                                                        — Distance : @a.DistanceAtProposal.ToString("F1") km
+                                                    </small>
+                                                    @if (!string.IsNullOrEmpty(a.RefusalReason))
+                                                    {
+                                                        <div class="text-danger small mt-1">
+                                                            <i class="fa-solid fa-circle-exclamation me-1"></i>
+                                                            Motif de refus : @a.RefusalReason
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div class="text-end">
+                                                    @{ ViewData["Status"] = a.Status; }
+                                                    @await Html.PartialAsync("_StatusBadge")
+                                                    @if (a.RespondedAt.HasValue)
+                                                    {
+                                                        <div class="text-muted small mt-1">Répondu à @a.RespondedAt.Value.ToLocalTime().ToString("HH:mm:ss")</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="fa-solid fa-inbox me-2"></i>Aucune proposition de véhicule enregistrée.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+    var map = L.map('map-mission').setView([@mission.TargetLatitude, @mission.TargetLongitude], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    L.marker([@mission.TargetLatitude, @mission.TargetLongitude])
+        .addTo(map)
+        .bindPopup('<strong>@Html.Raw(mission.Reference)</strong><br>@Html.Raw(mission.TargetAddress.Replace("'", "\\'"))')
+        .openPopup();
+    </script>
+}

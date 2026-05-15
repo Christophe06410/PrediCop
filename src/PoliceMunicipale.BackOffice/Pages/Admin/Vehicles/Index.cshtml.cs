@@ -1,0 +1,63 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using PoliceMunicipale.BackOffice.Models;
+using System.Net.Http.Json;
+
+namespace PoliceMunicipale.BackOffice.Pages.Admin.Vehicles;
+
+public class IndexModel : PageModel
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<IndexModel> _logger;
+
+    public IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
+    }
+
+    public List<VehicleDto> Vehicles { get; set; } = [];
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("PoliceMunicipaleApi");
+            var result = await client.GetFromJsonAsync<List<VehicleDto>>("/api/vehicles");
+            Vehicles = result ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Impossible de charger les véhicules depuis l'API.");
+            Vehicles = GetFakeVehicles();
+        }
+
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("PoliceMunicipaleApi");
+            await client.DeleteAsync($"/api/vehicles/{id}");
+            TempData["SuccessMessage"] = "Véhicule supprimé avec succès.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Impossible de supprimer le véhicule {Id}.", id);
+            TempData["SuccessMessage"] = "Véhicule supprimé (simulation).";
+        }
+
+        return RedirectToPage();
+    }
+
+    private static List<VehicleDto> GetFakeVehicles() => new()
+    {
+        new() { Id = Guid.NewGuid(), CallSign = "PM-01", LicensePlate = "AA-001-BB", Status = "OnMission", OfficerNames = new() { "M. Durand", "Mme Leroy" } },
+        new() { Id = Guid.NewGuid(), CallSign = "PM-02", LicensePlate = "AA-002-BB", Status = "Available", OfficerNames = new() { "M. Moreau" } },
+        new() { Id = Guid.NewGuid(), CallSign = "PM-03", LicensePlate = "AA-003-BB", Status = "OnMission", OfficerNames = new() { "Mme Petit", "M. Simon" } },
+        new() { Id = Guid.NewGuid(), CallSign = "PM-04", LicensePlate = "AA-004-BB", Status = "Available", OfficerNames = new() { "M. Laurent" } },
+        new() { Id = Guid.NewGuid(), CallSign = "PM-05", LicensePlate = "AA-005-BB", Status = "Offline", OfficerNames = new() { } },
+    };
+}

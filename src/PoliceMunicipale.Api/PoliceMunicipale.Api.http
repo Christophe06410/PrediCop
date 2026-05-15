@@ -1,0 +1,6 @@
+@PoliceMunicipale.Api_HostAddress = http://localhost:5086
+
+GET {{PoliceMunicipale.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,269 @@
+@page
+@model PoliceMunicipale.BackOffice.Pages.Calls.ReceiveModel
+@{
+    ViewData["Title"] = "Réception d'appel";
+    ViewData["ActiveCall"] = true;
+    ViewData["CallStartTime"] = Model.CallStartTime;
+}
+
+<!-- Barre d'état appel en cours -->
+<div class="alert alert-dark d-flex align-items-center gap-3 py-2 mb-3 rounded-2" id="call-status-bar">
+    <span class="text-warning fw-bold fs-6">
+        <i class="fa-solid fa-phone-volume fa-beat me-2"></i>Appel en cours
+    </span>
+    <span class="text-white fw-bold" id="call-timer">00:00</span>
+    <span class="text-secondary small">Démarré à @Model.CallStartTime.ToString("HH:mm:ss")</span>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-0 mb-2">
+    <div class="col">
+        <h4 class="fw-bold mb-0"><i class="fa-solid fa-headset me-2 text-primary"></i>Réception d'appel</h4>
+    </div>
+</div>
+
+<form method="post" id="call-form">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="row g-4">
+                <!-- Colonne gauche -->
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted fw-semibold mb-3">
+                        <i class="fa-solid fa-user me-2"></i>Informations appelant &amp; incident
+                    </h6>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CallerName" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                            <input asp-for="Input.CallerName" class="form-control" placeholder="Nom complet de l'appelant" />
+                        </div>
+                        <span asp-validation-for="Input.CallerName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CallerPhone" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                            <input asp-for="Input.CallerPhone" class="form-control" placeholder="06 00 00 00 00" type="tel" />
+                        </div>
+                        <span asp-validation-for="Input.CallerPhone" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.IncidentCategory" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                            <select asp-for="Input.IncidentCategory" class="form-select">
+                                <option value="">-- Sélectionner une catégorie --</option>
+                                @foreach (var cat in ReceiveModel.Categories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                        </div>
+                        <span asp-validation-for="Input.IncidentCategory" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.IncidentDescription" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Input.IncidentDescription" class="form-control" rows="5"
+                                  placeholder="Décrivez l'incident en détail..."></textarea>
+                        <span asp-validation-for="Input.IncidentDescription" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <!-- Colonne droite -->
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted fw-semibold mb-3">
+                        <i class="fa-solid fa-map-marker-alt me-2"></i>Localisation &amp; informations complémentaires
+                    </h6>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.IncidentAddress" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-location-dot"></i></span>
+                            <input asp-for="Input.IncidentAddress" class="form-control" placeholder="Numéro, rue, ville" />
+                        </div>
+                        <span asp-validation-for="Input.IncidentAddress" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.IncidentAddressComplement" class="form-label fw-semibold"></label>
+                        <input asp-for="Input.IncidentAddressComplement" class="form-control"
+                               placeholder="Bâtiment, étage, digicode..." />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Coordonnées GPS</label>
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Lat</span>
+                                    <input asp-for="Input.IncidentLatitude" class="form-control" id="gps-lat"
+                                           placeholder="48.8566" type="number" step="0.000001" />
+                                </div>
+                            </div>
+                            <div class="col-5">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Lon</span>
+                                    <input asp-for="Input.IncidentLongitude" class="form-control" id="gps-lon"
+                                           placeholder="2.3522" type="number" step="0.000001" />
+                                </div>
+                            </div>
+                            <div class="col-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="btn-gps"
+                                        title="Localiser automatiquement">
+                                    <i class="fa-solid fa-crosshairs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-text">Cliquez sur <i class="fa-solid fa-crosshairs"></i> pour géolocaliser l'adresse saisie.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.ThirdParties" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Input.ThirdParties" class="form-control" rows="2"
+                                  placeholder="Noms, descriptions des personnes impliquées..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.InternalNotes" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Input.InternalNotes" class="form-control" rows="2"
+                                  placeholder="Notes pour usage interne uniquement..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+            <button type="submit" asp-page-handler="Close" class="btn btn-outline-secondary" id="btn-close">
+                <i class="fa-solid fa-times me-2"></i>Fermer sans suite
+            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary" id="btn-save-draft">
+                    <i class="fa-solid fa-floppy-disk me-2"></i>Sauvegarder le brouillon
+                </button>
+                <button type="submit" asp-page-handler="CreateMission" class="btn btn-primary btn-lg" id="btn-create">
+                    <i class="fa-solid fa-paper-plane me-2"></i>Créer la Mission
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Liste des appels du jour -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fa-solid fa-list me-2 text-primary"></i>Appels du jour
+            <span class="badge bg-secondary ms-2">@Model.TodayCalls.Count</span>
+        </h6>
+        <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-external-link-alt me-1"></i>Voir tout
+        </a>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.TodayCalls.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Heure</th>
+                            <th>Appelant</th>
+                            <th>Catégorie</th>
+                            <th>Adresse</th>
+                            <th>Statut</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var call in Model.TodayCalls)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@call.Reference</td>
+                                <td>@call.ReceivedAt.ToLocalTime().ToString("HH:mm")</td>
+                                <td>@call.CallerName</td>
+                                <td><span class="badge bg-info text-dark">@call.IncidentCategory</span></td>
+                                <td class="text-truncate" style="max-width:150px">@call.IncidentAddress</td>
+                                <td>
+                                    @{ ViewData["Status"] = call.Status; }
+                                    @await Html.PartialAsync("_StatusBadge")
+                                </td>
+                                <td>
+                                    <a asp-page="/Calls/Details" asp-route-id="@call.Id"
+                                       class="btn btn-xs btn-outline-primary btn-sm">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted py-4">
+                <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                Aucun appel enregistré aujourd'hui.
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+    // Timer appel en cours
+    (function () {
+        var started = new Date();
+        function updateTimer() {
+            var diff = Math.floor((new Date() - started) / 1000);
+            var m = Math.floor(diff / 60).toString().padStart(2, '0');
+            var s = (diff % 60).toString().padStart(2, '0');
+            document.getElementById('call-timer').textContent = m + ':' + s;
+        }
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    })();
+
+    // Géolocalisation via Nominatim (OpenStreetMap)
+    document.getElementById('btn-gps').addEventListener('click', function () {
+        var address = document.getElementById('Input_IncidentAddress').value;
+        if (!address) { alert('Saisissez d\'abord l\'adresse.'); return; }
+        var btn = this;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        btn.disabled = true;
+        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(address))
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    document.getElementById('gps-lat').value = parseFloat(data[0].lat).toFixed(6);
+                    document.getElementById('gps-lon').value = parseFloat(data[0].lon).toFixed(6);
+                } else {
+                    alert('Adresse introuvable. Saisissez les coordonnées manuellement.');
+                }
+            })
+            .catch(() => alert('Erreur de géolocalisation.'))
+            .finally(() => {
+                btn.innerHTML = '<i class="fa-solid fa-crosshairs"></i>';
+                btn.disabled = false;
+            });
+    });
+
+    // Confirmation fermeture sans suite
+    document.getElementById('btn-close').addEventListener('click', function (e) {
+        if (!confirm('Fermer cet appel sans créer de mission ?')) e.preventDefault();
+    });
+    </script>
+}

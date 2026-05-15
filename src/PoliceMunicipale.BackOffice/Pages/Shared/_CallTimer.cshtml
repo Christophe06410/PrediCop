@@ -1,0 +1,26 @@
+@{
+    var callStart = ViewData["CallStartTime"] as DateTime? ?? DateTime.Now;
+}
+<div class="call-timer-bar d-flex align-items-center gap-3">
+    <span class="text-warning fw-bold"><i class="fa-solid fa-phone-volume fa-beat me-2"></i>Appel en cours</span>
+    <span class="text-white" id="call-timer-display">00:00</span>
+    <span class="text-secondary small">Démarré à @callStart.ToString("HH:mm")</span>
+    <a asp-page="/Calls/Receive" class="btn btn-sm btn-outline-warning ms-2">
+        <i class="fa-solid fa-arrow-right me-1"></i>Retourner à l'appel
+    </a>
+</div>
+<script>
+(function () {
+    var started = new Date('@callStart.ToString("yyyy-MM-ddTHH:mm:ss")');
+    function updateTimer() {
+        var now = new Date();
+        var diff = Math.floor((now - started) / 1000);
+        var m = Math.floor(diff / 60).toString().padStart(2, '0');
+        var s = (diff % 60).toString().padStart(2, '0');
+        var el = document.getElementById('call-timer-display');
+        if (el) el.textContent = m + ':' + s;
+    }
+    updateTimer();
+    setInterval(updateTimer, 1000);
+})();
+</script>
