@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/PoliceMunicipale.Api/PoliceMunicipale.Api.csproj" />
-    <Project Path="src/PoliceMunicipale.BackOffice/PoliceMunicipale.BackOffice.csproj" />
-    <Project Path="src/PoliceMunicipale.Core/PoliceMunicipale.Core.csproj" />
-    <Project Path="src/PoliceMunicipale.Infrastructure/PoliceMunicipale.Infrastructure.csproj" />
-    <Project Path="src/PoliceMunicipale.Mobile/PoliceMunicipale.Mobile.csproj" />
-  </Folder>
-</Solution>

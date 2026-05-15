@@ -1,0 +1,171 @@
+﻿@page
+@model PrediCop.BackOffice.Pages.Calls.IndexModel
+@{
+    ViewData["Title"] = "Gestion des appels";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-phone me-2 text-primary"></i>Gestion des appels
+        <span class="badge bg-secondary ms-2">@Model.TotalCount</span>
+    </h4>
+    <a asp-page="/Calls/Receive" class="btn btn-primary">
+        <i class="fa-solid fa-phone-volume me-2"></i>Nouvel appel
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["InfoMessage"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show">
+        <i class="fa-solid fa-circle-info me-2"></i>@TempData["InfoMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Date</label>
+                <input type="date" name="FilterDate" value="@Model.FilterDate" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Statut</label>
+                <select name="FilterStatus" class="form-select form-select-sm">
+                    <option value="">Tous les statuts</option>
+                    @foreach (var s in IndexModel.Statuses)
+                    {
+                        <option value="@s" selected="@(Model.FilterStatus == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Catégorie</label>
+                <select name="FilterCategory" class="form-select form-select-sm">
+                    <option value="">Toutes catégories</option>
+                    @foreach (var c in IndexModel.Categories)
+                    {
+                        <option value="@c" selected="@(Model.FilterCategory == c)">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fa-solid fa-search me-1"></i>Filtrer
+                </button>
+                <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Référence</th>
+                        <th>Heure</th>
+                        <th>Appelant</th>
+                        <th>Téléphone</th>
+                        <th>Catégorie</th>
+                        <th>Adresse</th>
+                        <th>Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var call in Model.Calls)
+                    {
+                        <tr>
+                            <td class="fw-semibold text-primary">@call.Reference</td>
+                            <td class="text-nowrap">
+                                <span title="@call.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
+                                    @call.ReceivedAt.ToLocalTime().ToString("dd/MM HH:mm")
+                                </span>
+                            </td>
+                            <td>@call.CallerName</td>
+                            <td>@call.CallerPhone</td>
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    @call.IncidentCategory
+                                </span>
+                            </td>
+                            <td class="text-truncate" style="max-width:200px" title="@call.IncidentAddress">
+                                @call.IncidentAddress
+                            </td>
+                            <td>
+                                @{ ViewData["Status"] = call.Status; }
+                                @await Html.PartialAsync("_StatusBadge")
+                            </td>
+                            <td class="text-end">
+                                <a asp-page="/Calls/Details" asp-route-id="@call.Id"
+                                   class="btn btn-sm btn-outline-primary" title="Détails">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Calls.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                Aucun appel trouvé avec les filtres sélectionnés.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="/Calls/Index"
+                           asp-route-pageNumber="@(Model.PageNumber - 1)"
+                           asp-route-filterDate="@Model.FilterDate"
+                           asp-route-filterStatus="@Model.FilterStatus"
+                           asp-route-filterCategory="@Model.FilterCategory">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                            <a class="page-link" asp-page="/Calls/Index"
+                               asp-route-pageNumber="@p"
+                               asp-route-filterDate="@Model.FilterDate"
+                               asp-route-filterStatus="@Model.FilterStatus"
+                               asp-route-filterCategory="@Model.FilterCategory">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="/Calls/Index"
+                           asp-route-pageNumber="@(Model.PageNumber + 1)"
+                           asp-route-filterDate="@Model.FilterDate"
+                           asp-route-filterStatus="@Model.FilterStatus"
+                           asp-route-filterCategory="@Model.FilterCategory">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

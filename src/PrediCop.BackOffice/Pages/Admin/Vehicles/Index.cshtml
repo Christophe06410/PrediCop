@@ -1,0 +1,107 @@
+﻿@page
+@model PrediCop.BackOffice.Pages.Admin.Vehicles.IndexModel
+@{
+    ViewData["Title"] = "Gestion des véhicules";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-car me-2 text-primary"></i>Gestion des véhicules
+        <span class="badge bg-secondary ms-2">@Model.Vehicles.Count</span>
+    </h4>
+    <a asp-page="/Admin/Vehicles/Edit" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-2"></i>Nouveau véhicule
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Indicatif</th>
+                        <th>Immatriculation</th>
+                        <th>Statut</th>
+                        <th>Agents à bord</th>
+                        <th>Dernière position</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in Model.Vehicles)
+                    {
+                        <tr>
+                            <td class="fw-bold fs-6">
+                                <i class="fa-solid fa-car me-2 text-secondary"></i>@v.CallSign
+                            </td>
+                            <td class="font-monospace">@v.LicensePlate</td>
+                            <td>
+                                @{ ViewData["Status"] = v.Status; }
+                                @await Html.PartialAsync("_StatusBadge")
+                            </td>
+                            <td>
+                                @if (v.OfficerNames.Any())
+                                {
+                                    foreach (var o in v.OfficerNames)
+                                    {
+                                        <span class="badge bg-light text-dark border me-1">
+                                            <i class="fa-solid fa-user me-1"></i>@o
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted fst-italic">Aucun agent</span>
+                                }
+                            </td>
+                            <td class="text-muted small">
+                                @if (v.LastPositionUpdate.HasValue)
+                                {
+                                    <span>@v.LastPositionUpdate.Value.ToLocalTime().ToString("HH:mm")</span>
+                                    if (v.LastLatitude.HasValue && v.LastLongitude.HasValue)
+                                    {
+                                        <span class="font-monospace ms-1">(@v.LastLatitude.Value.ToString("F4"), @v.LastLongitude.Value.ToString("F4"))</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@v.Id"
+                                   class="btn btn-sm btn-outline-warning" title="Modifier">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@v.Id"
+                                      class="d-inline" onsubmit="return confirm('Supprimer le véhicule @v.CallSign ?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Vehicles.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                Aucun véhicule enregistré.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

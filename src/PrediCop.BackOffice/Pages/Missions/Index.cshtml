@@ -1,0 +1,188 @@
+﻿@page
+@model PrediCop.BackOffice.Pages.Missions.IndexModel
+@{
+    ViewData["Title"] = "Dashboard Missions";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-car-side me-2 text-success"></i>Dashboard Missions
+        <span class="badge bg-success ms-2">@Model.ActiveMissions.Count actives</span>
+    </h4>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="text-muted small">
+            <i class="fa-solid fa-rotate me-1 text-success" id="refresh-icon"></i>
+            Actualisé <span id="last-refresh">à l'instant</span>
+        </span>
+        <button class="btn btn-sm btn-outline-success" id="btn-refresh">
+            <i class="fa-solid fa-rotate me-1"></i>Rafraîchir
+        </button>
+    </div>
+</div>
+
+<!-- Missions actives -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fa-solid fa-circle fa-beat me-2"></i>Missions actives
+        </h6>
+        <span class="badge bg-light text-success">@Model.ActiveMissions.Count</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="active-missions-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Référence</th>
+                        <th>Statut</th>
+                        <th>Adresse cible</th>
+                        <th>Véhicule assigné</th>
+                        <th>Créée le</th>
+                        <th>Durée</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.ActiveMissions)
+                    {
+                        var durationMin = (int)(DateTime.Now - m.CreatedAt).TotalMinutes;
+                        var durationClass = durationMin > 60 ? "text-danger fw-bold" : durationMin > 30 ? "text-warning fw-semibold" : "text-success";
+                        <tr>
+                            <td class="fw-semibold text-primary">@m.Reference</td>
+                            <td>
+                                @{ ViewData["Status"] = m.Status; }
+                                @await Html.PartialAsync("_StatusBadge")
+                            </td>
+                            <td>@m.TargetAddress</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign))
+                                {
+                                    <span class="badge bg-dark fs-6">
+                                        <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fa-solid fa-clock me-1"></i>En attente
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
+                            <td class="@durationClass">@durationMin min</td>
+                            <td class="text-end">
+                                <a asp-page="/Missions/Details" asp-route-id="@m.Id"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-eye me-1"></i>Détails
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.ActiveMissions.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-check-circle fa-2x text-success mb-2 d-block"></i>
+                                Aucune mission active en ce moment.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Légende des statuts -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <small class="text-muted fw-semibold me-1">Légende :</small>
+            <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>En attente</span>
+            <span class="badge bg-purple text-white" style="background:#6f42c1!important"><i class="fa-solid fa-paper-plane me-1"></i>Proposée</span>
+            <span class="badge bg-primary"><i class="fa-solid fa-thumbs-up me-1"></i>Acceptée</span>
+            <span class="badge bg-success"><i class="fa-solid fa-play me-1"></i>En cours</span>
+            <span class="badge bg-secondary"><i class="fa-solid fa-check me-1"></i>Terminée</span>
+            <span class="badge bg-danger"><i class="fa-solid fa-times me-1"></i>Refusée</span>
+            <span class="badge bg-secondary"><i class="fa-solid fa-ban me-1"></i>Annulée</span>
+        </div>
+    </div>
+</div>
+
+<!-- Missions récentes / terminées -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fa-solid fa-history me-2 text-secondary"></i>Missions récentes (terminées / annulées)
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Référence</th>
+                        <th>Statut</th>
+                        <th>Adresse</th>
+                        <th>Véhicule</th>
+                        <th>Créée</th>
+                        <th>Terminée</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.RecentMissions)
+                    {
+                        <tr class="text-muted">
+                            <td class="fw-semibold">@m.Reference</td>
+                            <td>
+                                @{ ViewData["Status"] = m.Status; }
+                                @await Html.PartialAsync("_StatusBadge")
+                            </td>
+                            <td>@m.TargetAddress</td>
+                            <td>@(m.AssignedVehicleCallSign ?? "—")</td>
+                            <td>@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
+                            <td>@(m.CompletedAt?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
+                            <td>
+                                <a asp-page="/Missions/Details" asp-route-id="@m.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+    // Auto-refresh toutes les 30 secondes
+    var refreshInterval = setInterval(refreshData, 30000);
+    var lastRefreshTime = new Date();
+
+    function refreshData() {
+        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(() => {
+                lastRefreshTime = new Date();
+                document.getElementById('last-refresh').textContent = 'à ' + lastRefreshTime.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+                // En production: mettre à jour le tableau via SignalR ou fetch JSON
+            })
+            .catch(() => {});
+    }
+
+    document.getElementById('btn-refresh').addEventListener('click', function () {
+        window.location.reload();
+    });
+
+    // Mettre à jour le temps d'affichage
+    setInterval(function () {
+        var diff = Math.floor((new Date() - lastRefreshTime) / 1000);
+        if (diff < 60) {
+            document.getElementById('last-refresh').textContent = 'il y a ' + diff + 's';
+        }
+    }, 5000);
+    </script>
+}

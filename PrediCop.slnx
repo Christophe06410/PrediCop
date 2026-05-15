@@ -1,0 +1,9 @@
+﻿<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PrediCop.Api/PrediCop.Api.csproj" />
+    <Project Path="src/PrediCop.BackOffice/PrediCop.BackOffice.csproj" />
+    <Project Path="src/PrediCop.Core/PrediCop.Core.csproj" />
+    <Project Path="src/PrediCop.Infrastructure/PrediCop.Infrastructure.csproj" />
+    <Project Path="src/PrediCop.Mobile/PrediCop.Mobile.csproj" />
+  </Folder>
+</Solution>

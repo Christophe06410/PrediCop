@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.LoginPage"
+             BackgroundColor="#1a2035"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto,*" Padding="32">
+        <VerticalStackLayout Grid.Row="1" Spacing="20">
+
+            <Image Source="logo_pm.png" HeightRequest="100" HorizontalOptions="Center" />
+
+            <Label Text="PrediCop"
+                   FontSize="28" FontAttributes="Bold"
+                   TextColor="White" HorizontalTextAlignment="Center" />
+            <Label Text="Application Mobile"
+                   FontSize="14" TextColor="#aab0c0"
+                   HorizontalTextAlignment="Center" Margin="0,0,0,20"/>
+
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+                <Entry x:Name="EmailEntry"
+                       Placeholder="Email" PlaceholderColor="#6b7a99"
+                       TextColor="White" BackgroundColor="Transparent"
+                       Keyboard="Email" Margin="16,4" />
+            </Frame>
+
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+                <Entry x:Name="PasswordEntry"
+                       Placeholder="Mot de passe" PlaceholderColor="#6b7a99"
+                       TextColor="White" BackgroundColor="Transparent"
+                       IsPassword="True" Margin="16,4" />
+            </Frame>
+
+            <Label x:Name="ErrorLabel" TextColor="#ff4444"
+                   HorizontalTextAlignment="Center" IsVisible="False" />
+
+            <Button Text="Se connecter"
+                    BackgroundColor="#2563eb" TextColor="White"
+                    CornerRadius="12" HeightRequest="52"
+                    FontAttributes="Bold" FontSize="16"
+                    Clicked="OnLoginClicked" />
+
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               Color="White" IsRunning="False" IsVisible="False" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -1,16 +1,16 @@
-# Police Municipale — SaaS Application
+﻿# PrediCop — SaaS Application
 
 Application SaaS pour la gestion des Polices Municipales.
 
 ## Architecture
 
 ```
-PoliceMunicipale.sln
-├── src/PoliceMunicipale.Core/          # Entités domaine, interfaces, DTOs, enums
-├── src/PoliceMunicipale.Infrastructure/ # EF Core + SQL Server, repositories, services métier
-├── src/PoliceMunicipale.Api/           # ASP.NET Core Web API REST + SignalR (.NET 10)
-├── src/PoliceMunicipale.BackOffice/    # Razor Pages + Bootstrap 5 (.NET 10)
-└── src/PoliceMunicipale.Mobile/        # .NET MAUI Android + iOS
+PrediCop.sln
+├── src/PrediCop.Core/          # Entités domaine, interfaces, DTOs, enums
+├── src/PrediCop.Infrastructure/ # EF Core + SQL Server, repositories, services métier
+├── src/PrediCop.Api/           # ASP.NET Core Web API REST + SignalR (.NET 10)
+├── src/PrediCop.BackOffice/    # Razor Pages + Bootstrap 5 (.NET 10)
+└── src/PrediCop.Mobile/        # .NET MAUI Android + iOS
 ```
 
 ## Dépendances entre projets
@@ -53,7 +53,7 @@ PoliceMunicipale.sln
 
 ## Conventions
 
-- Namespace root: `PoliceMunicipale.*`
+- Namespace root: `PrediCop.*`
 - Toujours `async/await` avec `CancellationToken`
 - Multi-tenant: filtre global EF sur `!IsDeleted` pour `TenantEntity`
 - Services métier injectés via interfaces (`IMissionService`, `IGpsService`, `IStreetRiskService`)
@@ -61,7 +61,7 @@ PoliceMunicipale.sln
 
 ## Connexions
 
-- SQL Server: `Server=localhost;Database=PoliceMunicipale;Trusted_Connection=True;`
+- SQL Server: `Server=localhost;Database=PrediCop;Trusted_Connection=True;`
 - API: `https://localhost:7001`
 - BackOffice: `https://localhost:7002`
 - JWT secret: dans `JwtSettings:SecretKey` (appsettings.json)

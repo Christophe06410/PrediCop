@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="PrediCop.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="PrediCop">
+
+    <Shell.Resources>
+        <Style TargetType="TabBar">
+            <Setter Property="Shell.TabBarBackgroundColor" Value="#1a2035"/>
+            <Setter Property="Shell.TabBarForegroundColor" Value="#2563eb"/>
+            <Setter Property="Shell.TabBarUnselectedColor" Value="#6b7a99"/>
+        </Style>
+    </Shell.Resources>
+
+</Shell>

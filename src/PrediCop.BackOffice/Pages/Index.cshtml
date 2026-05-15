@@ -1,0 +1,64 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Accueil";
+}
+
+<div class="row g-4 align-items-center py-5">
+    <div class="col-lg-6">
+        <h1 class="display-5 fw-bold">
+            <i class="fa-solid fa-shield-halved text-primary me-3"></i>PrediCop
+        </h1>
+        <p class="lead text-muted">
+            Système de gestion des appels, missions et véhicules de patrouille.
+        </p>
+        <div class="d-flex gap-3 mt-4">
+            <a asp-page="/Calls/Receive" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-phone-volume me-2"></i>Réception appel
+            </a>
+            <a asp-page="/Dashboard/Index" class="btn btn-outline-secondary btn-lg">
+                <i class="fa-solid fa-gauge me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="row g-3">
+            <div class="col-6">
+                <a asp-page="/Calls/Index" class="card shadow-sm text-decoration-none text-dark h-100 card-hover">
+                    <div class="card-body text-center py-4">
+                        <i class="fa-solid fa-phone fa-3x text-primary mb-3 d-block"></i>
+                        <h6 class="fw-semibold">Appels</h6>
+                        <small class="text-muted">Gestion des appels entrants</small>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6">
+                <a asp-page="/Missions/Index" class="card shadow-sm text-decoration-none text-dark h-100">
+                    <div class="card-body text-center py-4">
+                        <i class="fa-solid fa-car-side fa-3x text-success mb-3 d-block"></i>
+                        <h6 class="fw-semibold">Missions</h6>
+                        <small class="text-muted">Suivi temps réel des missions</small>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6">
+                <a asp-page="/Dashboard/Index" class="card shadow-sm text-decoration-none text-dark h-100">
+                    <div class="card-body text-center py-4">
+                        <i class="fa-solid fa-gauge fa-3x text-warning mb-3 d-block"></i>
+                        <h6 class="fw-semibold">Dashboard</h6>
+                        <small class="text-muted">KPIs et statistiques</small>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6">
+                <a asp-page="/Admin/Vehicles/Index" class="card shadow-sm text-decoration-none text-dark h-100">
+                    <div class="card-body text-center py-4">
+                        <i class="fa-solid fa-gear fa-3x text-secondary mb-3 d-block"></i>
+                        <h6 class="fw-semibold">Administration</h6>
+                        <small class="text-muted">Véhicules et utilisateurs</small>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

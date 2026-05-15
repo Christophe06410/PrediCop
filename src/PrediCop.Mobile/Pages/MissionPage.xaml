@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.MissionPage"
+             BackgroundColor="#1a2035">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Status bar -->
+        <Grid Grid.Row="0" BackgroundColor="#243050" Padding="16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" x:Name="VehicleLabel"
+                   Text="Véhicule: --" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
+            <Frame Grid.Column="1" x:Name="StatusFrame"
+                   BackgroundColor="#22c55e" CornerRadius="20" Padding="12,6" HasShadow="False">
+                <Label x:Name="StatusLabel" Text="DISPONIBLE"
+                       TextColor="White" FontAttributes="Bold" FontSize="12"/>
+            </Frame>
+        </Grid>
+
+        <!-- Toggle disponibilité -->
+        <Grid Grid.Row="1" BackgroundColor="#1e2d4a" Padding="16,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" Text="Disponible pour missions"
+                   TextColor="#aab0c0" VerticalOptions="Center"/>
+            <Switch Grid.Column="1" x:Name="AvailableSwitch"
+                    IsToggled="True" OnColor="#2563eb"
+                    Toggled="OnAvailabilityToggled"/>
+        </Grid>
+
+        <!-- Mission en cours ou message vide -->
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Padding="16" Spacing="12">
+
+                <!-- Notification de mission proposée -->
+                <Frame x:Name="MissionProposalFrame" IsVisible="False"
+                       BackgroundColor="#dc2626" CornerRadius="16" Padding="16"
+                       HasShadow="True">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="NOUVELLE MISSION" TextColor="White"
+                               FontAttributes="Bold" FontSize="18"/>
+                        <Label x:Name="MissionAddressLabel" TextColor="White" FontSize="16"/>
+                        <Label x:Name="MissionDescriptionLabel" TextColor="#fca5a5" FontSize="14"/>
+                        <Label x:Name="MissionDistanceLabel" TextColor="#fca5a5" FontSize="12"/>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Button Grid.Column="0" Text="Accepter"
+                                    BackgroundColor="#16a34a" TextColor="White"
+                                    CornerRadius="10" Clicked="OnAcceptMission"/>
+                            <Button Grid.Column="1" Text="Refuser"
+                                    BackgroundColor="#374151" TextColor="White"
+                                    CornerRadius="10" Clicked="OnRefuseMission"/>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Mission active -->
+                <Frame x:Name="ActiveMissionFrame" IsVisible="False"
+                       BackgroundColor="#1e3a5f" CornerRadius="16" Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="MISSION EN COURS" TextColor="#60a5fa"
+                               FontAttributes="Bold" FontSize="14"/>
+                        <Label x:Name="ActiveMissionRef" TextColor="White" FontSize="20" FontAttributes="Bold"/>
+                        <Label x:Name="ActiveMissionAddress" TextColor="#93c5fd" FontSize="16"/>
+                        <Label x:Name="ActiveMissionBriefing" TextColor="#aab0c0" FontSize="14"/>
+                        <Button Text="Marquer comme terminée"
+                                BackgroundColor="#2563eb" TextColor="White"
+                                CornerRadius="10" Clicked="OnCompleteMission"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Aucune mission -->
+                <Frame x:Name="NoMissionFrame" BackgroundColor="#243050"
+                       CornerRadius="16" Padding="32">
+                    <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
+                        <Label Text="En attente de mission" TextColor="#6b7a99"
+                               FontSize="16" HorizontalTextAlignment="Center"/>
+                        <Label Text="Restez disponible pour recevoir des missions."
+                               TextColor="#4a5568" FontSize="13"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
