@@ -1,129 +1,83 @@
-﻿using PrediCop.Mobile.Services;
+using CommunityToolkit.Mvvm.Messaging;
+using PrediCop.Mobile.Messages;
+using PrediCop.Mobile.Services;
+using PrediCop.Mobile.ViewModels;
 
 namespace PrediCop.Mobile.Pages;
 
 public partial class MissionPage : ContentPage
 {
+    public MissionViewModel ViewModel { get; }
     private readonly ApiService _api;
-    private readonly AuthService _auth;
-    private Guid? _currentAssignmentId;
-    private Guid? _currentMissionId;
 
-    public MissionPage(ApiService api, AuthService auth)
+    public MissionPage(MissionViewModel vm, ApiService api)
     {
         InitializeComponent();
+        ViewModel = vm;
+        BindingContext = vm;
         _api = api;
-        _auth = auth;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        LoadCurrentMission();
+        ViewModel.LoadCurrentMissionCommand.Execute(null);
+        WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
+            await DisplayAlert(m.Title, m.Text, "OK"));
     }
 
-    private async void LoadCurrentMission()
+    protected override void OnDisappearing()
     {
-        try
-        {
-            var missions = await _api.GetAsync<List<MissionInfo>>("api/missions/active");
-            if (missions?.Any() == true)
-                ShowActiveMission(missions.First());
-            else
-                ShowNoMission();
-        }
-        catch { ShowNoMission(); }
+        base.OnDisappearing();
+        WeakReferenceMessenger.Default.UnregisterAll(this);
     }
 
-    public void ShowMissionProposal(MissionInfo mission)
+    public void ShowMissionProposal(MissionInfo mission) =>
+        ViewModel.SetMissionProposal(mission);
+
+    private async void OnViewMissionDetails(object sender, EventArgs e)
     {
-        _currentAssignmentId = mission.AssignmentId;
-        _currentMissionId = mission.MissionId;
-        MissionAddressLabel.Text = mission.Address;
-        MissionDescriptionLabel.Text = mission.Description;
-        MissionDistanceLabel.Text = $"Distance estimée: {mission.DistanceKm:F1} km";
-
-        MissionProposalFrame.IsVisible = true;
-        ActiveMissionFrame.IsVisible = false;
-        NoMissionFrame.IsVisible = false;
+        if (ViewModel.CurrentMissionId is not { } missionId) return;
+        await Navigation.PushAsync(new MissionDetailPage(missionId, _api));
     }
 
-    private void ShowActiveMission(MissionInfo mission)
-    {
-        _currentMissionId = mission.MissionId;
-        ActiveMissionRef.Text = mission.Reference;
-        ActiveMissionAddress.Text = mission.Address;
-        ActiveMissionBriefing.Text = mission.Briefing;
-
-        ActiveMissionFrame.IsVisible = true;
-        MissionProposalFrame.IsVisible = false;
-        NoMissionFrame.IsVisible = false;
-    }
-
-    private void ShowNoMission()
-    {
-        NoMissionFrame.IsVisible = true;
-        MissionProposalFrame.IsVisible = false;
-        ActiveMissionFrame.IsVisible = false;
-    }
-
-    private async void OnAvailabilityToggled(object sender, ToggledEventArgs e)
-    {
-        var status = e.Value ? "Available" : "Busy";
-        StatusLabel.Text = e.Value ? "DISPONIBLE" : "OCCUPÉ";
-        StatusFrame.BackgroundColor = e.Value ? Color.FromArgb("#22c55e") : Color.FromArgb("#f59e0b");
-
-        // TODO: get vehicleId from session
-        // await _api.PutAsync<object>("api/vehicles/{vehicleId}/status", new { status });
-    }
-
-    private async void OnAcceptMission(object sender, EventArgs e)
-    {
-        if (_currentMissionId == null || _currentAssignmentId == null) return;
-        try
-        {
-            await _api.PostAsync($"api/missions/{_currentMissionId}/assignments/{_currentAssignmentId}/accept", null);
-            LoadCurrentMission();
-        }
-        catch { await DisplayAlert("Erreur", "Impossible d'accepter la mission.", "OK"); }
-    }
+    private static readonly (string Label, string Code, bool NeedsText)[] RefusalOptions =
+    [
+        ("Véhicule en panne",          "VehicleBroken",    false),
+        ("Trop loin",                  "TooFar",           false),
+        ("Hors zone de patrouille",    "OutOfZone",        false),
+        ("Sur une autre mission",      "OnAnotherMission", false),
+        ("En pause",                   "OnBreak",          true),
+        ("Non disponible",             "Unavailable",      true),
+        ("Autre",                      "Other",            true),
+    ];
 
     private async void OnRefuseMission(object sender, EventArgs e)
     {
-        if (_currentMissionId == null || _currentAssignmentId == null) return;
-        var reason = await DisplayPromptAsync("Refus de mission", "Raison (optionnel):", "Refuser", "Annuler");
-        if (reason == null) return;
-        try
+        var labels = RefusalOptions.Select(r => r.Label).ToArray();
+        var selected = await DisplayActionSheet("Motif de refus", "Annuler", null, labels);
+        if (selected == null || selected == "Annuler") return;
+
+        var option = RefusalOptions.FirstOrDefault(r => r.Label == selected);
+        if (option == default) return;
+
+        string freeText = option.Label;
+        if (option.NeedsText)
         {
-            await _api.PostAsync($"api/missions/{_currentMissionId}/assignments/{_currentAssignmentId}/refuse",
-                new { reason });
-            ShowNoMission();
+            var prompt = await DisplayPromptAsync(
+                "Précision", "Description (optionnel) :", "Confirmer", "Annuler", maxLength: 200);
+            if (prompt == null) return;
+            if (!string.IsNullOrWhiteSpace(prompt)) freeText = prompt;
         }
-        catch { await DisplayAlert("Erreur", "Impossible de refuser la mission.", "OK"); }
+
+        await ViewModel.RefuseMissionAsync(option.Code, freeText);
     }
 
     private async void OnCompleteMission(object sender, EventArgs e)
     {
-        if (_currentMissionId == null) return;
-        var report = await DisplayPromptAsync("Fin de mission", "Rapport de fin de mission:", "Terminer", "Annuler", "");
+        var report = await DisplayPromptAsync(
+            "Fin de mission", "Rapport de fin de mission:", "Terminer", "Annuler", "");
         if (report == null) return;
-        try
-        {
-            await _api.PostAsync($"api/missions/{_currentMissionId}/complete", new { report });
-            ShowNoMission();
-        }
-        catch { await DisplayAlert("Erreur", "Impossible de terminer la mission.", "OK"); }
+        await ViewModel.CompleteMissionAsync(report);
     }
 }
-
-public record MissionInfo(
-    Guid MissionId,
-    Guid? AssignmentId,
-    string Reference,
-    string Address,
-    string Description,
-    string Briefing,
-    double DistanceKm,
-    double Latitude,
-    double Longitude
-);

@@ -15,9 +15,16 @@ public class Mission : TenantEntity
     public double TargetLongitude { get; set; }
 
     public string BriefingText { get; set; } = string.Empty;
+    public string? LocationDetail { get; set; }
+    public string? NarrativeReport { get; set; }
+
+    public DateTime? DispatchedAt { get; set; }
     public DateTime? AcceptedAt { get; set; }
+    public DateTime? ArrivedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string? CompletionReport { get; set; }
 
     public ICollection<MissionAssignment> Assignments { get; set; } = [];
+    public ICollection<MissionIntervenant> Intervenants { get; set; } = [];
+    public ICollection<MediaAttachment> MediaAttachments { get; set; } = [];
 }

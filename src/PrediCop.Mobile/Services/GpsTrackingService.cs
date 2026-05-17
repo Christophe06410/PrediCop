@@ -1,13 +1,13 @@
-﻿namespace PrediCop.Mobile.Services;
+namespace PrediCop.Mobile.Services;
 
 public class GpsTrackingService : IDisposable
 {
     private readonly ApiService _api;
-    private IDisposable? _locationListener;
+    private CancellationTokenSource? _cts;
     private Guid _vehicleId;
-    private bool _isTracking;
 
     public event EventHandler<Location>? PositionChanged;
+    public bool IsTracking => _cts != null && !_cts.IsCancellationRequested;
 
     public GpsTrackingService(ApiService api)
     {
@@ -16,30 +16,47 @@ public class GpsTrackingService : IDisposable
 
     public async Task StartAsync(Guid vehicleId)
     {
+        if (IsTracking) return;
+
         _vehicleId = vehicleId;
-        _isTracking = true;
 
         var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted) return;
 
-        _locationListener = Geolocation.Default.ListenForeground(new GeolocationListenerRequest
-        {
-            MinimumTime = TimeSpan.FromSeconds(10),
-            MinimumDistance = 20
-        }, OnLocationChanged);
+        _cts = new CancellationTokenSource();
+        _ = PollLocationAsync(_cts.Token);
     }
 
     public void Stop()
     {
-        _isTracking = false;
-        _locationListener?.Dispose();
-        _locationListener = null;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
     }
 
-    private async void OnLocationChanged(Location location)
+    private async Task PollLocationAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var location = await Geolocation.GetLocationAsync(
+                    new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)), ct);
+                if (location != null)
+                    await OnLocationChangedAsync(location);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { /* non-fatal */ }
+
+            try { await Task.Delay(TimeSpan.FromSeconds(10), ct); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    private async Task OnLocationChangedAsync(Location location)
     {
         PositionChanged?.Invoke(this, location);
-        if (_isTracking && _vehicleId != Guid.Empty)
+        if (_vehicleId != Guid.Empty)
         {
             try
             {

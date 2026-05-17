@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PrediCop.Core.Entities;
@@ -23,6 +23,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IGpsService, GpsService>();
         services.AddScoped<IStreetRiskService, StreetRiskService>();
         services.AddScoped<IMissionService, MissionService>();
+
+        services.AddSingleton<IEmailService, SmtpEmailService>();
 
         return services;
     }

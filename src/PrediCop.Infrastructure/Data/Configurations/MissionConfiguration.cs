@@ -25,13 +25,19 @@ public class MissionConfiguration : IEntityTypeConfiguration<Mission>
             .IsRequired()
             .HasMaxLength(4000);
 
-        builder.Property(m => m.CompletionReport)
-            .HasMaxLength(4000);
+        builder.Property(m => m.CompletionReport).HasMaxLength(4000);
+        builder.Property(m => m.LocationDetail).HasMaxLength(500);
+        builder.Property(m => m.NarrativeReport).HasMaxLength(8000);
 
         builder.HasMany(m => m.Assignments)
             .WithOne(ma => ma.Mission)
             .HasForeignKey(ma => ma.MissionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(m => m.MediaAttachments)
+            .WithOne(ma => ma.Mission)
+            .HasForeignKey(ma => ma.MissionId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasIndex(m => new { m.TenantId, m.Status });
     }

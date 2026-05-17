@@ -66,12 +66,15 @@ public class CallsController(
     {
         var call = await db.Calls
             .Include(c => c.Operator)
+            .Include(c => c.Missions)
+                .ThenInclude(m => m.Assignments)
+                .ThenInclude(a => a.Vehicle)
             .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);
 
         if (call is null)
             return Problem(title: "Appel non trouvé", statusCode: 404);
 
-        return Ok(MapToResponse(call));
+        return Ok(MapToResponseWithMissions(call));
     }
 
     [HttpPost]
@@ -91,6 +94,7 @@ public class CallsController(
             IncidentLongitude = request.IncidentLongitude,
             ThirdParties = request.ThirdParties,
             Notes = request.Notes,
+            InternalNotes = request.InternalNotes,
             OperatorId = UserId,
             Status = CallStatus.Open
         };
@@ -217,6 +221,16 @@ public class CallsController(
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt
     };
+
+    private static CallResponse MapToResponseWithMissions(Call c)
+    {
+        var response = MapToResponse(c);
+        response.Missions = c.Missions
+            .OrderBy(m => m.CreatedAt)
+            .Select(MapMissionToResponse)
+            .ToList();
+        return response;
+    }
 
     private static MissionResponse MapMissionToResponse(Mission m) => new()
     {

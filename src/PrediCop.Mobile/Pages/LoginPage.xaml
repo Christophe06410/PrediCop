@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PrediCop.Mobile.Pages.LoginPage"
@@ -18,30 +18,32 @@
                    HorizontalTextAlignment="Center" Margin="0,0,0,20"/>
 
             <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
-                <Entry x:Name="EmailEntry"
+                <Entry Text="{Binding Email}"
                        Placeholder="Email" PlaceholderColor="#6b7a99"
                        TextColor="White" BackgroundColor="Transparent"
                        Keyboard="Email" Margin="16,4" />
             </Frame>
 
             <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
-                <Entry x:Name="PasswordEntry"
+                <Entry Text="{Binding Password}"
                        Placeholder="Mot de passe" PlaceholderColor="#6b7a99"
                        TextColor="White" BackgroundColor="Transparent"
                        IsPassword="True" Margin="16,4" />
             </Frame>
 
-            <Label x:Name="ErrorLabel" TextColor="#ff4444"
-                   HorizontalTextAlignment="Center" IsVisible="False" />
+            <Label Text="{Binding ErrorMessage}" TextColor="#ff4444"
+                   HorizontalTextAlignment="Center"
+                   IsVisible="{Binding HasError}" />
 
             <Button Text="Se connecter"
                     BackgroundColor="#2563eb" TextColor="White"
                     CornerRadius="12" HeightRequest="52"
                     FontAttributes="Bold" FontSize="16"
-                    Clicked="OnLoginClicked" />
+                    Command="{Binding LoginCommand}" />
 
-            <ActivityIndicator x:Name="LoadingIndicator"
-                               Color="White" IsRunning="False" IsVisible="False" />
+            <ActivityIndicator IsRunning="{Binding IsLoading}"
+                               IsVisible="{Binding IsLoading}"
+                               Color="White" />
         </VerticalStackLayout>
     </Grid>
 </ContentPage>

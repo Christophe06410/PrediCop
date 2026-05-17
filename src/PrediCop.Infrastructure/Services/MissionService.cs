@@ -28,12 +28,12 @@ public class MissionService(AppDbContext context, IGpsService gpsService) : IMis
         };
 
         context.Missions.Add(mission);
-
         call.Status = CallStatus.MissionCreated;
-
         await context.SaveChangesAsync(ct);
 
-        await ProposeToNextVehicleAsync(mission.Id, ct);
+        // Auto-dispatch; if no vehicle available yet, mission stays Pending for manual dispatch
+        try { await ProposeToNextVehicleAsync(mission.Id, ct); }
+        catch (InvalidOperationException) { }
 
         return mission;
     }
@@ -78,7 +78,7 @@ public class MissionService(AppDbContext context, IGpsService gpsService) : IMis
         return assignment;
     }
 
-    public async Task<MissionAssignment> RespondToProposalAsync(Guid assignmentId, bool accepted, string? refusalReason, CancellationToken ct = default)
+    public async Task<MissionAssignment> RespondToProposalAsync(Guid assignmentId, bool accepted, RefusalReasonCode? reasonCode, string? refusalReason, CancellationToken ct = default)
     {
         var assignment = await context.MissionAssignments
             .Include(a => a.Mission)
@@ -100,6 +100,7 @@ public class MissionService(AppDbContext context, IGpsService gpsService) : IMis
         else
         {
             assignment.Status = MissionStatus.Refused;
+            assignment.RefusalReasonCode = reasonCode;
             assignment.RefusalReason = refusalReason;
 
             await context.SaveChangesAsync(ct);

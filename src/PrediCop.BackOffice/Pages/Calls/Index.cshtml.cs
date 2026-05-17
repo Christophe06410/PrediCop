@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using System.Net.Http.Json;
 
 namespace PrediCop.BackOffice.Pages.Calls;
 
+[Authorize]
 public class IndexModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -48,7 +50,7 @@ public class IndexModel : PageModel
         try
         {
             var client = _httpClientFactory.CreateClient("PrediCopApi");
-            var url = $"/api/calls?page={PageNumber}&pageSize={PageSize}";
+            var url = $"/api/calls?page={PageNumber}&size={PageSize}";
             if (!string.IsNullOrWhiteSpace(FilterDate)) url += $"&date={FilterDate}";
             if (!string.IsNullOrWhiteSpace(FilterStatus)) url += $"&status={FilterStatus}";
             if (!string.IsNullOrWhiteSpace(FilterCategory)) url += $"&category={FilterCategory}";
@@ -58,23 +60,11 @@ public class IndexModel : PageModel
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Impossible de charger les appels depuis l'API.");
-            Calls = GetFakeCalls();
-            TotalCount = Calls.Count;
+            _logger.LogError(ex, "Impossible de charger les appels depuis l'API.");
+            TempData["ErrorMessage"] = "Impossible de charger les appels. Vérifiez que l'API est démarrée.";
+            Calls = [];
+            TotalCount = 0;
         }
-    }
-
-    private static List<CallDto> GetFakeCalls()
-    {
-        var now = DateTime.Now;
-        return new List<CallDto>
-        {
-            new() { Id = Guid.NewGuid(), Reference = "APP-2026-001", ReceivedAt = now.AddHours(-5), CallerName = "M. Dupont Pierre", CallerPhone = "06 12 34 56 78", IncidentCategory = "Tapage", IncidentAddress = "12 rue de la Paix, 75001 Paris", Status = "MissionCreated" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-2026-002", ReceivedAt = now.AddHours(-3), CallerName = "Mme Martin Sophie", CallerPhone = "06 98 76 54 32", IncidentCategory = "Vol", IncidentAddress = "Place du Marché, 75003 Paris", Status = "InProgress" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-2026-003", ReceivedAt = now.AddHours(-1), CallerName = "M. Bernard Luc", CallerPhone = "07 11 22 33 44", IncidentCategory = "Accident", IncidentAddress = "5 Avenue Gambetta, 75020 Paris", Status = "Open" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-2026-004", ReceivedAt = now.AddDays(-1), CallerName = "Mme Petit Claire", CallerPhone = "06 55 44 33 22", IncidentCategory = "Bagarre", IncidentAddress = "Rue Saint-Denis, 75010 Paris", Status = "Closed" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-2026-005", ReceivedAt = now.AddDays(-1).AddHours(-2), CallerName = "M. Moreau Jean", CallerPhone = "07 66 77 88 99", IncidentCategory = "Autre", IncidentAddress = "Boulevard Voltaire, 75011 Paris", Status = "Closed" },
-        };
     }
 }
 

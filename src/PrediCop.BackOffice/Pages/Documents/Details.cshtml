@@ -1,0 +1,299 @@
+@page "{id:guid}"
+@model PrediCop.BackOffice.Pages.Documents.DetailsModel
+@{
+    var doc = Model.Document!;
+    ViewData["Title"] = $"Document {doc.Reference}";
+
+    bool isManager = User.IsInRole("Manager") || User.IsInRole("Admin");
+    bool isArchived = doc.Status == "Archive";
+
+    string TypeLabel(string t) => t switch
+    {
+        "MainCourante" => "Main courante",
+        "Plainte"      => "Plainte",
+        _              => t
+    };
+
+    string StatusLabel(string s) => s switch
+    {
+        "Brouillon"     => "Brouillon",
+        "Finalise"      => "Finalisé",
+        "EnvoyeParquet" => "Envoyé au Parquet",
+        "EnvoyeJuge"    => "Envoyé au Juge",
+        "Archive"       => "Archivé",
+        _               => s
+    };
+
+    (string bg, string txt) StatusBadge(string s) => s switch
+    {
+        "Brouillon"     => ("warning", "dark"),
+        "Finalise"      => ("primary", "white"),
+        "EnvoyeParquet" => ("info", "dark"),
+        "EnvoyeJuge"    => ("info", "dark"),
+        "Archive"       => ("secondary", "white"),
+        _               => ("light", "dark")
+    };
+
+    string EntryIcon(string t) => t switch
+    {
+        "Evenement"   => "fa-circle-exclamation text-danger",
+        "Explication" => "fa-comment-dots text-primary",
+        "Temoignage"  => "fa-user text-warning",
+        "Note"        => "fa-note-sticky text-secondary",
+        _             => "fa-circle text-muted"
+    };
+
+    string EntryLabel(string t) => t switch
+    {
+        "Evenement"   => "Événement",
+        "Explication" => "Explication",
+        "Temoignage"  => "Témoignage",
+        "Note"        => "Note",
+        _             => t
+    };
+
+    var (statusBg, statusTxt) = StatusBadge(doc.Status);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Documents/Index">Documents de suivi</a></li>
+            <li class="breadcrumb-item active">@doc.Reference</li>
+        </ol>
+    </nav>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <!-- Transitions de statut -->
+        @if (!isArchived)
+        {
+            @if (doc.Status == "Brouillon")
+            {
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@doc.Id" class="d-inline">
+                    <input type="hidden" name="newStatus" value="Finalise" />
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-check me-1"></i>Finaliser
+                    </button>
+                </form>
+            }
+            else if (doc.Status == "Finalise")
+            {
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@doc.Id" class="d-inline">
+                    <input type="hidden" name="newStatus" value="EnvoyeParquet" />
+                    <button type="submit" class="btn btn-sm btn-info">
+                        <i class="fa-solid fa-building-columns me-1"></i>Envoyer au Parquet
+                    </button>
+                </form>
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@doc.Id" class="d-inline">
+                    <input type="hidden" name="newStatus" value="EnvoyeJuge" />
+                    <button type="submit" class="btn btn-sm btn-info">
+                        <i class="fa-solid fa-scale-balanced me-1"></i>Envoyer au Juge
+                    </button>
+                </form>
+            }
+            @if (isManager)
+            {
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@doc.Id" class="d-inline">
+                    <input type="hidden" name="newStatus" value="Archive" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                            onclick="return confirm('Archiver ce document ? Cette action est irréversible.')">
+                        <i class="fa-solid fa-box-archive me-1"></i>Archiver
+                    </button>
+                </form>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@doc.Id" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Supprimer définitivement ce document ?')">
+                        <i class="fa-solid fa-trash me-1"></i>Supprimer
+                    </button>
+                </form>
+            }
+        }
+        <a asp-page="/Documents/Print" asp-route-id="@doc.Id" target="_blank"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-print me-1"></i>Imprimer / PDF
+        </a>
+        <a asp-page="/Documents/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- En-tête document -->
+    <div class="col-12">
+        <div class="card shadow-sm border-start border-4 @(doc.Type == "Plainte" ? "border-danger" : "border-primary")">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="fw-bold mb-1">
+                            <i class="fa-solid @(doc.Type == "Plainte" ? "fa-gavel text-danger" : "fa-book text-primary") me-2"></i>
+                            @doc.Title
+                        </h5>
+                        <div class="d-flex gap-2 align-items-center flex-wrap mt-1">
+                            <span class="badge @(doc.Type == "Plainte" ? "bg-danger" : "bg-primary")">
+                                @TypeLabel(doc.Type)
+                            </span>
+                            <span class="badge bg-@statusBg text-@statusTxt">@StatusLabel(doc.Status)</span>
+                            <span class="font-monospace small text-muted">@doc.Reference</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                        <div class="small text-muted">
+                            Mission :
+                            <a asp-page="/Missions/Details" asp-route-id="@doc.MissionId"
+                               class="fw-semibold text-decoration-none">
+                                <i class="fa-solid fa-car-side me-1"></i>@doc.MissionReference
+                            </a>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            Créé par <strong>@doc.CreatedByName</strong>
+                            le @doc.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline des entrées -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-timeline me-2 text-warning"></i>Chronologie
+                    <span class="badge bg-secondary ms-1">@doc.Entries.Count</span>
+                </h6>
+            </div>
+            <div class="card-body">
+                @if (doc.Entries.Any())
+                {
+                    <div class="timeline">
+                        @foreach (var entry in doc.Entries.OrderBy(e => e.OccurredAt))
+                        {
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="me-3 text-center" style="min-width:38px">
+                                    <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center"
+                                         style="width:38px;height:38px;">
+                                        <i class="fa-solid @EntryIcon(entry.Type) small"></i>
+                                    </div>
+                                    @if (entry != doc.Entries.OrderBy(e => e.OccurredAt).Last())
+                                    {
+                                        <div class="border-start border-2 mx-auto mt-1" style="height:20px;width:0"></div>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="card border-0 bg-light shadow-sm">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                                        <span class="badge bg-light border text-dark small">
+                                                            @EntryLabel(entry.Type)
+                                                        </span>
+                                                        <span class="small text-muted">
+                                                            @entry.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                                        </span>
+                                                        <span class="small text-muted">— @entry.CreatedByName</span>
+                                                    </div>
+                                                    <p class="mb-0" style="white-space:pre-wrap;">@entry.Content</p>
+                                                </div>
+                                                @if (isManager && !isArchived)
+                                                {
+                                                    <form method="post" asp-page-handler="DeleteEntry"
+                                                          asp-route-id="@doc.Id" asp-route-entryId="@entry.Id" class="ms-2">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1"
+                                                                onclick="return confirm('Supprimer cette entrée ?')"
+                                                                title="Supprimer">
+                                                            <i class="fa-solid fa-times small"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-30"></i>
+                        Aucune entrée pour le moment.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire ajout d'entrée -->
+    <div class="col-lg-4">
+        @if (!isArchived)
+        {
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-plus me-2 text-success"></i>Ajouter une entrée
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="AddEntry" asp-route-id="@doc.Id">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger small py-2" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewEntry.Type" class="form-label fw-semibold small">Type</label>
+                            <select asp-for="NewEntry.Type" class="form-select form-select-sm">
+                                <option value="">-- Choisir --</option>
+                                <option value="Evenement">Événement</option>
+                                <option value="Explication">Explication</option>
+                                <option value="Temoignage">Témoignage</option>
+                                <option value="Note">Note</option>
+                            </select>
+                            <span asp-validation-for="NewEntry.Type" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewEntry.OccurredAt" class="form-label fw-semibold small">Date/heure</label>
+                            <input asp-for="NewEntry.OccurredAt" type="datetime-local" class="form-control form-control-sm"
+                                   value="@Model.NewEntry.OccurredAt.ToString("yyyy-MM-ddTHH:mm")" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewEntry.Content" class="form-label fw-semibold small">Contenu</label>
+                            <textarea asp-for="NewEntry.Content" class="form-control form-control-sm" rows="5"
+                                      placeholder="Décrivez l'événement, l'explication ou le témoignage..."></textarea>
+                            <span asp-validation-for="NewEntry.Content" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-sm w-100">
+                            <i class="fa-solid fa-plus me-1"></i>Ajouter
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card shadow-sm border-secondary">
+                <div class="card-body text-center text-muted py-4">
+                    <i class="fa-solid fa-box-archive fa-2x mb-2 d-block opacity-30"></i>
+                    Ce document est archivé.<br />
+                    <small>Aucune modification possible.</small>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Vidéos / Médias -->
+    <div class="col-12">
+        @{
+            ViewData["MediaParentType"] = "document";
+            ViewData["MediaParentId"] = doc.Id;
+        }
+        @await Html.PartialAsync("_MediaAttachments", Model.MediaAttachments)
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

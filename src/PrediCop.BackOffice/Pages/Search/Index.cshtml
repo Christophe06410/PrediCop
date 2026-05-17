@@ -1,0 +1,141 @@
+@page
+@model PrediCop.BackOffice.Pages.Search.IndexModel
+@{
+    ViewData["Title"] = "Recherche";
+
+    string TypeIcon(string type) => type switch
+    {
+        "Appel"    => "fa-phone",
+        "Mission"  => "fa-car-side",
+        "Document" => "fa-folder-open",
+        "Entrée"   => "fa-pen-to-square",
+        _          => "fa-circle-info"
+    };
+
+    string TypeColor(string type) => type switch
+    {
+        "Appel"    => "primary",
+        "Mission"  => "success",
+        "Document" => "warning",
+        "Entrée"   => "secondary",
+        _          => "light"
+    };
+
+    string SectionTitle(string type) => type switch
+    {
+        "Appel"    => "Appels",
+        "Mission"  => "Missions",
+        "Document" => "Documents",
+        "Entrée"   => "Entrées",
+        _          => type
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-magnifying-glass me-2 text-primary"></i>
+        @if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <span>Résultats pour : <em>@Model.Q</em></span>
+        }
+        else
+        {
+            <span>Recherche globale</span>
+        }
+    </h4>
+</div>
+
+<!-- Barre de recherche -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form asp-page="/Search/Index" method="get" class="d-flex gap-2">
+            <input type="text" name="Q" value="@Model.Q"
+                   class="form-control"
+                   placeholder="Rechercher dans les appels, missions, documents, entrées..."
+                   autofocus />
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-magnifying-glass me-1"></i>Rechercher
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Q))
+{
+    @if (Model.Results is null)
+    {
+        <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            Impossible de contacter l'API. Veuillez réessayer.
+        </div>
+    }
+    else if (Model.Results.Results.Count == 0)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body text-center text-muted py-5">
+                <i class="fa-solid fa-magnifying-glass fa-2x mb-2 d-block opacity-30"></i>
+                Aucun résultat trouvé pour '<strong>@Model.Q</strong>'.
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted small mb-3">
+            @Model.Results.TotalCount résultat(s) trouvé(s)
+        </p>
+
+        @foreach (var group in Model.Results.Results.GroupBy(r => r.Type))
+        {
+            var color = TypeColor(group.Key);
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase text-muted mb-2">
+                    <i class="fa-solid @TypeIcon(group.Key) me-1 text-@color"></i>
+                    @SectionTitle(group.Key)
+                    <span class="badge bg-@color text-white ms-1">@group.Count()</span>
+                </h6>
+                <div class="card shadow-sm">
+                    <div class="list-group list-group-flush">
+                        @foreach (var item in group)
+                        {
+                            string? href = item.Type switch
+                            {
+                                "Appel"    => Url.Page("/Calls/Details", new { id = item.Id }),
+                                "Mission"  => Url.Page("/Missions/Details", new { id = item.Id }),
+                                "Document" => Url.Page("/Documents/Details", new { id = item.Id }),
+                                "Entrée"   => !string.IsNullOrEmpty(item.ParentId)
+                                              ? Url.Page("/Documents/Details", new { id = Guid.Parse(item.ParentId) })
+                                              : null,
+                                _          => null
+                            };
+
+                            <a href="@(href ?? "#")"
+                               class="list-group-item list-group-item-action d-flex align-items-start gap-3 py-3">
+                                <div class="mt-1">
+                                    <i class="fa-solid @TypeIcon(item.Type) text-@color"></i>
+                                </div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        @if (!string.IsNullOrEmpty(item.Reference))
+                                        {
+                                            <span class="badge bg-light text-dark border font-monospace small">
+                                                @item.Reference
+                                            </span>
+                                        }
+                                        <span class="fw-semibold text-truncate">@item.Title</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(item.Subtitle))
+                                    {
+                                        <div class="text-muted small text-truncate">@item.Subtitle</div>
+                                    }
+                                </div>
+                                <div class="text-muted small text-nowrap">
+                                    @item.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}

@@ -14,6 +14,7 @@ public class CreateCallRequest
     public double? IncidentLongitude { get; set; }
     public string? ThirdParties { get; set; }
     public string? Notes { get; set; }
+    public string? InternalNotes { get; set; }
 }
 
 public class UpdateCallRequest
@@ -52,6 +53,7 @@ public class CallResponse
     public string OperatorName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<MissionResponse> Missions { get; set; } = [];
 }
 
 public class CloseCallRequest

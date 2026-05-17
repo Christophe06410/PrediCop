@@ -11,5 +11,20 @@
 
         <WebView Grid.Row="1" x:Name="MapWebView"
                  BackgroundColor="Transparent"/>
+
+        <!-- Visible uniquement quand un point est focalisé (depuis patrouille) -->
+        <Button x:Name="DirectionsButton"
+                Grid.Row="1"
+                IsVisible="False"
+                Text="Itineraire GPS"
+                BackgroundColor="#2563eb"
+                TextColor="White"
+                CornerRadius="24"
+                Padding="20,10"
+                FontAttributes="Bold"
+                HorizontalOptions="Center"
+                VerticalOptions="End"
+                Margin="0,0,0,24"
+                Clicked="OnDirectionsClicked"/>
     </Grid>
 </ContentPage>

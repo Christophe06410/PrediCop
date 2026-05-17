@@ -1,0 +1,213 @@
+@page "{id:guid?}"
+@model PrediCop.BackOffice.Pages.Admin.GeoZones.EditModel
+@{
+    var isNew = Model.ZoneId == null;
+    ViewData["Title"] = isNew ? "Nouvelle zone" : "Modifier la zone";
+}
+
+@section Styles {
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+    #zone-map { height: 480px; border-radius: .5rem; cursor: crosshair; }
+    .vertex-badge { font-size: .75rem; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Admin/GeoZones/Index">Zones de patrouille</a></li>
+            <li class="breadcrumb-item active">@ViewData["Title"]</li>
+        </ol>
+    </nav>
+    <a asp-page="/Admin/GeoZones/Index" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<form method="post" asp-route-id="@Model.ZoneId">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+
+        <!-- Panneau gauche : informations -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold"><i class="fa-solid fa-circle-info me-2 text-primary"></i>Informations</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" placeholder="Ex : Centre-ville" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="3"
+                                  placeholder="Description du secteur..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Couleur d'affichage</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" asp-for="Color" class="form-control form-control-color"
+                                   id="colorPicker" style="width:50px;height:38px;" />
+                            <input type="text" id="colorText" class="form-control font-monospace"
+                                   value="@Model.Color" placeholder="#3b82f6" maxlength="7" />
+                        </div>
+                    </div>
+                    @if (!isNew)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Statut</label>
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
+                                <label class="form-check-label" asp-for="IsActive">Zone active</label>
+                            </div>
+                        </div>
+                    }
+
+                    <hr/>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-semibold small">
+                            Sommets du polygone :
+                            <span id="vertex-count" class="badge bg-primary ms-1">0</span>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="btn-clear">
+                            <i class="fa-solid fa-trash me-1"></i>Effacer
+                        </button>
+                    </div>
+                    <p class="text-muted small">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        Cliquez sur la carte pour ajouter des sommets au polygone.
+                        Clic droit sur un sommet pour le supprimer.
+                        Un minimum de 3 points est requis.
+                    </p>
+
+                    <!-- Hidden field submitted with form -->
+                    <input type="hidden" asp-for="VerticesJson" id="hiddenVertices" />
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2" id="btn-save">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>@(isNew ? "Créer la zone" : "Enregistrer")
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panneau droit : carte -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-map me-2 text-success"></i>Délimitation du secteur
+                    </h6>
+                    <small class="text-muted">Cliquez pour dessiner le polygone</small>
+                </div>
+                <div class="card-body p-2">
+                    <div id="zone-map"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</form>
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    // --- State ---
+    var vertices = [];          // [{lat, lng}, ...]
+    var markers = [];           // L.CircleMarker[]
+    var polygon = null;         // L.Polygon
+    var existingData = @Html.Raw(Model.ExistingVerticesJson.Replace("\"", "\""));
+
+    // --- Color sync ---
+    var colorPicker = document.getElementById('colorPicker');
+    var colorText   = document.getElementById('colorText');
+    colorPicker.addEventListener('input', function() { colorText.value = colorPicker.value; });
+    colorText.addEventListener('input', function() {
+        if (/^#[0-9a-fA-F]{6}$/.test(colorText.value))
+            colorPicker.value = colorText.value;
+    });
+
+    // --- Map init ---
+    var map = L.map('zone-map').setView([43.6047, 1.4442], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(map);
+
+    // --- Helpers ---
+    function getColor() { return colorPicker.value || '#3b82f6'; }
+
+    function redraw() {
+        // Update polygon
+        if (polygon) { map.removeLayer(polygon); polygon = null; }
+        if (vertices.length >= 3) {
+            polygon = L.polygon(
+                vertices.map(function(v) { return [v.lat, v.lng]; }),
+                { color: getColor(), fillColor: getColor(), fillOpacity: 0.20, weight: 2 }
+            ).addTo(map);
+        }
+        // Update hidden input
+        var dto = vertices.map(function(v, i) {
+            return { order: i, latitude: v.lat, longitude: v.lng };
+        });
+        document.getElementById('hiddenVertices').value = JSON.stringify(dto);
+        document.getElementById('vertex-count').textContent = vertices.length;
+    }
+
+    function addVertex(lat, lng) {
+        vertices.push({ lat: lat, lng: lng });
+        var idx = vertices.length - 1;
+        var m = L.circleMarker([lat, lng], {
+            radius: 8, color: '#fff', weight: 2,
+            fillColor: getColor(), fillOpacity: 1
+        }).addTo(map);
+        m.bindTooltip('Sommet ' + (idx + 1) + '<br><small>Clic droit pour supprimer</small>',
+                      { direction: 'top' });
+        m.on('contextmenu', function(e) {
+            L.DomEvent.stopPropagation(e);
+            var i = markers.indexOf(m);
+            if (i === -1) return;
+            map.removeLayer(m);
+            markers.splice(i, 1);
+            vertices.splice(i, 1);
+            redraw();
+        });
+        markers.push(m);
+        redraw();
+    }
+
+    // Click on map → add vertex
+    map.on('click', function(e) { addVertex(e.latlng.lat, e.latlng.lng); });
+
+    // Clear button
+    document.getElementById('btn-clear').addEventListener('click', function() {
+        markers.forEach(function(m) { map.removeLayer(m); });
+        markers = []; vertices = [];
+        redraw();
+    });
+
+    // Redraw on color change
+    colorPicker.addEventListener('input', function() { redraw(); });
+
+    // --- Load existing vertices if editing ---
+    if (existingData && existingData.length > 0) {
+        existingData.sort(function(a, b) { return a.order - b.order; });
+        existingData.forEach(function(v) { addVertex(v.latitude, v.longitude); });
+        if (vertices.length > 0) {
+            var lats = vertices.map(function(v) { return v.lat; });
+            var lngs = vertices.map(function(v) { return v.lng; });
+            map.fitBounds([
+                [Math.min.apply(null, lats), Math.min.apply(null, lngs)],
+                [Math.max.apply(null, lats), Math.max.apply(null, lngs)]
+            ], { padding: [40, 40] });
+        }
+    }
+})();
+</script>
+}

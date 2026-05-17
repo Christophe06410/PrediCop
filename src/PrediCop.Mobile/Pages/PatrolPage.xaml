@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PrediCop.Mobile.Pages.PatrolPage"
@@ -15,22 +15,26 @@
                    FontSize="18" FontAttributes="Bold" VerticalOptions="Center"/>
             <Button Grid.Column="1" Text="Actualiser"
                     BackgroundColor="#2563eb" TextColor="White"
-                    CornerRadius="8" Padding="12,6"
-                    FontSize="13" Clicked="OnRefreshClicked"/>
+                    CornerRadius="8" Padding="12,6" FontSize="13"
+                    Command="{Binding LoadStreetsCommand}"/>
         </Grid>
 
-        <CollectionView Grid.Row="1" x:Name="StreetsCollection"
-                        Margin="0" BackgroundColor="Transparent">
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding Streets}"
+                        BackgroundColor="Transparent">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Frame Margin="12,6" Padding="0" CornerRadius="12"
                            BackgroundColor="#1e2d4a" HasShadow="False">
-                        <Grid ColumnDefinitions="8,*,Auto" ColumnSpacing="0">
-                            <!-- Risk color bar -->
-                            <BoxView Grid.Column="0"
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="8,*,Auto" ColumnSpacing="0">
+
+                            <!-- Barre de couleur risque -->
+                            <BoxView Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
                                      Color="{Binding RiskColor}"
                                      CornerRadius="12,0,0,12"/>
-                            <VerticalStackLayout Grid.Column="1" Padding="14,12" Spacing="4">
+
+                            <!-- Infos rue -->
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="1" Padding="14,12,14,4" Spacing="4">
                                 <Label Text="{Binding Name}"
                                        TextColor="White" FontAttributes="Bold" FontSize="16"/>
                                 <Label Text="{Binding District}"
@@ -38,8 +42,10 @@
                                 <Label Text="{Binding LastPatrolText}"
                                        TextColor="#6b7a99" FontSize="12"/>
                             </VerticalStackLayout>
-                            <VerticalStackLayout Grid.Column="2" Padding="14,12"
-                                                 HorizontalOptions="Center" VerticalOptions="Center">
+
+                            <!-- Score + Passé -->
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="2" Padding="14,12,14,4"
+                                                 HorizontalOptions="Center" VerticalOptions="Start">
                                 <Label Text="{Binding RiskScore}"
                                        TextColor="{Binding RiskColor}"
                                        FontSize="24" FontAttributes="Bold"
@@ -51,6 +57,22 @@
                                         CommandParameter="{Binding StreetId}"
                                         Clicked="OnPatrolledClicked"/>
                             </VerticalStackLayout>
+
+                            <!-- Boutons Carte / Itinéraire -->
+                            <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                  Padding="14,0,14,12" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Button Grid.Column="0" Text="Sur la carte"
+                                        BackgroundColor="#0f3460" TextColor="#60a5fa"
+                                        CornerRadius="6" Padding="8,5" FontSize="12"
+                                        CommandParameter="{Binding .}"
+                                        Clicked="OnViewOnMapClicked"/>
+                                <Button Grid.Column="1" Text="Itineraire GPS"
+                                        BackgroundColor="#0f3460" TextColor="#34d399"
+                                        CornerRadius="6" Padding="8,5" FontSize="12"
+                                        CommandParameter="{Binding .}"
+                                        Clicked="OnDirectionsClicked"/>
+                            </Grid>
+
                         </Grid>
                     </Frame>
                 </DataTemplate>

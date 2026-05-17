@@ -23,6 +23,42 @@ public class CallDto
     public List<MissionDto> Missions { get; set; } = [];
 }
 
+public class EditCallDto
+{
+    [Required(ErrorMessage = "Le nom de l'appelant est obligatoire.")]
+    [Display(Name = "Nom de l'appelant")]
+    public string CallerName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Le téléphone est obligatoire.")]
+    [Phone(ErrorMessage = "Numéro de téléphone invalide.")]
+    [Display(Name = "Téléphone")]
+    public string CallerPhone { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "La catégorie est obligatoire.")]
+    [Display(Name = "Catégorie d'incident")]
+    public string IncidentCategory { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "La description est obligatoire.")]
+    [Display(Name = "Description de l'incident")]
+    public string IncidentDescription { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "L'adresse est obligatoire.")]
+    [Display(Name = "Adresse de l'incident")]
+    public string IncidentAddress { get; set; } = string.Empty;
+
+    [Display(Name = "Complément d'adresse")]
+    public string? IncidentAddressComplement { get; set; }
+
+    [Display(Name = "Tierces personnes impliquées")]
+    public string? ThirdParties { get; set; }
+
+    [Display(Name = "Notes")]
+    public string? Notes { get; set; }
+
+    [Display(Name = "Notes internes")]
+    public string? InternalNotes { get; set; }
+}
+
 public class CreateCallDto
 {
     [Required(ErrorMessage = "Le nom de l'appelant est obligatoire.")]

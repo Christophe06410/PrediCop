@@ -20,6 +20,40 @@ public class StreetsController(
 {
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
 
+    [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<ActionResult<StreetResponse>> CreateStreet(
+        [FromBody] CreateStreetRequest req, CancellationToken ct)
+    {
+        var street = new Street
+        {
+            TenantId = TenantId,
+            Name = req.Name,
+            District = req.District,
+            City = req.City ?? "",
+            BaseRiskScore = req.BaseRiskScore,
+            CurrentRiskScore = req.CurrentRiskScore ?? req.BaseRiskScore,
+            StartLatitude = req.StartLatitude,
+            StartLongitude = req.StartLongitude,
+            EndLatitude = req.EndLatitude,
+            EndLongitude = req.EndLongitude
+        };
+        db.Streets.Add(street);
+        await db.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(GetStreets), MapToResponse(street));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> DeleteStreet(Guid id, CancellationToken ct)
+    {
+        var street = await db.Streets.FirstOrDefaultAsync(s => s.Id == id && s.TenantId == TenantId, ct);
+        if (street is null) return NotFound();
+        db.Streets.Remove(street);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<StreetResponse>>> GetStreets(CancellationToken ct)
     {
@@ -43,7 +77,7 @@ public class StreetsController(
     [HttpPost("{id:guid}/patrol")]
     public async Task<ActionResult<StreetResponse>> RecordPatrol(
         Guid id,
-        [FromBody] PatrolRequest request,
+        [FromBody] PatrolRequest? request,
         CancellationToken ct)
     {
         var street = await db.Streets
@@ -52,7 +86,21 @@ public class StreetsController(
         if (street is null)
             return Problem(title: "Rue non trouvée", statusCode: 404);
 
-        await streetRiskService.RecordPatrolAsync(id, request.VehicleId, ct);
+        // If no VehicleId provided, derive from the authenticated officer's assignment
+        var vehicleId = (request?.VehicleId is Guid v && v != Guid.Empty) ? v : (Guid?)null;
+        if (vehicleId is null)
+        {
+            var userId = Guid.Parse(User.FindFirst("userId")!.Value);
+            vehicleId = await db.VehicleOfficers
+                .Where(vo => vo.UserId == userId && vo.IsActive)
+                .Select(vo => (Guid?)vo.VehicleId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (vehicleId is null)
+            return Problem(title: "Aucun véhicule assigné à cet agent", statusCode: 400);
+
+        await streetRiskService.RecordPatrolAsync(id, vehicleId.Value, ct);
 
         await db.Entry(street).ReloadAsync(ct);
 
@@ -139,4 +187,17 @@ public class StreetsController(
         LastPatrolledAt = s.LastPatrolledAt,
         PatrolIntervalHours = s.PatrolIntervalHours
     };
+}
+
+public class CreateStreetRequest
+{
+    public string Name { get; set; } = "";
+    public string? District { get; set; }
+    public string? City { get; set; }
+    public int BaseRiskScore { get; set; } = 30;
+    public int? CurrentRiskScore { get; set; }
+    public double StartLatitude { get; set; }
+    public double StartLongitude { get; set; }
+    public double EndLatitude { get; set; }
+    public double EndLongitude { get; set; }
 }

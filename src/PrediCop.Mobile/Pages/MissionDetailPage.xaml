@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.MissionDetailPage"
+             Title="{Binding Reference}"
+             BackgroundColor="#1a2035">
+
+    <Shell.NavBarIsVisible>True</Shell.NavBarIsVisible>
+
+    <Shell.TitleColor>White</Shell.TitleColor>
+    <Shell.BackgroundColor>#243050</Shell.BackgroundColor>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+
+            <!-- Statut + distance -->
+            <Frame BackgroundColor="#243050" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding StatusText}"
+                           TextColor="{Binding StatusColor}"
+                           FontAttributes="Bold" FontSize="17"/>
+                    <Label Text="{Binding DistanceText}"
+                           TextColor="#93c5fd" FontSize="14"/>
+                    <Label Text="{Binding CreatedAtText}"
+                           TextColor="#6b7a99" FontSize="12"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Adresse + briefing + GPS -->
+            <Frame BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Adresse d'intervention" TextColor="#6b7a99" FontSize="12"/>
+                    <Label Text="{Binding TargetAddress}"
+                           TextColor="White" FontAttributes="Bold" FontSize="16"/>
+                    <Label Text="Briefing" TextColor="#6b7a99" FontSize="12" Margin="0,8,0,0"/>
+                    <Label Text="{Binding BriefingText}"
+                           TextColor="#aab0c0" FontSize="14"/>
+                    <Button Text="Ouvrir dans GPS"
+                            BackgroundColor="#0f3460" TextColor="#34d399"
+                            CornerRadius="8" Padding="12,6" FontSize="13"
+                            HorizontalOptions="Start" Margin="0,6,0,0"
+                            Clicked="OnOpenGps"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Accepter / Refuser (mission proposée) -->
+            <Frame IsVisible="{Binding ShowAcceptRefuse}"
+                   BackgroundColor="#7f1d1d" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Mission proposée — en attente de votre réponse"
+                           TextColor="#fca5a5" FontAttributes="Bold" FontSize="14"/>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button Grid.Column="0" Text="Accepter"
+                                BackgroundColor="#16a34a" TextColor="White"
+                                CornerRadius="8" Clicked="OnAccept"/>
+                        <Button Grid.Column="1" Text="Refuser"
+                                BackgroundColor="#374151" TextColor="White"
+                                CornerRadius="8" Clicked="OnRefuse"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Notes + Terminer (mission acceptée) -->
+            <Frame IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#1e3a5f" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Informations complémentaires"
+                           TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
+                    <Editor x:Name="NotesEditor"
+                            Placeholder="Observations, rapport de mission..."
+                            PlaceholderColor="#4a5568"
+                            TextColor="White"
+                            BackgroundColor="#152a45"
+                            MinimumHeightRequest="100"
+                            AutoSize="TextChanges"/>
+                    <Button Text="Terminer la mission"
+                            BackgroundColor="#2563eb" TextColor="White"
+                            CornerRadius="8" Margin="0,4,0,0"
+                            Clicked="OnComplete"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Timeline des propositions -->
+            <Frame IsVisible="{Binding HasAssignments}"
+                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Historique des propositions"
+                           TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
+                    <CollectionView ItemsSource="{Binding Assignments}" SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <VerticalStackLayout Padding="0,6" Spacing="2">
+                                    <Label Text="{Binding Summary}"
+                                           TextColor="{Binding StatusColor}"
+                                           FontAttributes="Bold" FontSize="13"/>
+                                    <Label Text="{Binding Detail}"
+                                           TextColor="#6b7a99" FontSize="12"/>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

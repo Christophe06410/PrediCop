@@ -1,0 +1,142 @@
+@page
+@model PrediCop.BackOffice.Pages.Documents.IndexModel
+@{
+    ViewData["Title"] = "Documents de suivi";
+
+    string TypeLabel(string t) => t switch
+    {
+        "MainCourante" => "Main courante",
+        "Plainte"      => "Plainte",
+        _              => t
+    };
+
+    string StatusLabel(string s) => s switch
+    {
+        "Brouillon"     => "Brouillon",
+        "Finalise"      => "Finalisé",
+        "EnvoyeParquet" => "Envoyé Parquet",
+        "EnvoyeJuge"    => "Envoyé Juge",
+        "Archive"       => "Archivé",
+        _               => s
+    };
+
+    (string bg, string text) StatusBadge(string s) => s switch
+    {
+        "Brouillon"     => ("warning", "dark"),
+        "Finalise"      => ("primary", "white"),
+        "EnvoyeParquet" => ("info", "dark"),
+        "EnvoyeJuge"    => ("info", "dark"),
+        "Archive"       => ("secondary", "white"),
+        _               => ("light", "dark")
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-folder-open me-2 text-primary"></i>Documents de suivi
+    </h4>
+</div>
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small text-muted mb-1">Type</label>
+                <select name="FilterType" class="form-select form-select-sm" style="width:180px;">
+                    <option value="">Tous les types</option>
+                    <option value="MainCourante" selected="@(Model.FilterType == "MainCourante")">Main courante</option>
+                    <option value="Plainte" selected="@(Model.FilterType == "Plainte")">Plainte</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small text-muted mb-1">Statut</label>
+                <select name="FilterStatus" class="form-select form-select-sm" style="width:200px;">
+                    <option value="">Tous les statuts</option>
+                    <option value="Brouillon" selected="@(Model.FilterStatus == "Brouillon")">Brouillon</option>
+                    <option value="Finalise" selected="@(Model.FilterStatus == "Finalise")">Finalisé</option>
+                    <option value="EnvoyeParquet" selected="@(Model.FilterStatus == "EnvoyeParquet")">Envoyé Parquet</option>
+                    <option value="EnvoyeJuge" selected="@(Model.FilterStatus == "EnvoyeJuge")">Envoyé Juge</option>
+                    <option value="Archive" selected="@(Model.FilterStatus == "Archive")">Archivé</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-filter me-1"></i>Filtrer
+                </button>
+                <a asp-page="/Documents/Index" class="btn btn-sm btn-outline-secondary ms-1">
+                    <i class="fa-solid fa-xmark me-1"></i>Effacer
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Documents.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Titre</th>
+                            <th>Mission</th>
+                            <th>Créé par</th>
+                            <th>Date</th>
+                            <th>Entrées</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in Model.Documents)
+                        {
+                            var (bg, txt) = StatusBadge(doc.Status);
+                            <tr>
+                                <td class="font-monospace small fw-semibold">@doc.Reference</td>
+                                <td>
+                                    <span class="badge @(doc.Type == "Plainte" ? "bg-danger" : "bg-primary")">
+                                        <i class="fa-solid @(doc.Type == "Plainte" ? "fa-gavel" : "fa-book") me-1"></i>
+                                        @TypeLabel(doc.Type)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@bg text-@txt">@StatusLabel(doc.Status)</span>
+                                </td>
+                                <td>@doc.Title</td>
+                                <td>
+                                    <a asp-page="/Missions/Details" asp-route-id="@doc.MissionId"
+                                       class="text-decoration-none small">
+                                        <i class="fa-solid fa-car-side me-1 text-success"></i>@doc.MissionReference
+                                    </a>
+                                </td>
+                                <td class="small text-muted">@doc.CreatedByName</td>
+                                <td class="small text-muted">@doc.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@doc.Entries.Count</span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-page="/Documents/Details" asp-route-id="@doc.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-folder-open fa-2x mb-2 d-block opacity-30"></i>
+                Aucun document de suivi trouvé.
+            </div>
+        }
+    </div>
+</div>

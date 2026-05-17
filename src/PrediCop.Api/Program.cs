@@ -1,18 +1,26 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using PrediCop.Api.Hubs;
 using PrediCop.Api.Middleware;
+using PrediCop.Infrastructure.Data;
 using PrediCop.Infrastructure.Extensions;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Allow large video file uploads (500 MB)
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = 500_000_000);
+
 // ---- Infrastructure (EF Core, repositories, services) ----
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ---- Controllers ----
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 // ---- JWT Authentication ----
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -84,6 +92,13 @@ builder.Services.AddOpenApi(options =>
 // ---- Build ----
 var app = builder.Build();
 
+// ---- Seed données initiales ----
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await DbInitializer.InitializeAsync(db);
+}
+
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())
 {
@@ -104,6 +119,7 @@ app.UseCors("PrediCopPolicy");
 
 app.UseAuthentication();
 app.UseTenantMiddleware();
+app.UseAuditContextMiddleware();
 app.UseAuthorization();
 
 app.MapControllers();

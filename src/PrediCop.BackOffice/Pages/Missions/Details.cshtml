@@ -12,9 +12,15 @@
             <li class="breadcrumb-item active">@mission.Reference</li>
         </ol>
     </nav>
-    <a asp-page="/Missions/Index" class="btn btn-sm btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Retour
-    </a>
+    <div class="d-flex gap-2">
+        <a asp-page="/Missions/Export" asp-route-id="@Model.Mission!.Id"
+           class="btn btn-sm btn-outline-danger" target="_blank">
+            <i class="fa-solid fa-file-pdf me-1"></i>Exporter PDF
+        </a>
+        <a asp-page="/Missions/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour
+        </a>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -39,12 +45,20 @@
                             }
                         </div>
                     </div>
-                    <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                    <div class="col-md-6 text-md-end mt-2 mt-md-0 d-flex gap-2 justify-content-end align-items-center flex-wrap">
                         @if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
                         {
                             <span class="badge bg-dark fs-6 py-2 px-3">
                                 <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
                             </span>
+                        }
+                        @if (mission.Status is "Pending" or "Proposed")
+                        {
+                            <form method="post" asp-page-handler="Dispatch" asp-route-id="@mission.Id">
+                                <button type="submit" class="btn btn-warning fw-semibold">
+                                    <i class="fa-solid fa-paper-plane me-2"></i>Dispatcher
+                                </button>
+                            </form>
                         }
                     </div>
                 </div>
@@ -69,6 +83,22 @@
                     <dd class="col-sm-8 font-monospace small">
                         @mission.TargetLatitude.ToString("F6"), @mission.TargetLongitude.ToString("F6")
                     </dd>
+
+                    @if (Model.DistanceKm.HasValue)
+                    {
+                        <dt class="col-sm-4 text-muted">Distance véhicule</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-primary fs-6">
+                                <i class="fa-solid fa-route me-1"></i>@Model.DistanceKm.Value.ToString("F1") km
+                            </span>
+                            <small class="text-muted ms-1">jusqu'à la cible</small>
+                        </dd>
+                    }
+                    else if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
+                    {
+                        <dt class="col-sm-4 text-muted">Distance véhicule</dt>
+                        <dd class="col-sm-8 text-muted small">Position GPS non disponible</dd>
+                    }
 
                     <dt class="col-sm-4 text-muted">Briefing</dt>
                     <dd class="col-sm-8">@mission.BriefingText</dd>
@@ -101,13 +131,275 @@
     <!-- Carte -->
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold">
                     <i class="fa-solid fa-map me-2 text-danger"></i>Localisation
                 </h6>
+                <div class="d-flex gap-2 small">
+                    <span><span class="badge" style="background:#ef4444">&nbsp;</span> Risque élevé</span>
+                    <span><span class="badge" style="background:#22c55e">&nbsp;</span> Faible</span>
+                    <span><i class="fa-solid fa-car text-primary"></i> Véhicule</span>
+                </div>
             </div>
             <div class="card-body p-2">
-                <div id="map-mission" style="height:240px; border-radius:.5rem;"></div>
+                <div id="map-mission" style="height:340px; border-radius:.5rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rapport narratif & dates -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-file-lines me-2 text-primary"></i>Rapport & détails complémentaires
+                </h6>
+                <button class="btn btn-sm btn-outline-primary" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#collapseRapport">
+                    <i class="fa-solid fa-pen me-1"></i>Modifier
+                </button>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(mission.NarrativeReport) || !string.IsNullOrEmpty(mission.LocationDetail)
+                     || mission.DispatchedAt.HasValue || mission.ArrivedAt.HasValue)
+                {
+                    <dl class="row g-1 mb-3">
+                        @if (!string.IsNullOrEmpty(mission.LocationDetail))
+                        {
+                            <dt class="col-sm-3 text-muted">Détail du lieu</dt>
+                            <dd class="col-sm-9">@mission.LocationDetail</dd>
+                        }
+                        @if (mission.DispatchedAt.HasValue)
+                        {
+                            <dt class="col-sm-3 text-muted">Dispatché à</dt>
+                            <dd class="col-sm-9">@mission.DispatchedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                        }
+                        @if (mission.ArrivedAt.HasValue)
+                        {
+                            <dt class="col-sm-3 text-muted">Arrivée sur place</dt>
+                            <dd class="col-sm-9">@mission.ArrivedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                        }
+                        @if (!string.IsNullOrEmpty(mission.NarrativeReport))
+                        {
+                            <dt class="col-sm-3 text-muted">Rapport narratif</dt>
+                            <dd class="col-sm-9" style="white-space:pre-line">@mission.NarrativeReport</dd>
+                        }
+                    </dl>
+                }
+                <div class="collapse" id="collapseRapport">
+                    <form method="post" asp-page-handler="SaveDetails" asp-route-id="@mission.Id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Détail du lieu</label>
+                                <input type="text" name="locationDetail" class="form-control form-control-sm"
+                                       value="@mission.LocationDetail" placeholder="Ex: 2ème étage, appt 12" maxlength="500" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Dispatché à</label>
+                                <input type="datetime-local" name="dispatchedAt" class="form-control form-control-sm"
+                                       value="@(mission.DispatchedAt?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Arrivée sur place</label>
+                                <input type="datetime-local" name="arrivedAt" class="form-control form-control-sm"
+                                       value="@(mission.ArrivedAt?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Rapport narratif</label>
+                                <textarea name="narrativeReport" class="form-control form-control-sm" rows="5"
+                                          maxlength="8000" placeholder="Description détaillée de l'intervention...">@mission.NarrativeReport</textarea>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-floppy-disk me-1"></i>Sauvegarder
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Intervenants -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-users me-2 text-info"></i>Intervenants
+                    <span class="badge bg-secondary ms-1">@mission.Intervenants.Count</span>
+                </h6>
+                <button class="btn btn-sm btn-outline-info" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#collapseAddIntervenant">
+                    <i class="fa-solid fa-plus me-1"></i>Ajouter
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Formulaire ajout -->
+                <div class="collapse mb-3" id="collapseAddIntervenant">
+                    <div class="card card-body bg-light border-info border-opacity-25">
+                        <div class="row g-2" id="formIntervenant">
+                            <div class="col-md-4">
+                                <input type="text" id="iv_fullName" class="form-control form-control-sm" placeholder="Nom complet *" maxlength="200" />
+                            </div>
+                            <div class="col-md-2">
+                                <select id="iv_role" class="form-select form-select-sm">
+                                    <option value="">Rôle…</option>
+                                    <option>Victime</option>
+                                    <option>Auteur présumé</option>
+                                    <option>Témoin</option>
+                                    <option>Suspect</option>
+                                    <option>Autre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="tel" id="iv_phone" class="form-control form-control-sm" placeholder="Téléphone" maxlength="30" />
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="iv_injured" />
+                                    <label class="form-check-label small" for="iv_injured">Blessé</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button class="btn btn-sm btn-info" onclick="addIntervenant('@mission.Id')">
+                                    <i class="fa-solid fa-plus"></i> Ajouter
+                                </button>
+                            </div>
+                            <div class="col-12">
+                                <input type="text" id="iv_notes" class="form-control form-control-sm" placeholder="Notes..." maxlength="2000" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table intervenants -->
+                <div id="intervenants-table">
+                    @if (mission.Intervenants.Any())
+                    {
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nom</th>
+                                    <th>Rôle</th>
+                                    <th>Téléphone</th>
+                                    <th>État</th>
+                                    <th>Notes</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var iv in mission.Intervenants.OrderBy(i => i.Order))
+                                {
+                                    <tr>
+                                        <td class="text-muted small">@iv.Order</td>
+                                        <td class="fw-semibold">@iv.FullName</td>
+                                        <td>@(iv.Role ?? "—")</td>
+                                        <td>@(iv.PhoneNumber ?? "—")</td>
+                                        <td>
+                                            @if (iv.IsInjured)
+                                            {
+                                                <span class="badge bg-danger">Blessé</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">Indemne</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted small">@(iv.Notes ?? "—")</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger py-0"
+                                                    onclick="deleteIntervenant('@mission.Id', '@iv.Id')"
+                                                    title="Supprimer">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-3" id="no-intervenants">
+                            <i class="fa-solid fa-users-slash me-2"></i>Aucun intervenant enregistré.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Médias -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-photo-film me-2 text-success"></i>Médias
+                    <span class="badge bg-secondary ms-1">@mission.Media.Count</span>
+                </h6>
+                <label class="btn btn-sm btn-outline-success mb-0" style="cursor:pointer">
+                    <i class="fa-solid fa-upload me-1"></i>Ajouter
+                    <input type="file" id="mediaFileInput" accept="image/*,video/*" multiple class="d-none"
+                           onchange="uploadMedia('@mission.Id', this)" />
+                </label>
+            </div>
+            <div class="card-body">
+                <div id="upload-progress" class="d-none mb-3">
+                    <div class="progress" style="height:6px">
+                        <div id="upload-bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width:0%"></div>
+                    </div>
+                    <small class="text-muted" id="upload-status">Envoi en cours...</small>
+                </div>
+
+                <div class="row g-2" id="media-gallery">
+                    @foreach (var m in mission.Media)
+                    {
+                        <div class="col-6 col-sm-4 col-md-3 col-lg-2" data-media-id="@m.Id">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-img-top bg-dark d-flex align-items-center justify-content-center"
+                                     style="height:100px; overflow:hidden; cursor:pointer"
+                                     onclick="openMedia('@m.Id')">
+                                    @if (m.IsImage)
+                                    {
+                                        <img src="/api/proxy/media/@m.Id/file" class="img-fluid" style="object-fit:cover;height:100px;width:100%"
+                                             alt="@m.FileName" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-image fa-2x text-secondary\'></i>'" />
+                                    }
+                                    else if (m.IsVideo)
+                                    {
+                                        <i class="fa-solid fa-circle-play fa-3x text-warning"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-solid fa-file fa-3x text-secondary"></i>
+                                    }
+                                </div>
+                                <div class="card-body p-1">
+                                    <p class="mb-0 small text-truncate" title="@m.FileName">@m.FileName</p>
+                                    <p class="mb-0 text-muted" style="font-size:.7rem">@m.SizeLabel · @m.RecordedAt.ToLocalTime().ToString("dd/MM HH:mm")</p>
+                                    <p class="mb-0 text-muted" style="font-size:.7rem">@m.CreatedByName</p>
+                                </div>
+                                <div class="card-footer p-1 d-flex gap-1">
+                                    <a href="/api/proxy/media/@m.Id/file" target="_blank"
+                                       class="btn btn-sm btn-outline-primary py-0 flex-fill" title="Ouvrir">
+                                        <i class="fa-solid fa-external-link-alt"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger py-0" title="Supprimer"
+                                            onclick="deleteMedia('@m.Id')">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (!mission.Media.Any())
+                    {
+                        <div class="col-12 text-center text-muted py-4" id="no-media">
+                            <i class="fa-solid fa-photo-film fa-2x mb-2 d-block"></i>Aucun média attaché.
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -193,13 +485,148 @@
 
 @section Scripts {
     <script>
+    // ---- Intervenants ----
+    async function addIntervenant(missionId) {
+        const fullName = document.getElementById('iv_fullName').value.trim();
+        if (!fullName) { alert('Le nom est obligatoire.'); return; }
+        const body = {
+            fullName,
+            role: document.getElementById('iv_role').value || null,
+            phoneNumber: document.getElementById('iv_phone').value.trim() || null,
+            isInjured: document.getElementById('iv_injured').checked,
+            notes: document.getElementById('iv_notes').value.trim() || null
+        };
+        try {
+            const r = await fetch(`/api/proxy/missions/${missionId}/intervenants`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (r.ok) location.reload();
+            else alert('Erreur lors de l\'ajout.');
+        } catch { alert('Impossible de joindre le serveur.'); }
+    }
+
+    async function deleteIntervenant(missionId, intervenantId) {
+        if (!confirm('Supprimer cet intervenant ?')) return;
+        try {
+            const r = await fetch(`/api/proxy/missions/${missionId}/intervenants/${intervenantId}`, { method: 'DELETE' });
+            if (r.ok) location.reload();
+            else alert('Erreur lors de la suppression.');
+        } catch { alert('Impossible de joindre le serveur.'); }
+    }
+
+    // ---- Médias ----
+    async function uploadMedia(missionId, input) {
+        const files = input.files;
+        if (!files.length) return;
+        const progress = document.getElementById('upload-progress');
+        const bar = document.getElementById('upload-bar');
+        const status = document.getElementById('upload-status');
+        progress.classList.remove('d-none');
+        let done = 0;
+        for (const file of files) {
+            status.textContent = `Envoi : ${file.name}`;
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('missionId', missionId);
+            fd.append('recordedAt', new Date().toISOString());
+            try {
+                const r = await fetch('/api/proxy/media', { method: 'POST', body: fd });
+                if (!r.ok) { alert(`Erreur upload ${file.name}`); }
+            } catch { alert(`Impossible d'envoyer ${file.name}`); }
+            done++;
+            bar.style.width = `${Math.round(done / files.length * 100)}%`;
+        }
+        location.reload();
+    }
+
+    async function deleteMedia(mediaId) {
+        if (!confirm('Supprimer ce média ?')) return;
+        try {
+            const r = await fetch(`/api/proxy/media/${mediaId}`, { method: 'DELETE' });
+            if (r.ok) document.querySelector(`[data-media-id="${mediaId}"]`)?.remove();
+            else alert('Erreur lors de la suppression.');
+        } catch { alert('Impossible de joindre le serveur.'); }
+    }
+
+    function openMedia(mediaId) {
+        window.open(`/api/proxy/media/${mediaId}/file`, '_blank');
+    }
+    </script>
+    <script>
     var map = L.map('map-mission').setView([@mission.TargetLatitude, @mission.TargetLongitude], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
     }).addTo(map);
-    L.marker([@mission.TargetLatitude, @mission.TargetLongitude])
+
+    var bounds = L.latLngBounds();
+
+    // --- Rues (polylignes colorées par score de risque) ---
+    var streets = @Html.Raw(Model.StreetsJson);
+    streets.forEach(function(s) {
+        var score = s.currentRiskScore || 0;
+        var color = score > 70 ? '#ef4444' :
+                    score > 40 ? '#f59e0b' :
+                    score > 20 ? '#eab308' : '#22c55e';
+        var line = L.polyline(
+            [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
+            { color: color, weight: 5, opacity: 0.8 }
+        ).bindPopup(
+            '<b>' + s.name + '</b>' +
+            (s.district ? '<br><small>' + s.district + '</small>' : '') +
+            '<br>Risque&nbsp;: <b>' + score + '</b>'
+        ).addTo(map);
+        bounds.extend(line.getBounds());
+    });
+
+    // --- Véhicules (marqueurs colorés) ---
+    var iconBase = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-';
+    var shadow   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
+    function makeIcon(color) {
+        return L.icon({ iconUrl: iconBase + color + '.png', shadowUrl: shadow,
+                        iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34] });
+    }
+    var assignedCallSign = '@Html.Raw(mission.AssignedVehicleCallSign ?? "")';
+    var vehicles = @Html.Raw(Model.VehiclesJson);
+    vehicles.forEach(function(v) {
+        if (!v.lastLatitude || !v.lastLongitude) return;
+        var isAssigned = v.callSign === assignedCallSign;
+        var color = isAssigned ? 'gold' : (v.status === 'OnMission' ? 'orange' : 'blue');
+        var officers = v.officerNames && v.officerNames.length ? v.officerNames.join(', ') : 'Aucun agent';
+        var ll = [v.lastLatitude, v.lastLongitude];
+        L.marker(ll, { icon: makeIcon(color), zIndexOffset: isAssigned ? 1000 : 0 })
+            .bindPopup(
+                '<strong>' + v.callSign + (isAssigned ? ' <span class="badge bg-warning text-dark">Assigné</span>' : '') + '</strong>' +
+                '<br><small>' + v.status + '</small>' +
+                '<br><small>' + officers + '</small>'
+            )
+            .addTo(map);
+        bounds.extend(ll);
+    });
+
+    // --- POI mission (marqueur rouge, par-dessus tout) ---
+    var missionLL = [@mission.TargetLatitude, @mission.TargetLongitude];
+    L.marker(missionLL, { icon: makeIcon('red'), zIndexOffset: 2000 })
         .addTo(map)
         .bindPopup('<strong>@Html.Raw(mission.Reference)</strong><br>@Html.Raw(mission.TargetAddress.Replace("'", "\\'"))')
         .openPopup();
+    bounds.extend(missionLL);
+
+    // --- Ligne pointillée véhicule assigné → cible ---
+    var assignedVehicle = @Html.Raw(Model.AssignedVehicleJson);
+    if (assignedVehicle && assignedVehicle.lastLatitude && assignedVehicle.lastLongitude) {
+        var dist = @(Model.DistanceKm.HasValue ? Model.DistanceKm.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) : "null");
+        L.polyline(
+            [[assignedVehicle.lastLatitude, assignedVehicle.lastLongitude], missionLL],
+            { color: '#f59e0b', weight: 3, dashArray: '8 6', opacity: 0.9 }
+        ).bindPopup('Distance : <b>' + (dist !== null ? dist + ' km' : '?') + '</b>').addTo(map);
+    }
+
+    // --- Ajuster la vue pour tout montrer ---
+    if (bounds.isValid()) {
+        map.fitBounds(bounds.pad(0.15));
+    }
     </script>
 }

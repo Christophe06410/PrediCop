@@ -1,0 +1,85 @@
+@page
+@model PrediCop.BackOffice.Pages.Documents.CreateModel
+@{
+    ViewData["Title"] = "Nouveau document de suivi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Documents/Index">Documents de suivi</a></li>
+            <li class="breadcrumb-item active">Nouveau</li>
+        </ol>
+    </nav>
+    @if (Model.Input.MissionId != Guid.Empty)
+    {
+        <a asp-page="/Missions/Details" asp-route-id="@Model.Input.MissionId" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour mission
+        </a>
+    }
+    else
+    {
+        <a asp-page="/Documents/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour
+        </a>
+    }
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-folder-plus me-2 text-primary"></i>Créer un document de suivi
+                    @if (!string.IsNullOrEmpty(Model.MissionReference))
+                    {
+                        <span class="text-muted fw-normal"> — Mission @Model.MissionReference</span>
+                    }
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger small py-2" role="alert"></div>
+
+                    <input type="hidden" asp-for="Input.MissionId" />
+
+                    <div class="mb-3">
+                        <label asp-for="Input.Type" class="form-label fw-semibold">Type de document</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-check-inline flex-fill">
+                                <input class="form-check-input" type="radio" asp-for="Input.Type"
+                                       id="typeMainCourante" value="MainCourante" />
+                                <label class="form-check-label" for="typeMainCourante">
+                                    <i class="fa-solid fa-book me-1 text-primary"></i>Main courante
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline flex-fill">
+                                <input class="form-check-input" type="radio" asp-for="Input.Type"
+                                       id="typePlainte" value="Plainte" />
+                                <label class="form-check-label" for="typePlainte">
+                                    <i class="fa-solid fa-gavel me-1 text-danger"></i>Plainte
+                                </label>
+                            </div>
+                        </div>
+                        <span asp-validation-for="Input.Type" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Input.Title" class="form-label fw-semibold">Titre</label>
+                        <input asp-for="Input.Title" class="form-control"
+                               placeholder="Ex: Tapage nocturne — intervention du 15/05/2026" />
+                        <span asp-validation-for="Input.Title" class="text-danger small"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-folder-plus me-2"></i>Créer le document
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

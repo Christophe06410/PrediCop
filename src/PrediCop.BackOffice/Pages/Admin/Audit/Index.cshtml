@@ -1,0 +1,227 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Audit.IndexModel
+@{
+    ViewData["Title"] = "Journal d'audit";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Journal d'audit
+        <span class="badge bg-secondary ms-2">@Model.TotalCount</span>
+    </h4>
+</div>
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Entité</label>
+                <select name="FilterEntityName" class="form-select form-select-sm">
+                    <option value="">— Toutes —</option>
+                    @foreach (var name in IndexModel.KnownEntityNames)
+                    {
+                        <option value="@name" selected="@(Model.FilterEntityName == name ? "selected" : null)">@name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Action</label>
+                <select name="FilterAction" class="form-select form-select-sm">
+                    <option value="">— Toutes —</option>
+                    @foreach (var action in IndexModel.KnownActions)
+                    {
+                        <option value="@action" selected="@(Model.FilterAction == action ? "selected" : null)">@action</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Du</label>
+                <input type="date" name="FilterFrom" class="form-control form-control-sm"
+                       value="@Model.FilterFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Au</label>
+                <input type="date" name="FilterTo" class="form-control form-control-sm"
+                       value="@Model.FilterTo" />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrer
+                </button>
+                <a asp-page="/Admin/Audit/Index" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-xmark me-1"></i>Réinitialiser
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Horodatage</th>
+                        <th>Utilisateur</th>
+                        <th>Action</th>
+                        <th>Entité</th>
+                        <th>Id entité</th>
+                        <th class="text-center">Détails</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in Model.Logs)
+                    {
+                        var actionBadge = log.Action switch
+                        {
+                            "Created" => "bg-success",
+                            "Updated" => "bg-warning text-dark",
+                            "Deleted" => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                        var hasDetails = log.OldValues is not null || log.NewValues is not null;
+                        <tr>
+                            <td class="font-monospace small text-nowrap">
+                                @log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                            </td>
+                            <td>
+                                <i class="fa-solid fa-user-circle me-1 text-secondary"></i>
+                                @log.UserName
+                            </td>
+                            <td>
+                                <span class="badge @actionBadge">@log.Action</span>
+                            </td>
+                            <td class="fw-semibold">@log.EntityName</td>
+                            <td class="font-monospace small text-muted">@log.EntityId</td>
+                            <td class="text-center">
+                                @if (hasDetails)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-info"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailModal"
+                                            data-old="@(log.OldValues ?? "")"
+                                            data-new="@(log.NewValues ?? "")"
+                                            data-entity="@log.EntityName"
+                                            data-action="@log.Action">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Logs.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                Aucun événement d'audit trouvé.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int p = 1; p <= Model.TotalPages; p++)
+            {
+                var pageNum = p;
+                <li class="page-item @(pageNum == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-page="/Admin/Audit/Index"
+                       asp-route-CurrentPage="@pageNum"
+                       asp-route-FilterEntityName="@Model.FilterEntityName"
+                       asp-route-FilterAction="@Model.FilterAction"
+                       asp-route-FilterFrom="@Model.FilterFrom"
+                       asp-route-FilterTo="@Model.FilterTo">
+                        @pageNum
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+<!-- Modal Détails -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalLabel">
+                    <i class="fa-solid fa-code me-2 text-primary"></i>
+                    Détails de l'événement — <span id="modalEntityAction"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sectionOld" class="mb-3" style="display:none">
+                    <h6 class="text-danger fw-semibold">
+                        <i class="fa-solid fa-rotate-left me-1"></i>Valeurs avant
+                    </h6>
+                    <pre id="oldValuesDisplay" class="bg-light border rounded p-3 small"
+                         style="white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;"></pre>
+                </div>
+                <div id="sectionNew" style="display:none">
+                    <h6 class="text-success fw-semibold">
+                        <i class="fa-solid fa-rotate-right me-1"></i>Valeurs après
+                    </h6>
+                    <pre id="newValuesDisplay" class="bg-light border rounded p-3 small"
+                         style="white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Alimentation du modal avec les données de la ligne cliquée
+        document.getElementById('detailModal').addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            const oldJson = btn.getAttribute('data-old');
+            const newJson = btn.getAttribute('data-new');
+            const entity = btn.getAttribute('data-entity');
+            const action = btn.getAttribute('data-action');
+
+            document.getElementById('modalEntityAction').textContent = entity + ' — ' + action;
+
+            function prettyJson(json) {
+                try { return JSON.stringify(JSON.parse(json), null, 2); }
+                catch { return json; }
+            }
+
+            const sectionOld = document.getElementById('sectionOld');
+            const sectionNew = document.getElementById('sectionNew');
+
+            if (oldJson) {
+                document.getElementById('oldValuesDisplay').textContent = prettyJson(oldJson);
+                sectionOld.style.display = '';
+            } else {
+                sectionOld.style.display = 'none';
+            }
+
+            if (newJson) {
+                document.getElementById('newValuesDisplay').textContent = prettyJson(newJson);
+                sectionNew.style.display = '';
+            } else {
+                sectionNew.style.display = 'none';
+            }
+        });
+    </script>
+}

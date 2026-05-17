@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PrediCop.Mobile.Pages.MissionPage"
@@ -12,11 +12,12 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Label Grid.Column="0" x:Name="VehicleLabel"
+            <Label Grid.Column="0"
                    Text="Véhicule: --" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
-            <Frame Grid.Column="1" x:Name="StatusFrame"
-                   BackgroundColor="#22c55e" CornerRadius="20" Padding="12,6" HasShadow="False">
-                <Label x:Name="StatusLabel" Text="DISPONIBLE"
+            <Frame Grid.Column="1"
+                   BackgroundColor="{Binding StatusColor}"
+                   CornerRadius="20" Padding="12,6" HasShadow="False">
+                <Label Text="{Binding StatusText}"
                        TextColor="White" FontAttributes="Bold" FontSize="12"/>
             </Frame>
         </Grid>
@@ -29,9 +30,9 @@
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Text="Disponible pour missions"
                    TextColor="#aab0c0" VerticalOptions="Center"/>
-            <Switch Grid.Column="1" x:Name="AvailableSwitch"
-                    IsToggled="True" OnColor="#2563eb"
-                    Toggled="OnAvailabilityToggled"/>
+            <Switch Grid.Column="1"
+                    IsToggled="{Binding IsAvailable, Mode=TwoWay}"
+                    OnColor="#2563eb"/>
         </Grid>
 
         <!-- Mission en cours ou message vide -->
@@ -39,44 +40,100 @@
             <VerticalStackLayout Padding="16" Spacing="12">
 
                 <!-- Notification de mission proposée -->
-                <Frame x:Name="MissionProposalFrame" IsVisible="False"
+                <Frame IsVisible="{Binding ShowMissionProposal}"
                        BackgroundColor="#dc2626" CornerRadius="16" Padding="16"
                        HasShadow="True">
                     <VerticalStackLayout Spacing="12">
                         <Label Text="NOUVELLE MISSION" TextColor="White"
                                FontAttributes="Bold" FontSize="18"/>
-                        <Label x:Name="MissionAddressLabel" TextColor="White" FontSize="16"/>
-                        <Label x:Name="MissionDescriptionLabel" TextColor="#fca5a5" FontSize="14"/>
-                        <Label x:Name="MissionDistanceLabel" TextColor="#fca5a5" FontSize="12"/>
+                        <Label Text="{Binding ProposalAddress}" TextColor="White" FontSize="16"/>
+                        <Label Text="{Binding ProposalDescription}" TextColor="#fca5a5" FontSize="14"/>
+                        <Label Text="{Binding ProposalDistance}" TextColor="#fca5a5" FontSize="12"/>
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <Button Grid.Column="0" Text="Accepter"
                                     BackgroundColor="#16a34a" TextColor="White"
-                                    CornerRadius="10" Clicked="OnAcceptMission"/>
+                                    CornerRadius="10"
+                                    Command="{Binding AcceptMissionCommand}"/>
                             <Button Grid.Column="1" Text="Refuser"
                                     BackgroundColor="#374151" TextColor="White"
                                     CornerRadius="10" Clicked="OnRefuseMission"/>
                         </Grid>
+                        <Button Text="Voir les details complets"
+                                BackgroundColor="#991b1b" TextColor="White"
+                                CornerRadius="8" FontSize="13"
+                                Clicked="OnViewMissionDetails"/>
                     </VerticalStackLayout>
                 </Frame>
 
                 <!-- Mission active -->
-                <Frame x:Name="ActiveMissionFrame" IsVisible="False"
+                <Frame IsVisible="{Binding ShowActiveMission}"
                        BackgroundColor="#1e3a5f" CornerRadius="16" Padding="16">
                     <VerticalStackLayout Spacing="10">
                         <Label Text="MISSION EN COURS" TextColor="#60a5fa"
                                FontAttributes="Bold" FontSize="14"/>
-                        <Label x:Name="ActiveMissionRef" TextColor="White" FontSize="20" FontAttributes="Bold"/>
-                        <Label x:Name="ActiveMissionAddress" TextColor="#93c5fd" FontSize="16"/>
-                        <Label x:Name="ActiveMissionBriefing" TextColor="#aab0c0" FontSize="14"/>
-                        <Button Text="Marquer comme terminée"
-                                BackgroundColor="#2563eb" TextColor="White"
-                                CornerRadius="10" Clicked="OnCompleteMission"/>
+                        <Label Text="{Binding ActiveMissionRef}"
+                               TextColor="White" FontSize="20" FontAttributes="Bold"/>
+                        <Label Text="{Binding ActiveMissionAddress}"
+                               TextColor="#93c5fd" FontSize="16"/>
+                        <Label Text="{Binding ActiveMissionDistance}"
+                               TextColor="#34d399" FontSize="14"
+                               IsVisible="{Binding HasActiveDistance}"/>
+                        <Label Text="{Binding ActiveMissionBriefing}"
+                               TextColor="#aab0c0" FontSize="14"/>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button Grid.Column="0" Text="Voir les details"
+                                    BackgroundColor="#1e4080" TextColor="#60a5fa"
+                                    CornerRadius="8" FontSize="13"
+                                    Clicked="OnViewMissionDetails"/>
+                            <Button Grid.Column="1" Text="Terminer"
+                                    BackgroundColor="#2563eb" TextColor="White"
+                                    CornerRadius="8" FontSize="13"
+                                    Clicked="OnCompleteMission"/>
+                        </Grid>
+
+                        <!-- Upload vidéo -->
+                        <Frame BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Joindre une vidéo" TextColor="#aab0c0" FontSize="13"/>
+                                <Button Text="Sélectionner une vidéo"
+                                        BackgroundColor="#374151" TextColor="White"
+                                        CornerRadius="8" FontSize="13"
+                                        Command="{Binding UploadVideoCommand}"
+                                        IsEnabled="{Binding IsNotUploading}"/>
+                                <ProgressBar Progress="{Binding UploadProgress}"
+                                             IsVisible="{Binding IsUploading}"
+                                             ProgressColor="#2563eb"/>
+                                <Label Text="{Binding UploadStatus}"
+                                       TextColor="#93c5fd" FontSize="12"
+                                       IsVisible="{Binding HasUploadStatus}"/>
+                            </VerticalStackLayout>
+                        </Frame>
+
+                        <!-- Upload photo -->
+                        <Frame BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Joindre une photo" TextColor="#aab0c0" FontSize="13"/>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Grid.Column="0" Text="Prendre une photo"
+                                            BackgroundColor="#374151" TextColor="White"
+                                            CornerRadius="8" FontSize="12"
+                                            Command="{Binding CapturePhotoCommand}"/>
+                                    <Button Grid.Column="1" Text="Depuis galerie"
+                                            BackgroundColor="#374151" TextColor="White"
+                                            CornerRadius="8" FontSize="12"
+                                            Command="{Binding PickPhotoCommand}"/>
+                                </Grid>
+                                <Label Text="{Binding PhotoStatus}"
+                                       TextColor="#93c5fd" FontSize="12"
+                                       IsVisible="{Binding HasPhotoStatus}"/>
+                            </VerticalStackLayout>
+                        </Frame>
                     </VerticalStackLayout>
                 </Frame>
 
                 <!-- Aucune mission -->
-                <Frame x:Name="NoMissionFrame" BackgroundColor="#243050"
-                       CornerRadius="16" Padding="32">
+                <Frame IsVisible="{Binding ShowNoMission}"
+                       BackgroundColor="#243050" CornerRadius="16" Padding="32">
                     <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
                         <Label Text="En attente de mission" TextColor="#6b7a99"
                                FontSize="16" HorizontalTextAlignment="Center"/>

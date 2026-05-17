@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using System.Net.Http.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.Users;
 
+[Authorize(Roles = "Admin,Manager")]
 public class IndexModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;

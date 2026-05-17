@@ -1,0 +1,156 @@
+@page "{id:guid}"
+@model PrediCop.BackOffice.Pages.Calls.EditModel
+@{
+    ViewData["Title"] = $"Modifier l'appel {Model.Call?.Reference}";
+    var callId = Model.Call?.Id ?? Guid.Empty;
+    var isClosed = Model.Call?.Status == "Closed";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Appels</a></li>
+            <li class="breadcrumb-item">
+                <a asp-page="/Calls/Details" asp-route-id="@callId">@Model.Call?.Reference</a>
+            </li>
+            <li class="breadcrumb-item active">Modifier</li>
+        </ol>
+    </nav>
+    <a asp-page="/Calls/Details" asp-route-id="@callId" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-phone me-2 text-primary"></i>Modifier l'appel @Model.Call?.Reference
+                </h6>
+                @{ ViewData["Status"] = Model.Call?.Status; }
+                @await Html.PartialAsync("_StatusBadge")
+            </div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Save">
+                    <input type="hidden" name="id" value="@callId" />
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Appelant</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label asp-for="Input.CallerName" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.CallerName" class="form-control" />
+                            <span asp-validation-for="Input.CallerName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.CallerPhone" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input asp-for="Input.CallerPhone" class="form-control" />
+                            </div>
+                            <span asp-validation-for="Input.CallerPhone" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Incident</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label asp-for="Input.IncidentCategory" class="form-label fw-semibold"></label>
+                            <select asp-for="Input.IncidentCategory" class="form-select">
+                                @foreach (var cat in EditModel.Categories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.IncidentCategory" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-8">
+                            <label asp-for="Input.IncidentAddress" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <input asp-for="Input.IncidentAddress" class="form-control" />
+                            </div>
+                            <span asp-validation-for="Input.IncidentAddress" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.IncidentAddressComplement" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.IncidentAddressComplement" class="form-control"
+                                   placeholder="Bâtiment, étage, digicode…" />
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.IncidentDescription" class="form-label fw-semibold"></label>
+                            <textarea asp-for="Input.IncidentDescription" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Input.IncidentDescription" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.ThirdParties" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.ThirdParties" class="form-control"
+                                   placeholder="Personnes impliquées, témoins…" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.Notes" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.Notes" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Input.InternalNotes" class="form-label fw-semibold"></label>
+                            <textarea asp-for="Input.InternalNotes" class="form-control text-danger" rows="2"
+                                      placeholder="Récidiviste, antécédents…"></textarea>
+                            <small class="text-muted">Visibles uniquement en interne.</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a asp-page="/Calls/Details" asp-route-id="@callId" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-times me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary" @(isClosed ? "disabled" : "")>
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @if (!isClosed)
+    {
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-circle-xmark me-2"></i>Fermer l'appel
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Clôture définitive. L'appel passera en statut <strong>Fermé</strong>.
+                    </p>
+                    <form method="post" asp-page-handler="Close"
+                          onsubmit="return confirm('Confirmer la fermeture de cet appel ?')">
+                        <input type="hidden" name="id" value="@callId" />
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Note de clôture</label>
+                            <textarea name="closeNotes" class="form-control" rows="3"
+                                      placeholder="Motif de fermeture, résolution…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fa-solid fa-lock me-2"></i>Fermer l'appel
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

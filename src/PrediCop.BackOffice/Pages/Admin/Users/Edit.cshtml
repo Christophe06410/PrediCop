@@ -1,4 +1,4 @@
-﻿@page "{id:guid?}"
+@page "{id:guid?}"
 @model PrediCop.BackOffice.Pages.Admin.Users.EditModel
 @{
     ViewData["Title"] = Model.IsEdit ? "Modifier l'utilisateur" : "Nouvel utilisateur";
@@ -25,6 +25,13 @@
                 </h6>
             </div>
             <div class="card-body">
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <div asp-validation-summary="All"></div>
+                    </div>
+                }
+
                 <form method="post">
                     <input type="hidden" asp-for="Input.Id" />
 
@@ -80,6 +87,70 @@
                     </div>
 
                     <hr class="my-3" />
+
+                    @if (!Model.IsEdit)
+                    {
+                        <h6 class="fw-semibold mb-3"><i class="fa-solid fa-key me-2 text-warning"></i>Mot de passe initial <span class="text-danger">*</span></h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Input.Password" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                    <input asp-for="Input.Password" type="password" class="form-control"
+                                           placeholder="Min. 8 caractères" autocomplete="new-password" />
+                                </div>
+                                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.ConfirmPassword" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                    <input asp-for="Input.ConfirmPassword" type="password" class="form-control"
+                                           placeholder="Répétez le mot de passe" autocomplete="new-password" />
+                                </div>
+                                <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <hr class="my-3" />
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="fw-semibold mb-0"><i class="fa-solid fa-key me-2 text-warning"></i>Réinitialiser le mot de passe</h6>
+                                <button type="button" class="btn btn-sm btn-outline-warning"
+                                        onclick="document.getElementById('passwordSection').classList.toggle('d-none')">
+                                    <i class="fa-solid fa-pen me-1"></i>Changer le mot de passe
+                                </button>
+                            </div>
+                            <div id="passwordSection" class="d-none">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label asp-for="Input.Password" class="form-label fw-semibold"></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                            <input asp-for="Input.Password" type="password" class="form-control"
+                                                   placeholder="Nouveau mot de passe" autocomplete="new-password" />
+                                        </div>
+                                        <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label asp-for="Input.ConfirmPassword" class="form-label fw-semibold"></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                            <input asp-for="Input.ConfirmPassword" type="password" class="form-control"
+                                                   placeholder="Répétez le mot de passe" autocomplete="new-password" />
+                                        </div>
+                                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Laissez vide pour conserver le mot de passe actuel.
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-3" />
+                    }
 
                     <div class="d-flex gap-2 justify-content-end">
                         <a asp-page="/Admin/Users/Index" class="btn btn-outline-secondary">

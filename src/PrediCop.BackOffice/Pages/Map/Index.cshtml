@@ -1,0 +1,173 @@
+@page
+@model PrediCop.BackOffice.Pages.Map.IndexModel
+@{
+    ViewData["Title"] = "Carte temps réel";
+}
+
+@section Styles {
+<style>
+    #live-map { height: calc(100vh - 140px); border-radius: .5rem; }
+    #map-status-bar { font-size: .8rem; }
+    .vehicle-count { font-weight: 600; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-map-location-dot me-2 text-danger"></i>Carte temps réel
+    </h4>
+    <div id="map-status-bar" class="d-flex align-items-center gap-3 text-muted">
+        <span>
+            <span class="badge" style="background:#22c55e;width:12px;height:12px;border-radius:50%;display:inline-block;"></span>
+            Disponible
+        </span>
+        <span>
+            <span class="badge" style="background:#f59e0b;width:12px;height:12px;border-radius:50%;display:inline-block;"></span>
+            En mission
+        </span>
+        <span>
+            <span class="badge" style="background:#6b7280;width:12px;height:12px;border-radius:50%;display:inline-block;"></span>
+            Indisponible
+        </span>
+        <span class="ms-2">|</span>
+        <span>
+            <span class="badge" style="background:#ef4444;padding:3px 8px;">&nbsp;</span>
+            Risque élevé
+        </span>
+        <span>
+            <span class="badge" style="background:#22c55e;padding:3px 8px;">&nbsp;</span>
+            Risque faible
+        </span>
+        <span class="ms-3 text-muted" id="last-refresh">
+            <i class="fa-solid fa-rotate me-1"></i>Actualisation auto toutes les 15 s
+        </span>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-2">
+        <div id="live-map"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    // --- Init carte ---
+    var map = L.map('live-map').setView([43.6047, 1.4442], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
+    }).addTo(map);
+
+    // --- Couche zones (polygones, chargée une fois, couche du bas) ---
+    var geoZones = @Html.Raw(Model.GeoZonesJson);
+    geoZones.filter(function(z) { return z.isActive && z.vertices.length >= 3; })
+            .forEach(function(z) {
+        var latlngs = z.vertices
+            .sort(function(a, b) { return a.order - b.order; })
+            .map(function(v) { return [v.latitude, v.longitude]; });
+        L.polygon(latlngs, {
+            color: z.color, weight: 2, opacity: 0.8,
+            fillColor: z.color, fillOpacity: 0.12
+        }).bindPopup(
+            '<b><i class="fa-solid fa-draw-polygon me-1"></i>' + z.name + '</b>' +
+            (z.description ? '<br><small class="text-muted">' + z.description + '</small>' : '')
+        ).addTo(map);
+    });
+
+    // --- Couche rues (statique, chargée une fois) ---
+    var streets = @Html.Raw(Model.StreetsJson);
+    streets.forEach(function (s) {
+        var score = s.currentRiskScore || 0;
+        var color = score > 70 ? '#ef4444' :
+                    score > 40 ? '#f59e0b' :
+                    score > 20 ? '#eab308' : '#22c55e';
+        L.polyline(
+            [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
+            { color: color, weight: 6, opacity: 0.85 }
+        ).bindPopup(
+            '<b>' + s.name + '</b>' +
+            (s.district ? '<br><small class="text-muted">' + s.district + '</small>' : '') +
+            '<br>Score risque&nbsp;: <b>' + score + '</b>'
+        ).addTo(map);
+    });
+
+    // Centrer sur les rues si disponibles
+    if (streets.length > 0) {
+        var lats = streets.flatMap(function(s) { return [s.startLatitude, s.endLatitude]; });
+        var lngs = streets.flatMap(function(s) { return [s.startLongitude, s.endLongitude]; });
+        map.fitBounds([
+            [Math.min.apply(null, lats), Math.min.apply(null, lngs)],
+            [Math.max.apply(null, lats), Math.max.apply(null, lngs)]
+        ], { padding: [30, 30] });
+    }
+
+    // --- Couche véhicules (mise à jour dynamique) ---
+    var vehicleLayer = L.layerGroup().addTo(map);
+
+    function vehicleIcon(status) {
+        var color = status === 'Available' ? 'green' :
+                    status === 'OnMission' ? 'orange' : 'grey';
+        return L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-' + color + '.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+        });
+    }
+
+    function statusLabel(status) {
+        return status === 'Available'   ? 'Disponible'    :
+               status === 'OnMission'   ? 'En mission'    :
+               status === 'Unavailable' ? 'Indisponible'  : status;
+    }
+
+    function renderVehicles(vehicles) {
+        vehicleLayer.clearLayers();
+        vehicles.forEach(function (v) {
+            if (!v.lastLatitude || !v.lastLongitude) return;
+            var officers = v.officerNames && v.officerNames.length
+                ? v.officerNames.join(', ')
+                : '<em>Aucun agent</em>';
+            var lastSeen = v.lastPositionUpdate
+                ? new Date(v.lastPositionUpdate).toLocaleTimeString('fr-FR')
+                : '—';
+            var popup =
+                '<div style="min-width:160px">' +
+                '<strong style="font-size:1.05em">' + v.callSign + '</strong>' +
+                '<br><span class="badge" style="background:' +
+                    (v.status === 'Available' ? '#22c55e' : v.status === 'OnMission' ? '#f59e0b' : '#6b7280') +
+                '">' + statusLabel(v.status) + '</span>' +
+                '<br><small><i class="fa-solid fa-user me-1"></i>' + officers + '</small>' +
+                '<br><small class="text-muted">Vu à ' + lastSeen + '</small>' +
+                '</div>';
+            L.marker([v.lastLatitude, v.lastLongitude], { icon: vehicleIcon(v.status) })
+                .bindPopup(popup)
+                .addTo(vehicleLayer);
+        });
+    }
+
+    // Affichage initial
+    renderVehicles(@Html.Raw(Model.VehiclesJson));
+
+    // --- Polling toutes les 15 secondes ---
+    function refreshVehicles() {
+        fetch('?handler=VehiclesJson', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                renderVehicles(data);
+                document.getElementById('last-refresh').innerHTML =
+                    '<i class="fa-solid fa-rotate me-1 text-success"></i>Actualisé à ' +
+                    new Date().toLocaleTimeString('fr-FR');
+            })
+            .catch(function () {
+                document.getElementById('last-refresh').innerHTML =
+                    '<i class="fa-solid fa-circle-exclamation me-1 text-warning"></i>Actualisation échouée';
+            });
+    }
+
+    setInterval(refreshVehicles, 15000);
+})();
+</script>
+}

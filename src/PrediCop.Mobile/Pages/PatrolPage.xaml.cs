@@ -1,66 +1,56 @@
-﻿using PrediCop.Mobile.Services;
+using System.Globalization;
+using CommunityToolkit.Mvvm.Messaging;
+using PrediCop.Mobile.Messages;
+using PrediCop.Mobile.ViewModels;
 
 namespace PrediCop.Mobile.Pages;
 
 public partial class PatrolPage : ContentPage
 {
-    private readonly ApiService _api;
-
-    public PatrolPage(ApiService api)
+    public PatrolPage(PatrolViewModel vm)
     {
         InitializeComponent();
-        _api = api;
+        BindingContext = vm;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        LoadPriorityStreets();
+        ((PatrolViewModel)BindingContext).LoadStreetsCommand.Execute(null);
+        WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
+            await DisplayAlert(m.Title, m.Text, "OK"));
     }
 
-    private async void LoadPriorityStreets()
+    protected override void OnDisappearing()
     {
+        base.OnDisappearing();
+        WeakReferenceMessenger.Default.UnregisterAll(this);
+    }
+
+    private void OnPatrolledClicked(object sender, EventArgs e)
+    {
+        if (sender is Button btn && btn.CommandParameter is Guid streetId)
+            ((PatrolViewModel)BindingContext).MarkPatrolledCommand.Execute(streetId);
+    }
+
+    private async void OnViewOnMapClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.CommandParameter is not StreetViewModel street) return;
+        var lat = street.CenterLatitude.ToString("F6", CultureInfo.InvariantCulture);
+        var lng = street.CenterLongitude.ToString("F6", CultureInfo.InvariantCulture);
+        var name = Uri.EscapeDataString(street.Name);
+        await Shell.Current.GoToAsync($"//main/map?centerLat={lat}&centerLng={lng}&markerName={name}");
+    }
+
+    private async void OnDirectionsClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.CommandParameter is not StreetViewModel street) return;
         try
         {
-            var streets = await _api.GetAsync<List<StreetViewModel>>("api/streets/priority?count=20");
-            StreetsCollection.ItemsSource = streets ?? [];
+            var location = new Location(street.CenterLatitude, street.CenterLongitude);
+            var options = new MapLaunchOptions { Name = street.Name };
+            await Map.Default.OpenAsync(location, options);
         }
-        catch { /* show empty state */ }
+        catch { await DisplayAlert("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
     }
-
-    private async void OnRefreshClicked(object sender, EventArgs e) => LoadPriorityStreets();
-
-    private async void OnPatrolledClicked(object sender, EventArgs e)
-    {
-        if (sender is Button btn && btn.CommandParameter is string idStr && Guid.TryParse(idStr, out var streetId))
-        {
-            try
-            {
-                await _api.PostAsync($"api/streets/{streetId}/patrol", null);
-                LoadPriorityStreets();
-            }
-            catch { await DisplayAlert("Erreur", "Impossible d'enregistrer le passage.", "OK"); }
-        }
-    }
-}
-
-public class StreetViewModel
-{
-    public Guid StreetId { get; set; }
-    public string Name { get; set; } = "";
-    public string? District { get; set; }
-    public int RiskScore { get; set; }
-    public DateTime? LastPatrolledAt { get; set; }
-
-    public string LastPatrolText => LastPatrolledAt.HasValue
-        ? $"Dernière patrouille: {LastPatrolledAt.Value:dd/MM HH:mm}"
-        : "Jamais patrouillée";
-
-    public Color RiskColor => RiskScore switch
-    {
-        > 70 => Color.FromArgb("#ef4444"),
-        > 40 => Color.FromArgb("#f59e0b"),
-        > 20 => Color.FromArgb("#eab308"),
-        _ => Color.FromArgb("#22c55e")
-    };
 }

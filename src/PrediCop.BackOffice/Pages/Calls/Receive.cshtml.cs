@@ -1,32 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using System.Net.Http.Json;
 
 namespace PrediCop.BackOffice.Pages.Calls;
 
-public class ReceiveModel : PageModel
+[Authorize(Roles = "Admin,Manager,Operator")]
+public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveModel> logger) : PageModel
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<ReceiveModel> _logger;
-
-    public ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveModel> logger)
-    {
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-    }
-
     [BindProperty]
     public CreateCallDto Input { get; set; } = new();
 
     public List<CallDto> TodayCalls { get; set; } = [];
-
     public DateTime CallStartTime { get; set; } = DateTime.Now;
 
-    public static readonly List<string> Categories = new()
-    {
-        "Tapage", "Vol", "Bagarre", "Accident", "Autre"
-    };
+    public static readonly List<string> Categories =
+        ["Tapage", "Vol", "Bagarre", "Accident", "Incivilité", "Trouble à l'ordre public", "Autre"];
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -50,28 +40,56 @@ public class ReceiveModel : PageModel
 
         try
         {
-            var client = _httpClientFactory.CreateClient("PrediCopApi");
-            var response = await client.PostAsJsonAsync("/api/calls", Input);
-            if (response.IsSuccessStatusCode)
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+
+            // Step 1 — create the call
+            var callResponse = await client.PostAsJsonAsync("/api/calls", Input);
+            if (!callResponse.IsSuccessStatusCode)
             {
-                var created = await response.Content.ReadFromJsonAsync<CallDto>();
-                TempData["SuccessMessage"] = $"Appel {created?.Reference} enregistré. Mission créée avec succès.";
-                return RedirectToPage("/Calls/Index");
+                var body = await callResponse.Content.ReadAsStringAsync();
+                logger.LogWarning("Create call failed {Status}: {Body}", (int)callResponse.StatusCode, body);
+                ModelState.AddModelError(string.Empty,
+                    $"Erreur lors de l'enregistrement de l'appel ({(int)callResponse.StatusCode}).");
+                await LoadTodayCallsAsync();
+                return Page();
+            }
+
+            var created = await callResponse.Content.ReadFromJsonAsync<CallDto>();
+            if (created is null)
+            {
+                ModelState.AddModelError(string.Empty, "Réponse inattendue du serveur.");
+                await LoadTodayCallsAsync();
+                return Page();
+            }
+
+            // Step 2 — create the mission from the call
+            var missionResponse = await client.PostAsJsonAsync(
+                $"/api/calls/{created.Id}/create-mission", (object?)null);
+
+            if (missionResponse.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] =
+                    $"Appel {created.Reference} enregistré et mission créée avec succès.";
             }
             else
             {
-                ModelState.AddModelError(string.Empty, "Erreur lors de la création de l'appel. Veuillez réessayer.");
+                var body = await missionResponse.Content.ReadAsStringAsync();
+                logger.LogWarning("Create mission failed {Status}: {Body}",
+                    (int)missionResponse.StatusCode, body);
+                TempData["SuccessMessage"] =
+                    $"Appel {created.Reference} enregistré. La création de mission a échoué — lancez le dispatch manuellement.";
             }
+
+            return RedirectToPage("/Calls/Index");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "API non disponible, simulation de création d'appel.");
-            TempData["SuccessMessage"] = "Appel enregistré (mode simulation). Mission créée avec succès.";
-            return RedirectToPage("/Calls/Index");
+            logger.LogError(ex, "Erreur lors de la création de l'appel/mission");
+            ModelState.AddModelError(string.Empty,
+                "Impossible de joindre le serveur. Vérifiez que l'API est démarrée.");
+            await LoadTodayCallsAsync();
+            return Page();
         }
-
-        await LoadTodayCallsAsync();
-        return Page();
     }
 
     public IActionResult OnPostCloseAsync()
@@ -84,25 +102,16 @@ public class ReceiveModel : PageModel
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("PrediCopApi");
-            var calls = await client.GetFromJsonAsync<List<CallDto>>("/api/calls?date=today");
-            TodayCalls = calls ?? [];
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var today = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+            var calls = await client.GetFromJsonAsync<PagedResult<CallDto>>($"/api/calls?date={today}&size=50");
+            TodayCalls = calls?.Items ?? [];
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Impossible de charger les appels du jour depuis l'API.");
-            TodayCalls = GetFakeTodayCalls();
+            logger.LogWarning(ex, "Impossible de charger les appels du jour.");
+            TodayCalls = [];
         }
     }
-
-    private static List<CallDto> GetFakeTodayCalls()
-    {
-        var now = DateTime.Now;
-        return new List<CallDto>
-        {
-            new() { Id = Guid.NewGuid(), Reference = "APP-001", ReceivedAt = now.AddHours(-3), CallerName = "M. Dupont", IncidentCategory = "Tapage", IncidentAddress = "12 rue de la Paix", Status = "MissionCreated" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-002", ReceivedAt = now.AddHours(-1.5), CallerName = "Mme Martin", IncidentCategory = "Vol", IncidentAddress = "Place du marché", Status = "InProgress" },
-            new() { Id = Guid.NewGuid(), Reference = "APP-003", ReceivedAt = now.AddMinutes(-20), CallerName = "M. Bernard", IncidentCategory = "Accident", IncidentAddress = "Avenue Gambetta", Status = "Open" },
-        };
-    }
 }
+

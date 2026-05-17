@@ -41,4 +41,12 @@ public class EditUserDto
 
     [Display(Name = "Compte actif")]
     public bool IsActive { get; set; } = true;
+
+    [Display(Name = "Mot de passe")]
+    [MinLength(8, ErrorMessage = "Le mot de passe doit faire au moins 8 caractères.")]
+    public string? Password { get; set; }
+
+    [Display(Name = "Confirmer le mot de passe")]
+    [Compare(nameof(Password), ErrorMessage = "Les mots de passe ne correspondent pas.")]
+    public string? ConfirmPassword { get; set; }
 }

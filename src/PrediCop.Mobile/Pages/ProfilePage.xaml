@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PrediCop.Mobile.Pages.ProfilePage"
@@ -10,9 +10,8 @@
             <VerticalStackLayout Spacing="8">
                 <Label Text="Mon Profil" TextColor="White"
                        FontSize="18" FontAttributes="Bold"/>
-                <Label x:Name="UserNameLabel" TextColor="#93c5fd" FontSize="16"/>
-                <Label x:Name="BadgeLabel" TextColor="#6b7a99" FontSize="13"/>
-                <Label x:Name="VehicleLabel" TextColor="#6b7a99" FontSize="13"/>
+                <Label Text="{Binding UserName}" TextColor="#93c5fd" FontSize="16"/>
+                <Label Text="{Binding Badge}" TextColor="#6b7a99" FontSize="13"/>
             </VerticalStackLayout>
         </Frame>
 
@@ -28,11 +27,14 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <Label Text="Suivi GPS actif" TextColor="#aab0c0"
                            VerticalOptions="Center"/>
-                    <Switch Grid.Column="1" x:Name="GpsSwitch" IsToggled="True"
+                    <Switch Grid.Column="1" IsToggled="True"
                             OnColor="#2563eb" Toggled="OnGpsToggled"/>
                 </Grid>
             </VerticalStackLayout>
         </Frame>
+
+        <Button Text="Changer mon mot de passe" BackgroundColor="#1e3a5f" TextColor="White"
+                CornerRadius="12" HeightRequest="50" Clicked="OnChangePasswordClicked"/>
 
         <Button Text="Se déconnecter" BackgroundColor="#374151" TextColor="White"
                 CornerRadius="12" HeightRequest="50" Clicked="OnLogoutClicked"/>

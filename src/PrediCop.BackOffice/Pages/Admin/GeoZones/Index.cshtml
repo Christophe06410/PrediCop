@@ -1,0 +1,99 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.GeoZones.IndexModel
+@{
+    ViewData["Title"] = "Zones de patrouille";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-draw-polygon me-2 text-primary"></i>Zones de patrouille
+    </h4>
+    <a asp-page="/Admin/GeoZones/Edit" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i>Nouvelle zone
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-1"></i>@ok
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Zones.Count == 0)
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-draw-polygon fa-3x mb-3 opacity-25"></i>
+                <p class="mb-1 fw-semibold">Aucune zone définie</p>
+                <p class="small">Créez des zones géographiques pour délimiter les secteurs de patrouille.</p>
+                <a asp-page="/Admin/GeoZones/Edit" class="btn btn-primary btn-sm mt-2">
+                    <i class="fa-solid fa-plus me-1"></i>Créer une zone
+                </a>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width:40px"></th>
+                        <th>Nom</th>
+                        <th>Description</th>
+                        <th class="text-center">Sommets</th>
+                        <th class="text-center">Statut</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var z in Model.Zones)
+                    {
+                        <tr>
+                            <td>
+                                <span class="d-inline-block rounded-circle border"
+                                      style="width:22px;height:22px;background:@z.Color"></span>
+                            </td>
+                            <td class="fw-semibold">@z.Name</td>
+                            <td class="text-muted small">@(z.Description ?? "—")</td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">@z.Vertices.Count pts</span>
+                            </td>
+                            <td class="text-center">
+                                @if (z.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-page="/Admin/GeoZones/Edit" asp-route-id="@z.Id"
+                                   class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form asp-page-handler="Delete" asp-route-id="@z.Id"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Supprimer la zone « @z.Name » ?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

@@ -1,16 +1,41 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Shell
     x:Class="PrediCop.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="PrediCop">
+    xmlns:pages="clr-namespace:PrediCop.Mobile.Pages"
+    Title="PrediCop"
+    FlyoutBehavior="Disabled">
 
     <Shell.Resources>
         <Style TargetType="TabBar">
             <Setter Property="Shell.TabBarBackgroundColor" Value="#1a2035"/>
             <Setter Property="Shell.TabBarForegroundColor" Value="#2563eb"/>
             <Setter Property="Shell.TabBarUnselectedColor" Value="#6b7a99"/>
+            <Setter Property="Shell.TabBarTitleColor" Value="#aab0c0"/>
         </Style>
     </Shell.Resources>
+
+    <!-- Login (no tab bar) -->
+    <ShellContent Route="login"
+                  ContentTemplate="{DataTemplate pages:LoginPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- Main app (tab bar) -->
+    <TabBar Route="main">
+        <ShellContent Route="missions" Title="Missions"
+                      ContentTemplate="{DataTemplate pages:MissionPage}"
+                      Shell.NavBarIsVisible="False" />
+        <ShellContent Route="patrol" Title="Patrouille"
+                      ContentTemplate="{DataTemplate pages:PatrolPage}"
+                      Shell.NavBarIsVisible="False" />
+        <ShellContent Route="map" Title="Carte"
+                      ContentTemplate="{DataTemplate pages:MapPage}"
+                      Shell.NavBarIsVisible="False" />
+        <ShellContent Route="profile" Title="Profil"
+                      ContentTemplate="{DataTemplate pages:ProfilePage}"
+                      Shell.NavBarIsVisible="False" />
+    </TabBar>
 
 </Shell>

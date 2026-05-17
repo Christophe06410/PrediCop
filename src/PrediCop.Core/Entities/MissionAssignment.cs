@@ -14,6 +14,7 @@ public class MissionAssignment : BaseEntity
     public MissionStatus Status { get; set; } = MissionStatus.Proposed;
     public DateTime ProposedAt { get; set; } = DateTime.UtcNow;
     public DateTime? RespondedAt { get; set; }
+    public RefusalReasonCode? RefusalReasonCode { get; set; }
     public string? RefusalReason { get; set; }
     public double DistanceAtProposal { get; set; }
 }

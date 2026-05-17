@@ -1,0 +1,114 @@
+@page "{id:guid}"
+@model PrediCop.BackOffice.Pages.Missions.EditModel
+@{
+    ViewData["Title"] = $"Modifier la mission {Model.Mission?.Reference}";
+    var missionId = Model.Mission?.Id ?? Guid.Empty;
+    var isCompleted = Model.Mission?.Status is "Completed" or "Cancelled";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Missions/Index">Missions</a></li>
+            <li class="breadcrumb-item">
+                <a asp-page="/Missions/Details" asp-route-id="@missionId">@Model.Mission?.Reference</a>
+            </li>
+            <li class="breadcrumb-item active">Modifier</li>
+        </ol>
+    </nav>
+    <a asp-page="/Missions/Details" asp-route-id="@missionId" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-car-side me-2 text-success"></i>Modifier @Model.Mission?.Reference
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                    @{ ViewData["Status"] = Model.Mission?.Status; }
+                    @await Html.PartialAsync("_StatusBadge")
+                    @if (!string.IsNullOrEmpty(Model.Mission?.AssignedVehicleCallSign))
+                    {
+                        <span class="badge bg-dark">@Model.Mission.AssignedVehicleCallSign</span>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Save">
+                    <input type="hidden" name="id" value="@missionId" />
+
+                    <div class="mb-3">
+                        <label asp-for="Input.TargetAddress" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                            <input asp-for="Input.TargetAddress" class="form-control" />
+                        </div>
+                        <span asp-validation-for="Input.TargetAddress" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Input.BriefingText" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Input.BriefingText" class="form-control" rows="5"
+                                  placeholder="Instructions pour l'équipe de patrouille…"></textarea>
+                        <span asp-validation-for="Input.BriefingText" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a asp-page="/Missions/Details" asp-route-id="@missionId" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-times me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-primary" @(isCompleted ? "disabled" : "")>
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Enregistrer le briefing
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @if (!isCompleted)
+    {
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-success">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-circle-check me-2"></i>Clôturer la mission
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        La mission passera en statut <strong>Terminée</strong> et l'appel associé sera fermé.
+                    </p>
+                    <form method="post" asp-page-handler="Complete"
+                          onsubmit="return confirm('Confirmer la clôture de cette mission ?')">
+                        <input type="hidden" name="id" value="@missionId" />
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Rapport d'intervention</label>
+                            <textarea name="completionReport" class="form-control" rows="4"
+                                      placeholder="Résumé de l'intervention, résolution…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fa-solid fa-flag-checkered me-2"></i>Clôturer la mission
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
