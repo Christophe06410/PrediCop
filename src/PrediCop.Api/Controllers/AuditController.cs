@@ -8,7 +8,7 @@ namespace PrediCop.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Manager,Admin")]
+[Authorize(Roles = "Admin")]
 public class AuditController(AppDbContext db) : ControllerBase
 {
     private Guid TenantId => (Guid)HttpContext.Items["TenantId"]!;
@@ -22,6 +22,7 @@ public class AuditController(AppDbContext db) : ControllerBase
         [FromQuery] string? entityName,
         [FromQuery] string? entityId,
         [FromQuery] string? action,
+        [FromQuery] string? userName,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
         [FromQuery] int page = 1,
@@ -42,6 +43,9 @@ public class AuditController(AppDbContext db) : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(action))
             query = query.Where(a => a.Action == action);
+
+        if (!string.IsNullOrWhiteSpace(userName))
+            query = query.Where(a => a.UserName.Contains(userName));
 
         if (from.HasValue)
             query = query.Where(a => a.Timestamp >= from.Value.ToUniversalTime());

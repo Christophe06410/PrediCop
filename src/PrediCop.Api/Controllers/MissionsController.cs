@@ -73,7 +73,7 @@ public class MissionsController(
     [HttpGet("active")]
     public async Task<ActionResult<List<MissionResponse>>> GetActiveMissions(CancellationToken ct)
     {
-        var query = db.Missions
+        var baseQuery = db.Missions
             .Include(m => m.Call)
             .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
             .Where(m => m.TenantId == TenantId
@@ -82,19 +82,37 @@ public class MissionsController(
                     || m.Status == MissionStatus.Accepted
                     || m.Status == MissionStatus.InProgress));
 
-        // When the JWT carries a vehicleId (mobile officer), restrict to missions
-        // where that specific vehicle has a relevant assignment.
+        // When the JWT carries a vehicleId (mobile officer), restrict to:
+        //   (a) missions where this vehicle has a Proposed/Accepted/InProgress assignment, OR
+        //   (b) Pending missions (no vehicle assigned yet) when this vehicle is Available —
+        //       so the mobile can see and act on newly-created missions even before dispatch.
         var vehicleIdClaim = User.FindFirst("vehicleId")?.Value;
         if (Guid.TryParse(vehicleIdClaim, out var vehicleId))
         {
-            query = query.Where(m => m.Assignments.Any(a =>
-                a.VehicleId == vehicleId &&
-                (a.Status == MissionStatus.Proposed ||
-                 a.Status == MissionStatus.Accepted ||
-                 a.Status == MissionStatus.InProgress)));
+            var vehicle = await db.PatrolVehicles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == vehicleId && v.TenantId == TenantId, ct);
+
+            var isAvailable = vehicle?.Status == VehicleStatus.Available;
+
+            baseQuery = baseQuery.Where(m =>
+                // (a) missions already assigned to this vehicle
+                m.Assignments.Any(a =>
+                    a.VehicleId == vehicleId &&
+                    (a.Status == MissionStatus.Proposed ||
+                     a.Status == MissionStatus.Accepted ||
+                     a.Status == MissionStatus.InProgress))
+                ||
+                // (b) unassigned Pending missions visible to available vehicles
+                (isAvailable
+                    && m.Status == MissionStatus.Pending
+                    && !m.Assignments.Any(a =>
+                        a.Status == MissionStatus.Proposed ||
+                        a.Status == MissionStatus.Accepted ||
+                        a.Status == MissionStatus.InProgress)));
         }
 
-        var missions = await query
+        var missions = await baseQuery
             .OrderBy(m => m.CreatedAt)
             .ToListAsync(ct);
 
@@ -297,7 +315,10 @@ public class MissionsController(
                 // L'envoi email ne doit jamais faire échouer l'action principale
             }
 
-            return Problem(title: "Dispatch épuisé — aucun véhicule disponible", detail: ex.Message, statusCode: 503);
+            // Refusal was committed — return 200 so the mobile dismisses the proposal correctly.
+            // The manager email already notifies the dispatch issue.
+            await db.Entry(assignment).ReloadAsync(ct);
+            return Ok(MapAssignmentToResponse(assignment));
         }
         catch (Exception ex)
         {

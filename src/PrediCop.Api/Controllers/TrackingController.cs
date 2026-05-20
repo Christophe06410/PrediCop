@@ -6,6 +6,7 @@ using PrediCop.Core.Entities;
 using PrediCop.Core.Enums;
 using PrediCop.Core.Interfaces;
 using PrediCop.Infrastructure.Data;
+using PrediCop.Infrastructure.Services;
 
 namespace PrediCop.Api.Controllers;
 
@@ -122,39 +123,25 @@ public class TrackingController(AppDbContext db, IEmailService emailService) : C
 
                 if (emailSubject is not null)
                 {
+                    var tenantName = await db.Tenants
+                        .Where(t => t.Id == TenantId)
+                        .Select(t => t.Name)
+                        .FirstOrDefaultAsync(ct) ?? "Police Municipale";
+
                     var destinataire = req.Status.Value == DocumentStatus.EnvoyeParquet ? "au Parquet" : "au Juge";
-                    var htmlBody = $"""
-                        <html><body style="font-family:Arial,sans-serif;color:#1a2035;max-width:600px;margin:auto;">
-                        <h2 style="color:#2563eb;border-bottom:2px solid #2563eb;padding-bottom:8px;">
-                            PrediCop — Notification document
-                        </h2>
-                        <p>Le document suivant vient d'être transmis <strong>{destinataire}</strong>.</p>
-                        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-                            <tr style="background:#f1f5f9;">
-                                <td style="padding:8px 12px;font-weight:bold;width:40%;">Référence</td>
-                                <td style="padding:8px 12px;">{doc.Reference}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:8px 12px;font-weight:bold;">Titre</td>
-                                <td style="padding:8px 12px;">{System.Net.WebUtility.HtmlEncode(doc.Title)}</td>
-                            </tr>
-                            <tr style="background:#f1f5f9;">
-                                <td style="padding:8px 12px;font-weight:bold;">Mission</td>
-                                <td style="padding:8px 12px;">{doc.Mission?.Reference ?? "N/A"}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:8px 12px;font-weight:bold;">Finalisé par</td>
-                                <td style="padding:8px 12px;">{System.Net.WebUtility.HtmlEncode(doc.CreatedBy?.FullName ?? "N/A")}</td>
-                            </tr>
-                            <tr style="background:#f1f5f9;">
-                                <td style="padding:8px 12px;font-weight:bold;">Date</td>
-                                <td style="padding:8px 12px;">{DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC</td>
-                            </tr>
-                        </table>
-                        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>
-                        <small style="color:#64748b;">PrediCop — Police Municipale | Ce message est généré automatiquement.</small>
-                        </body></html>
-                        """;
+                    var changedBy = User.FindFirst("name")?.Value
+                        ?? User.FindFirst("sub")?.Value
+                        ?? "Opérateur";
+
+                    var htmlBody = EmailTemplates.DocumentTransmis(
+                        tenantName:    tenantName,
+                        documentRef:   doc.Reference,
+                        documentTitle: doc.Title,
+                        missionRef:    doc.Mission?.Reference ?? "",
+                        destinataire:  destinataire,
+                        changedBy:     changedBy,
+                        changedAt:     DateTime.UtcNow
+                    );
 
                     await emailService.SendToManagersAsync(TenantId, emailSubject, htmlBody, ct);
                 }

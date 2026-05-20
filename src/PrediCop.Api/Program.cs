@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PrediCop.Api.Hubs;
 using PrediCop.Api.Middleware;
+using PrediCop.Api.Services;
 using PrediCop.Infrastructure.Data;
 using PrediCop.Infrastructure.Extensions;
 using Scalar.AspNetCore;
@@ -15,6 +17,10 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // ---- Infrastructure (EF Core, repositories, services) ----
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ---- Stripe ----
+builder.Services.Configure<PrediCop.Api.Settings.StripeSettings>(builder.Configuration.GetSection("Stripe"));
+Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"] ?? "";
 
 // ---- Controllers ----
 builder.Services.AddControllers()
@@ -61,6 +67,23 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// ---- HTTP clients ----
+builder.Services.AddHttpClient("Overpass", c =>
+{
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("PrediCop/1.0 (police-municipale-saas)");
+    c.Timeout = TimeSpan.FromSeconds(35);
+});
+
+// ---- Predictive risk ----
+builder.Services.AddScoped<StreetRiskComputeService>();
+builder.Services.AddHostedService<StreetRiskBackgroundService>();
+
+// ---- Mission alert ----
+builder.Services.AddHostedService<MissionAlertBackgroundService>();
+
+// ---- Geofencing ----
+builder.Services.AddHostedService<GeofencingBackgroundService>();
+
 // ---- SignalR ----
 builder.Services.AddSignalR();
 
@@ -92,10 +115,11 @@ builder.Services.AddOpenApi(options =>
 // ---- Build ----
 var app = builder.Build();
 
-// ---- Seed données initiales ----
+// ---- Migrations + Seed ----
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
     await DbInitializer.InitializeAsync(db);
 }
 
