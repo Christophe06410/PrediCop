@@ -396,6 +396,119 @@ public class DashboardController(AppDbContext db) : ControllerBase
         row.Style.Font.FontColor = XLColor.White;
     }
 
+    [HttpGet("timeseries")]
+    public async Task<ActionResult<TimeSeriesStatsResponse>> GetTimeSeries(
+        [FromQuery] int days = 7,
+        CancellationToken ct = default)
+    {
+        days = Math.Clamp(days, 1, 90);
+
+        var today = DateTime.UtcNow.Date;
+        var currentStart = today.AddDays(-days + 1);
+        var previousStart = currentStart.AddDays(-days);
+
+        // Charger toutes les données sur 2*N jours en une seule requête
+        var rangeStart = previousStart;
+        var rangeEnd = today.AddDays(1); // exclusif
+
+        var calls = await db.Calls
+            .Where(c => c.TenantId == TenantId
+                && c.ReceivedAt >= rangeStart
+                && c.ReceivedAt < rangeEnd)
+            .Select(c => new { c.ReceivedAt, c.Status })
+            .ToListAsync(ct);
+
+        var missions = await db.Missions
+            .Where(m => m.TenantId == TenantId
+                && m.CreatedAt >= rangeStart
+                && m.CreatedAt < rangeEnd)
+            .Select(m => new
+            {
+                m.CreatedAt,
+                m.Status,
+                m.AcceptedAt,
+                RefusedAssignments = m.Assignments.Count(a => a.Status == MissionStatus.Refused)
+            })
+            .ToListAsync(ct);
+
+        // --- Days stats (période courante) ---
+        var dayStatsList = Enumerable.Range(0, days).Select(i =>
+        {
+            var date = currentStart.AddDays(i);
+            var nextDate = date.AddDays(1);
+
+            var dayCalls = calls.Where(c => c.ReceivedAt >= date && c.ReceivedAt < nextDate).ToList();
+            var dayMissions = missions.Where(m => m.CreatedAt >= date && m.CreatedAt < nextDate).ToList();
+
+            var acceptedWithTime = dayMissions
+                .Where(m => m.AcceptedAt.HasValue)
+                .Select(m => (m.AcceptedAt!.Value - m.CreatedAt).TotalMinutes)
+                .ToList();
+
+            return new DayStats
+            {
+                Date = date,
+                Calls = dayCalls.Count,
+                Missions = dayMissions.Count,
+                CompletedMissions = dayMissions.Count(m => m.Status == MissionStatus.Completed),
+                AverageResponseTimeMinutes = acceptedWithTime.Count > 0
+                    ? Math.Round(acceptedWithTime.Average(), 1)
+                    : 0
+            };
+        }).ToList();
+
+        // --- Helper: calcule PeriodStatsResponse pour une plage ---
+        PeriodStatsResponse BuildPeriod(DateTime start, DateTime end, string label)
+        {
+            var nextEnd = end.AddDays(1);
+            var periodCalls = calls.Where(c => c.ReceivedAt >= start && c.ReceivedAt < nextEnd).ToList();
+            var periodMissions = missions.Where(m => m.CreatedAt >= start && m.CreatedAt < nextEnd).ToList();
+
+            var acceptedWithTime = periodMissions
+                .Where(m => m.AcceptedAt.HasValue)
+                .Select(m => (m.AcceptedAt!.Value - m.CreatedAt).TotalMinutes)
+                .ToList();
+
+            return new PeriodStatsResponse
+            {
+                PeriodStart = start,
+                PeriodEnd = end,
+                PeriodLabel = label,
+                TotalCalls = periodCalls.Count,
+                ClosedCalls = periodCalls.Count(c => c.Status == CallStatus.Closed),
+                CallsWithMission = periodCalls.Count(c =>
+                    c.Status == CallStatus.MissionCreated
+                    || c.Status == CallStatus.Closed),
+                TotalMissions = periodMissions.Count,
+                CompletedMissions = periodMissions.Count(m => m.Status == MissionStatus.Completed),
+                RefusedMissions = periodMissions.Sum(m => m.RefusedAssignments),
+                AverageResponseTimeMinutes = acceptedWithTime.Count > 0
+                    ? Math.Round(acceptedWithTime.Average(), 1)
+                    : 0
+            };
+        }
+
+        var currentPeriod = BuildPeriod(currentStart, today,
+            $"{currentStart:dd/MM} – {today:dd/MM}");
+        var previousPeriod = BuildPeriod(previousStart, currentStart.AddDays(-1),
+            $"{previousStart:dd/MM} – {currentStart.AddDays(-1):dd/MM}");
+
+        // --- Deltas ---
+        static double? Delta(double current, double previous)
+            => previous == 0 ? null : Math.Round((current - previous) / previous * 100, 1);
+
+        currentPeriod.CallsDeltaPercent = Delta(currentPeriod.TotalCalls, previousPeriod.TotalCalls);
+        currentPeriod.MissionsDeltaPercent = Delta(currentPeriod.CompletedMissions, previousPeriod.CompletedMissions);
+        currentPeriod.ResponseTimeDeltaPercent = Delta(currentPeriod.AverageResponseTimeMinutes, previousPeriod.AverageResponseTimeMinutes);
+
+        return Ok(new TimeSeriesStatsResponse
+        {
+            Days = dayStatsList,
+            CurrentPeriod = currentPeriod,
+            PreviousPeriod = previousPeriod
+        });
+    }
+
     [HttpGet("missions-by-hour")]
     public async Task<ActionResult<List<MissionStats>>> GetMissionsByHour(CancellationToken ct)
     {

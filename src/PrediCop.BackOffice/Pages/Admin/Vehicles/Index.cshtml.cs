@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Net.Http.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.Vehicles;
@@ -19,6 +21,8 @@ public class IndexModel : PageModel
     }
 
     public List<VehicleDto> Vehicles { get; set; } = [];
+    public int VehicleLimit { get; set; } = 9999;
+    public bool IsAtVehicleLimit => Vehicles.Count >= VehicleLimit;
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -32,6 +36,18 @@ public class IndexModel : PageModel
         {
             _logger.LogWarning(ex, "Impossible de charger les véhicules depuis l'API.");
             Vehicles = GetFakeVehicles();
+        }
+
+        var jwtToken = HttpContext.Session.GetString("JwtToken");
+        if (jwtToken is not null)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (handler.CanReadToken(jwtToken))
+            {
+                var token = handler.ReadJwtToken(jwtToken);
+                var limitClaim = token.Claims.FirstOrDefault(c => c.Type == "vehicleLimit")?.Value;
+                if (int.TryParse(limitClaim, out var limit)) VehicleLimit = limit;
+            }
         }
 
         return Page();

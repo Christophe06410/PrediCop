@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PrediCop.Mobile.ViewModels"
+             x:Class="PrediCop.Mobile.Pages.TicketingPage"
+             BackgroundColor="#1a2035">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- En-tête -->
+        <Grid Grid.Row="0" BackgroundColor="#243050" Padding="16,12" ColumnDefinitions="*,Auto">
+            <Label Text="Verbalisation" TextColor="White"
+                   FontSize="18" FontAttributes="Bold" VerticalOptions="Center"/>
+            <Button Grid.Column="1"
+                    BackgroundColor="#2563eb" TextColor="White"
+                    CornerRadius="8" Padding="12,6" FontSize="13"
+                    Command="{Binding ToggleFormCommand}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding ShowForm}" Value="True">
+                        <Setter Property="Text" Value="✕ Annuler"/>
+                        <Setter Property="BackgroundColor" Value="#374151"/>
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding ShowForm}" Value="False">
+                        <Setter Property="Text" Value="+ Nouveau PV"/>
+                        <Setter Property="BackgroundColor" Value="#2563eb"/>
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </Grid>
+
+        <!-- Contenu scrollable -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16" Spacing="12">
+
+                <!-- Message de statut -->
+                <Frame IsVisible="{Binding HasStatusMessage}"
+                       Padding="12" CornerRadius="8" HasShadow="False" BorderColor="Transparent">
+                    <Frame.Triggers>
+                        <DataTrigger TargetType="Frame" Binding="{Binding IsStatusError}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#7f1d1d"/>
+                        </DataTrigger>
+                        <DataTrigger TargetType="Frame" Binding="{Binding IsStatusError}" Value="False">
+                            <Setter Property="BackgroundColor" Value="#14532d"/>
+                        </DataTrigger>
+                    </Frame.Triggers>
+                    <Label Text="{Binding StatusMessage}" TextColor="White" FontSize="14"
+                           FontAttributes="Bold"/>
+                </Frame>
+
+                <!-- Formulaire nouveau PV -->
+                <Frame IsVisible="{Binding ShowForm}"
+                       BackgroundColor="#243050" CornerRadius="12" Padding="16" HasShadow="False">
+                    <VerticalStackLayout Spacing="12">
+
+                        <Label Text="Nouveau procès-verbal" TextColor="White"
+                               FontSize="16" FontAttributes="Bold"/>
+
+                        <!-- Plaque -->
+                        <Label Text="Plaque d'immatriculation *" TextColor="#aab0c0" FontSize="13"/>
+                        <Entry Placeholder="AA-000-BB"
+                               PlaceholderColor="#4a5568"
+                               Text="{Binding PlateNumber}"
+                               BackgroundColor="#1a2035" TextColor="White"
+                               Keyboard="Text" IsTextPredictionEnabled="False"
+                               x:Name="EntryPlate"/>
+
+                        <!-- Adresse -->
+                        <Label Text="Adresse de l'infraction *" TextColor="#aab0c0" FontSize="13"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Entry Grid.Column="0"
+                                   Placeholder="Rue, numéro, ville"
+                                   PlaceholderColor="#4a5568"
+                                   Text="{Binding Address}"
+                                   BackgroundColor="#1a2035" TextColor="White"
+                                   Keyboard="Text"/>
+                            <Button Grid.Column="1"
+                                    BackgroundColor="#0f3460" TextColor="#60a5fa"
+                                    CornerRadius="8" Padding="10,8" FontSize="12"
+                                    Command="{Binding UseMyLocationCommand}"
+                                    IsEnabled="{Binding IsNotLoadingLocation}">
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" Binding="{Binding IsLoadingLocation}" Value="True">
+                                        <Setter Property="Text" Value="…"/>
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Button" Binding="{Binding IsLoadingLocation}" Value="False">
+                                        <Setter Property="Text" Value="📍 GPS"/>
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                        </Grid>
+
+                        <!-- Type d'infraction -->
+                        <Label Text="Type d'infraction *" TextColor="#aab0c0" FontSize="13"/>
+                        <Picker ItemsSource="{Binding Source={x:Static vm:TicketingViewModel.InfractionTypes}}"
+                                SelectedItem="{Binding SelectedInfraction}"
+                                BackgroundColor="#1a2035" TextColor="White"
+                                TitleColor="#4a5568" Title="Sélectionner…"/>
+
+                        <!-- Montant -->
+                        <Label Text="Montant de l'amende (€) *" TextColor="#aab0c0" FontSize="13"/>
+                        <Entry Placeholder="0.00"
+                               PlaceholderColor="#4a5568"
+                               Text="{Binding FineAmountText}"
+                               BackgroundColor="#1a2035" TextColor="White"
+                               Keyboard="Numeric"/>
+
+                        <!-- Véhicule (optionnel) -->
+                        <Label Text="Véhicule contrevenant (optionnel)" TextColor="#6b7a99" FontSize="12"
+                               Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <Entry Grid.Column="0" Placeholder="Marque"
+                                   PlaceholderColor="#4a5568"
+                                   Text="{Binding VehicleMake}"
+                                   BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                            <Entry Grid.Column="1" Placeholder="Modèle"
+                                   PlaceholderColor="#4a5568"
+                                   Text="{Binding VehicleModel}"
+                                   BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                            <Entry Grid.Column="2" Placeholder="Couleur"
+                                   PlaceholderColor="#4a5568"
+                                   Text="{Binding VehicleColor}"
+                                   BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                        </Grid>
+
+                        <!-- Notes -->
+                        <Label Text="Observations (optionnel)" TextColor="#6b7a99" FontSize="12"/>
+                        <Editor Placeholder="Remarques complémentaires…"
+                                PlaceholderColor="#4a5568"
+                                Text="{Binding Notes}"
+                                BackgroundColor="#1a2035" TextColor="White"
+                                HeightRequest="80" AutoSize="Disabled"/>
+
+                        <!-- Soumettre -->
+                        <Button Text="Émettre le PV"
+                                BackgroundColor="#2563eb" TextColor="White"
+                                CornerRadius="10" HeightRequest="48" FontSize="15"
+                                Command="{Binding SubmitCommand}"
+                                IsEnabled="{Binding IsNotSubmitting}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsSubmitting}" Value="True">
+                                    <Setter Property="Text" Value="Émission en cours…"/>
+                                    <Setter Property="BackgroundColor" Value="#1e3a5f"/>
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Historique (7 derniers jours) -->
+                <Label Text="Mes PV — 7 derniers jours"
+                       TextColor="#aab0c0" FontSize="13" FontAttributes="Bold"
+                       Margin="0,4,0,0"/>
+
+                <ActivityIndicator IsRunning="{Binding IsLoadingHistory}"
+                                   IsVisible="{Binding IsLoadingHistory}"
+                                   Color="#2563eb" HeightRequest="36"/>
+
+                <Label Text="Aucun PV émis sur les 7 derniers jours."
+                       IsVisible="{Binding HasNoTickets}"
+                       TextColor="#4a5568" FontSize="13"
+                       HorizontalTextAlignment="Center" Margin="0,8"/>
+
+                <!-- Liste des PV -->
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentTickets}" Spacing="8">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TicketSummary">
+                            <Frame BackgroundColor="#243050" CornerRadius="10"
+                                   Padding="14,10" HasShadow="False">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+
+                                    <!-- Numéro + plaque -->
+                                    <VerticalStackLayout Grid.Column="0" Grid.Row="0" Spacing="2">
+                                        <Label Text="{Binding Number}"
+                                               TextColor="#60a5fa" FontSize="13" FontAttributes="Bold"/>
+                                        <Label Text="{Binding Plate}"
+                                               TextColor="White" FontSize="15" FontAttributes="Bold"/>
+                                    </VerticalStackLayout>
+
+                                    <!-- Statut + date -->
+                                    <VerticalStackLayout Grid.Column="1" Grid.Row="0"
+                                                         HorizontalOptions="End" Spacing="4">
+                                        <Label Text="{Binding StatusLabel}"
+                                               TextColor="{Binding StatusColor}"
+                                               FontSize="12" FontAttributes="Bold"
+                                               HorizontalTextAlignment="End"/>
+                                        <Label Text="{Binding FormattedDate}"
+                                               TextColor="#6b7a99" FontSize="11"
+                                               HorizontalTextAlignment="End"/>
+                                    </VerticalStackLayout>
+
+                                    <!-- Infraction + montant -->
+                                    <Grid Grid.Row="1" Grid.ColumnSpan="2"
+                                          ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding Infraction}"
+                                               TextColor="#aab0c0" FontSize="12"/>
+                                        <Label Grid.Column="1"
+                                               TextColor="#34d399" FontSize="13" FontAttributes="Bold">
+                                            <Label.Text>
+                                                <MultiBinding StringFormat="{}{0:F0} €">
+                                                    <Binding Path="Amount"/>
+                                                </MultiBinding>
+                                            </Label.Text>
+                                        </Label>
+                                    </Grid>
+
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <!-- Espace en bas -->
+                <BoxView HeightRequest="20" Color="Transparent"/>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+
+</ContentPage>

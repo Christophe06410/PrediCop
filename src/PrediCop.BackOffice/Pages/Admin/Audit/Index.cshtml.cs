@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
@@ -5,6 +6,7 @@ using System.Net.Http.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.Audit;
 
+[Authorize(Roles = "Admin")]
 public class IndexModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -29,6 +31,9 @@ public class IndexModel : PageModel
     public string? FilterAction { get; set; }
 
     [BindProperty(SupportsGet = true)]
+    public string? FilterUserName { get; set; }
+
+    [BindProperty(SupportsGet = true)]
     public string? FilterFrom { get; set; }
 
     [BindProperty(SupportsGet = true)]
@@ -42,8 +47,11 @@ public class IndexModel : PageModel
     // Valeurs fixes pour les selects
     public static readonly string[] KnownEntityNames =
     [
-        "Call", "Mission", "MissionAssignment", "PatrolVehicle", "PatrolRecord",
-        "Street", "StreetRiskEvent", "TrackingDocument", "TrackingEntry",
+        "Call", "Mission", "MissionAssignment", "MissionIntervenant",
+        "PatrolVehicle", "PatrolRecord",
+        "Street", "StreetRiskEvent",
+        "GeoZone", "GeoZoneVertex",
+        "TrackingDocument", "TrackingEntry",
         "MediaAttachment", "User", "VehicleOfficer"
     ];
 
@@ -82,6 +90,9 @@ public class IndexModel : PageModel
 
         if (!string.IsNullOrWhiteSpace(FilterAction))
             parts.Add($"action={Uri.EscapeDataString(FilterAction)}");
+
+        if (!string.IsNullOrWhiteSpace(FilterUserName))
+            parts.Add($"userName={Uri.EscapeDataString(FilterUserName)}");
 
         if (!string.IsNullOrWhiteSpace(FilterFrom))
             parts.Add($"from={Uri.EscapeDataString(FilterFrom)}");

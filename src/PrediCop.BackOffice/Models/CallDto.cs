@@ -8,6 +8,7 @@ public class CallDto
     public string Reference { get; set; } = string.Empty;
     public DateTime ReceivedAt { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string Priority { get; set; } = "Routine";
     public string CallerName { get; set; } = string.Empty;
     public string CallerPhone { get; set; } = string.Empty;
     public string IncidentCategory { get; set; } = string.Empty;
@@ -96,4 +97,7 @@ public class CreateCallDto
 
     [Display(Name = "Notes internes")]
     public string? InternalNotes { get; set; }
+
+    [Display(Name = "Priorité")]
+    public string Priority { get; set; } = "Routine";
 }

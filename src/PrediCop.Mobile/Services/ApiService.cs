@@ -17,6 +17,10 @@ public class ApiService
         _log.LogInformation("ApiService created. BaseAddress={BaseAddress}", http.BaseAddress);
     }
 
+    /// <summary>Indique si l'accès Internet est disponible selon MAUI Connectivity.</summary>
+    public bool IsNetworkAvailable =>
+        Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+
     public void SetAuthToken(string token)
     {
         _http.DefaultRequestHeaders.Authorization =
@@ -74,6 +78,14 @@ public class ApiService
             ? "Mot de passe actuel incorrect."
             : $"Erreur serveur ({(int)response.StatusCode}).";
         return (false, error);
+    }
+
+    public async Task<bool> RegisterDeviceTokenAsync(string deviceToken, CancellationToken ct = default)
+    {
+        _log.LogDebug("POST /api/auth/device-token");
+        var response = await _http.PostAsJsonAsync("/api/auth/device-token",
+            new { DeviceToken = deviceToken }, ct);
+        return response.IsSuccessStatusCode;
     }
 
     private async Task LogIfErrorAsync(HttpResponseMessage response, string method, string endpoint)

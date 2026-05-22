@@ -33,6 +33,7 @@
             <table class="table table-hover align-middle mb-0" id="active-missions-table">
                 <thead class="table-light">
                     <tr>
+                        <th>Priorité</th>
                         <th>Référence</th>
                         <th>Statut</th>
                         <th>Adresse cible</th>
@@ -47,7 +48,28 @@
                     {
                         var durationMin = (int)(DateTime.Now - m.CreatedAt).TotalMinutes;
                         var durationClass = durationMin > 60 ? "text-danger fw-bold" : durationMin > 30 ? "text-warning fw-semibold" : "text-success";
+                        var (mPrioBadge, mPrioIcon, mPrioLabel) = m.Priority switch
+                        {
+                            "SOS"      => ("bg-danger",           "fa-siren-on",             "SOS"),
+                            "Critique" => ("bg-danger",           "fa-fire",                 "Critique"),
+                            "Urgent"   => ("bg-warning text-dark","fa-triangle-exclamation", "Urgent"),
+                            _          => ("bg-secondary",        "fa-circle-check",         "Routine")
+                        };
                         <tr>
+                            <td>
+                                @if (m.Priority == "SOS")
+                                {
+                                    <span class="badge @mPrioBadge priority-sos-pulse">
+                                        <i class="fa-solid @mPrioIcon me-1"></i>@mPrioLabel
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge @mPrioBadge">
+                                        <i class="fa-solid @mPrioIcon me-1"></i>@mPrioLabel
+                                    </span>
+                                }
+                            </td>
                             <td class="fw-semibold text-primary">@m.Reference</td>
                             <td>
                                 @{ ViewData["Status"] = m.Status; }
@@ -81,7 +103,7 @@
                     @if (!Model.ActiveMissions.Any())
                     {
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 <i class="fa-solid fa-check-circle fa-2x text-success mb-2 d-block"></i>
                                 Aucune mission active en ce moment.
                             </td>
@@ -156,6 +178,16 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        @@keyframes sos-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.08); }
+        }
+        .priority-sos-pulse { animation: sos-pulse 0.8s ease-in-out infinite; }
+    </style>
+}
 
 @section Scripts {
     <script>

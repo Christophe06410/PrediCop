@@ -1,20 +1,31 @@
 ﻿@page "{id:guid}"
 @model PrediCop.BackOffice.Pages.Calls.DetailsModel
 @{
-    ViewData["Title"] = $"Appel {Model.Call?.Reference}";
+    ViewData["Title"] = $"Main courante {Model.Call?.Reference}";
     var call = Model.Call!;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Appels</a></li>
+            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Mains courantes</a></li>
             <li class="breadcrumb-item active">@call.Reference</li>
         </ol>
     </nav>
-    <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Retour
-    </a>
+    <div class="d-flex gap-2">
+        <a asp-page="/Calls/Edit" asp-route-id="@call.Id" class="btn btn-sm btn-outline-warning">
+            <i class="fa-solid fa-pencil me-1"></i>Modifier cet appel
+        </a>
+        <a asp-page="/Calls/ExportWord" asp-route-id="@call.Id" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-file-word me-1"></i>Rapport Word
+        </a>
+        <a asp-page="/Calls/Export" asp-route-id="@call.Id" class="btn btn-sm btn-primary" target="_blank">
+            <i class="fa-solid fa-file-pdf me-1"></i>Rapport PDF
+        </a>
+        <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour
+        </a>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -23,7 +34,7 @@
         <div class="card shadow-sm h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-phone me-2 text-primary"></i>Détails de l'appel
+                    <i class="fa-solid fa-phone me-2 text-primary"></i>Détails de la main courante
                 </h6>
                 @{ ViewData["Status"] = call.Status; }
                 @await Html.PartialAsync("_StatusBadge")
@@ -123,6 +134,81 @@
         </div>
     </div>
 
+    <!-- Reprendre l'intervention -->
+    @if (Model.CanReopen)
+    {
+        <div class="col-12">
+            <div class="card shadow-sm border-warning border-2">
+                <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold text-warning">
+                        <i class="fa-solid fa-rotate-right me-2"></i>Reprendre l'intervention
+                    </h6>
+                    <span class="badge bg-warning text-dark">
+                        @call.Missions.Count mission(s) antérieure(s)
+                    </span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Toutes les missions précédentes sont terminées, refusées ou annulées.
+                        Vous pouvez envoyer un nouvel équipage sur ce même appel.
+                    </p>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Référence</th>
+                                    <th>Statut</th>
+                                    <th>Équipage</th>
+                                    <th>Créée le</th>
+                                    <th>Terminée le</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in call.Missions.OrderByDescending(x => x.CreatedAt))
+                                {
+                                    <tr class="text-muted">
+                                        <td class="fw-semibold">@m.Reference</td>
+                                        <td>
+                                            @{ ViewData["Status"] = m.Status; }
+                                            @await Html.PartialAsync("_StatusBadge")
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign))
+                                            {
+                                                <span class="badge bg-secondary">@m.AssignedVehicleCallSign</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@m.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@(m.CompletedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                        <td>
+                                            <a asp-page="/Missions/Details" asp-route-id="@m.Id"
+                                               class="btn btn-sm btn-outline-secondary py-0">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <form method="post" asp-page-handler="Reopen" asp-route-id="@call.Id"
+                          onsubmit="this.querySelector('button[type=submit]').disabled=true;">
+                        <button type="submit" class="btn btn-warning fw-semibold">
+                            <i class="fa-solid fa-rotate-right me-2"></i>Créer une nouvelle mission sur cet appel
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Missions associées -->
     <div class="col-12">
         <div class="card shadow-sm">
@@ -187,7 +273,7 @@
                 else
                 {
                     <div class="text-center text-muted py-3">
-                        <i class="fa-solid fa-inbox me-2"></i>Aucune mission associée à cet appel.
+                        <i class="fa-solid fa-inbox me-2"></i>Aucune mission associée à cette main courante.
                     </div>
                 }
             </div>

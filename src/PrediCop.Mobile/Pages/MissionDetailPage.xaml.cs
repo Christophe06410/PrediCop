@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using PrediCop.Mobile.Models;
 using PrediCop.Mobile.Services;
 using PrediCop.Mobile.ViewModels;
 
@@ -7,83 +9,207 @@ namespace PrediCop.Mobile.Pages;
 public partial class MissionDetailPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly LocalDbService _localDb;
+    private readonly IConnectivityService _connectivity;
+    private readonly SyncService _syncService;
     private readonly MissionDetailViewModel _vm;
     private readonly Guid _missionId;
 
-    public MissionDetailPage(Guid missionId, ApiService api)
+    public MissionDetailPage(Guid missionId, ApiService api, LocalDbService localDb,
+        IConnectivityService connectivity, SyncService syncService)
     {
         InitializeComponent();
         _missionId = missionId;
         _api = api;
+        _localDb = localDb;
+        _connectivity = connectivity;
+        _syncService = syncService;
         _vm = new MissionDetailViewModel { MissionId = missionId };
         BindingContext = _vm;
+
+        // Mettre à jour le bandeau hors-ligne en temps réel
+        _connectivity.ConnectivityChanged += OnConnectivityChanged;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _vm.IsOffline = !_connectivity.IsConnected;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _connectivity.ConnectivityChanged -= OnConnectivityChanged;
+    }
+
+    private async void OnConnectivityChanged(object? sender, bool isConnected)
+    {
+        await MainThread.InvokeOnMainThreadAsync(async () =>
+        {
+            _vm.IsOffline = !isConnected;
+            if (isConnected)
+            {
+                // Synchroniser les entrées en attente puis recharger
+                await _syncService.SyncPendingEntriesAsync();
+                await LoadAsync();
+            }
+        });
+    }
+
+    private async Task LoadAsync(CancellationToken ct = default)
+    {
+        if (_connectivity.IsConnected)
+        {
+            await LoadFromApiAsync(ct);
+        }
+        else
+        {
+            await LoadFromCacheAsync();
+        }
+    }
+
+    private async Task LoadFromApiAsync(CancellationToken ct = default)
     {
         try
         {
-            var mission = await _api.GetAsync<MissionDetailDto>($"api/missions/{_missionId}");
+            var mission = await _api.GetAsync<MissionDetailDto>($"api/missions/{_missionId}", ct);
             if (mission == null) return;
 
-            _vm.Reference = mission.Reference;
-            _vm.TargetAddress = mission.TargetAddress;
-            _vm.BriefingText = mission.BriefingText ?? "";
-            _vm.TargetLat = mission.TargetLatitude;
-            _vm.TargetLng = mission.TargetLongitude;
-            _vm.CreatedAtText = $"Créée le {mission.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm}";
-
-            (_vm.StatusText, _vm.StatusColor) = mission.Status switch
+            // Mise en cache pour usage hors-ligne
+            var rawJson = JsonSerializer.Serialize(mission);
+            await _localDb.UpsertCachedMissionAsync(new CachedMission
             {
-                "Pending"    => ("En attente",  Color.FromArgb("#f59e0b")),
-                "Proposed"   => ("Proposée",    Color.FromArgb("#f59e0b")),
-                "Accepted"   => ("Acceptée",    Color.FromArgb("#22c55e")),
-                "InProgress" => ("En cours",    Color.FromArgb("#3b82f6")),
-                "Completed"  => ("Terminée",    Color.FromArgb("#6b7280")),
-                "Cancelled"  => ("Annulée",     Color.FromArgb("#ef4444")),
-                _            => (mission.Status, Colors.White)
-            };
+                Id           = mission.Id,
+                Reference    = mission.Reference,
+                TargetAddress = mission.TargetAddress,
+                Status       = mission.Status,
+                BriefingText = mission.BriefingText,
+                CachedAt     = DateTime.UtcNow,
+                RawJson      = rawJson
+            });
 
-            var pending = mission.Assignments?
-                .FirstOrDefault(a => a.Status is "Proposed" or "Pending");
-            _vm.AssignmentId = pending?.Id;
-            _vm.ShowAcceptRefuse = pending != null;
-            _vm.ShowComplete = mission.Status is "Accepted" or "InProgress";
-
-            _vm.Assignments = new ObservableCollection<AssignmentSummaryVm>(
-                (mission.Assignments ?? [])
-                    .OrderBy(a => a.ProposalOrder)
-                    .Select(a =>
-                    {
-                        var (color, label) = a.Status switch
-                        {
-                            "Accepted" => (Color.FromArgb("#22c55e"), "Accepté"),
-                            "Refused"  => (Color.FromArgb("#ef4444"), "Refusé"),
-                            _          => (Color.FromArgb("#f59e0b"), "Proposé")
-                        };
-                        var detail = $"#{a.ProposalOrder} — {a.VehicleCallSign} — {a.ProposedAt.ToLocalTime():HH:mm}";
-                        if (!string.IsNullOrEmpty(a.RefusalReasonCode)) detail += $" — {RefusalCodeToLabel(a.RefusalReasonCode)}";
-                        if (!string.IsNullOrEmpty(a.RefusalReason)) detail += $" : {a.RefusalReason}";
-                        return new AssignmentSummaryVm
-                        {
-                            Summary     = $"Véhicule {a.VehicleCallSign} ({label})",
-                            Detail      = detail,
-                            StatusColor = color
-                        };
-                    }));
-
+            ApplyMissionToViewModel(mission);
             await ComputeDistanceAsync();
         }
         catch
         {
             await DisplayAlert("Erreur", "Impossible de charger les détails de la mission.", "OK");
         }
+    }
+
+    private async Task LoadFromCacheAsync()
+    {
+        var cached = await _localDb.GetCachedMissionAsync(_missionId);
+        if (cached == null)
+        {
+            await DisplayAlert("Hors ligne", "Mission non disponible hors connexion.", "OK");
+            return;
+        }
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var mission = JsonSerializer.Deserialize<MissionDetailDto>(cached.RawJson, options);
+            if (mission == null) return;
+            ApplyMissionToViewModel(mission);
+        }
+        catch
+        {
+            // Fallback minimal si le JSON est corrompu
+            _vm.Reference     = cached.Reference;
+            _vm.TargetAddress = cached.TargetAddress;
+            _vm.BriefingText  = cached.BriefingText ?? "";
+            _vm.StatusText    = cached.Status;
+        }
+    }
+
+    private void ApplyMissionToViewModel(MissionDetailDto mission)
+    {
+        _vm.Reference = mission.Reference;
+        _vm.CallReference = string.IsNullOrEmpty(mission.CallReference) ? "" : $"Appel {mission.CallReference}";
+        _vm.TargetAddress = mission.TargetAddress;
+        _vm.LocationDetail = mission.LocationDetail ?? "";
+        _vm.HasLocationDetail = !string.IsNullOrEmpty(mission.LocationDetail);
+        _vm.BriefingText = mission.BriefingText ?? "";
+        _vm.NarrativeReport = mission.NarrativeReport ?? "";
+        _vm.HasNarrativeReport = !string.IsNullOrEmpty(mission.NarrativeReport);
+        _vm.TargetLat = mission.TargetLatitude;
+        _vm.TargetLng = mission.TargetLongitude;
+        _vm.CreatedAtText = $"Créée le {mission.CreatedAt.ToLocalTime():dd/MM/yyyy à HH:mm}";
+
+        if (mission.DispatchedAt.HasValue)
+        {
+            _vm.DispatchedAtText = $"Dispatchée à {mission.DispatchedAt.Value.ToLocalTime():HH:mm}";
+            _vm.HasDispatchedAt = true;
+        }
+        if (mission.ArrivedAt.HasValue)
+        {
+            _vm.ArrivedAtText = $"Arrivée sur place à {mission.ArrivedAt.Value.ToLocalTime():HH:mm}";
+            _vm.HasArrivedAt = true;
+        }
+        if (mission.CompletedAt.HasValue)
+        {
+            _vm.CompletedAtText = $"Clôturée à {mission.CompletedAt.Value.ToLocalTime():HH:mm}";
+            _vm.HasCompletedAt = true;
+        }
+
+        _vm.CompletionReport = mission.CompletionReport ?? "";
+        _vm.HasCompletionReport = !string.IsNullOrEmpty(mission.CompletionReport);
+
+        _vm.Priority = mission.Priority;
+
+        (_vm.StatusText, _vm.StatusColor) = mission.Status switch
+        {
+            "Pending"    => ("En attente",  Color.FromArgb("#f59e0b")),
+            "Proposed"   => ("Proposée",    Color.FromArgb("#f59e0b")),
+            "Accepted"   => ("Acceptée",    Color.FromArgb("#22c55e")),
+            "InProgress" => ("En cours",    Color.FromArgb("#3b82f6")),
+            "Completed"  => ("Terminée",    Color.FromArgb("#6b7280")),
+            "Cancelled"  => ("Annulée",     Color.FromArgb("#ef4444")),
+            _            => (mission.Status, Colors.White)
+        };
+
+        var pending = mission.Assignments?
+            .FirstOrDefault(a => a.Status is "Proposed" or "Pending");
+        _vm.AssignmentId = pending?.Id;
+        _vm.ShowAcceptRefuse = pending != null;
+        _vm.ShowComplete = mission.Status is "Accepted" or "InProgress";
+
+        _vm.Intervenants = new ObservableCollection<IntervenantVm>(
+            (mission.Intervenants ?? [])
+                .OrderBy(i => i.Order)
+                .Select(i => new IntervenantVm
+                {
+                    FullName    = i.FullName,
+                    Role        = i.Role,
+                    PhoneNumber = i.PhoneNumber,
+                    IsInjured   = i.IsInjured,
+                    Notes       = i.Notes
+                }));
+
+        _vm.Assignments = new ObservableCollection<AssignmentSummaryVm>(
+            (mission.Assignments ?? [])
+                .OrderBy(a => a.ProposalOrder)
+                .Select(a =>
+                {
+                    var (color, label) = a.Status switch
+                    {
+                        "Accepted" => (Color.FromArgb("#22c55e"), "Accepté"),
+                        "Refused"  => (Color.FromArgb("#ef4444"), "Refusé"),
+                        _          => (Color.FromArgb("#f59e0b"), "Proposé")
+                    };
+                    var detail = $"#{a.ProposalOrder} — {a.VehicleCallSign} — {a.ProposedAt.ToLocalTime():HH:mm}";
+                    if (!string.IsNullOrEmpty(a.RefusalReasonCode)) detail += $" — {RefusalCodeToLabel(a.RefusalReasonCode)}";
+                    if (!string.IsNullOrEmpty(a.RefusalReason)) detail += $" : {a.RefusalReason}";
+                    return new AssignmentSummaryVm
+                    {
+                        Summary     = $"Véhicule {a.VehicleCallSign} ({label})",
+                        Detail      = detail,
+                        StatusColor = color
+                    };
+                }));
     }
 
     private async Task ComputeDistanceAsync()
@@ -170,6 +296,24 @@ public partial class MissionDetailPage : ContentPage
     private async void OnComplete(object sender, EventArgs e)
     {
         var notes = NotesEditor.Text ?? "";
+
+        if (!_connectivity.IsConnected)
+        {
+            // Sauvegarder localement comme entrée de suivi en attente
+            await _localDb.AddPendingEntryAsync(new PendingTrackingEntry
+            {
+                MissionId = _missionId,
+                EntryType = "note",
+                Content   = notes,
+                CreatedAt = DateTime.UtcNow,
+                IsSynced  = false
+            });
+
+            await DisplayAlert("Hors ligne",
+                "Rapport sauvegardé localement. Il sera envoyé automatiquement dès le retour du réseau.", "OK");
+            return;
+        }
+
         try
         {
             await _api.PostAsync($"api/missions/{_missionId}/complete", new { report = notes });
@@ -209,13 +353,23 @@ public partial class MissionDetailPage : ContentPage
     {
         public Guid Id { get; set; }
         public string Reference { get; set; } = "";
+        public string CallReference { get; set; } = "";
         public string Status { get; set; } = "";
         public string TargetAddress { get; set; } = "";
+        public string? LocationDetail { get; set; }
         public string? BriefingText { get; set; }
+        public string? NarrativeReport { get; set; }
         public double TargetLatitude { get; set; }
         public double TargetLongitude { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? DispatchedAt { get; set; }
+        public DateTime? AcceptedAt { get; set; }
+        public DateTime? ArrivedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? CompletionReport { get; set; }
+        public string Priority { get; set; } = "Routine";
         public List<AssignmentDetailDto>? Assignments { get; set; }
+        public List<IntervenantDetailDto>? Intervenants { get; set; }
     }
 
     private class AssignmentDetailDto
@@ -227,5 +381,15 @@ public partial class MissionDetailPage : ContentPage
         public DateTime ProposedAt { get; set; }
         public string? RefusalReasonCode { get; set; }
         public string? RefusalReason { get; set; }
+    }
+
+    private class IntervenantDetailDto
+    {
+        public string FullName { get; set; } = "";
+        public string? Role { get; set; }
+        public string? PhoneNumber { get; set; }
+        public bool IsInjured { get; set; }
+        public string? Notes { get; set; }
+        public int Order { get; set; }
     }
 }

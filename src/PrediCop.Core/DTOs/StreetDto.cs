@@ -12,11 +12,23 @@ public class StreetResponse
     public double EndLongitude { get; set; }
     public string? GeoJson { get; set; }
     public int BaseRiskScore { get; set; }
+    public int ComputedBaseRiskScore { get; set; }
+    public bool IsRiskLocked { get; set; }
+    public int? RiskAdjustment { get; set; }
+    public int RiskGrowthRatePerHour { get; set; }
     public int CurrentRiskScore { get; set; }
     public DateTime? LastPatrolledAt { get; set; }
     public int PatrolIntervalHours { get; set; }
     public bool IsOverdue => LastPatrolledAt == null
         || (DateTime.UtcNow - LastPatrolledAt.Value).TotalHours > PatrolIntervalHours;
+}
+
+public class UpdateStreetRequest
+{
+    public int BaseRiskScore { get; set; }
+    public int RiskGrowthRatePerHour { get; set; }
+    public bool IsRiskLocked { get; set; }
+    public int? RiskAdjustment { get; set; }
 }
 
 public class PatrolRequest
@@ -37,4 +49,28 @@ public class RiskEventRequest
 public class UpdateBaseRiskRequest
 {
     public int BaseRiskScore { get; set; }
+}
+
+public record RiskEventResponse(
+    Guid Id,
+    Guid StreetId,
+    string StreetName,
+    string StreetDistrict,
+    string Title,
+    string Description,
+    int RiskPoints,
+    DateTime EventDate,
+    DateTime ExpiresAt,
+    string Source,
+    bool IsActive
+);
+
+public class UpdateRiskEventRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int RiskPoints { get; set; }
+    public DateTime EventDate { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public string Source { get; set; } = string.Empty;
 }

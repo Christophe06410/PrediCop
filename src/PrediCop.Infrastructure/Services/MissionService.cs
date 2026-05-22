@@ -6,7 +6,7 @@ using PrediCop.Infrastructure.Data;
 
 namespace PrediCop.Infrastructure.Services;
 
-public class MissionService(AppDbContext context, IGpsService gpsService) : IMissionService
+public class MissionService(AppDbContext context, IGpsService gpsService, IPushNotificationService pushService) : IMissionService
 {
     public async Task<Mission> CreateMissionFromCallAsync(Guid callId, CancellationToken ct = default)
     {
@@ -24,11 +24,15 @@ public class MissionService(AppDbContext context, IGpsService gpsService) : IMis
             TargetAddress = call.IncidentAddress,
             TargetLatitude = call.IncidentLatitude ?? 0,
             TargetLongitude = call.IncidentLongitude ?? 0,
-            BriefingText = call.IncidentDescription
+            BriefingText = call.IncidentDescription,
+            Priority = call.Priority,
         };
 
         context.Missions.Add(mission);
-        call.Status = CallStatus.MissionCreated;
+        // Si l'appel était fermé (reprise), le rouvrir ; sinon marquer MissionCreated
+        call.Status = call.Status == CallStatus.Closed
+            ? CallStatus.InProgress
+            : CallStatus.MissionCreated;
         await context.SaveChangesAsync(ct);
 
         // Auto-dispatch; if no vehicle available yet, mission stays Pending for manual dispatch
@@ -74,6 +78,30 @@ public class MissionService(AppDbContext context, IGpsService gpsService) : IMis
         mission.Status = MissionStatus.Proposed;
 
         await context.SaveChangesAsync(ct);
+
+        // Envoyer un push aux agents actifs du véhicule proposé
+        var deviceTokens = await context.VehicleOfficers
+            .Where(vo => vo.VehicleId == next.VehicleId && vo.IsActive)
+            .Include(vo => vo.User)
+            .Select(vo => vo.User.DeviceToken)
+            .Where(t => t != null)
+            .Cast<string>()
+            .ToListAsync(ct);
+
+        if (deviceTokens.Count > 0)
+        {
+            await pushService.SendToDevicesAsync(
+                deviceTokens,
+                title: mission.Priority >= CallPriority.Critique ? $"🚨 {mission.Priority.ToString().ToUpper()} — Mission {mission.Reference}" : $"Nouvelle mission {mission.Reference}",
+                body: $"Mission {mission.Reference} — {mission.TargetAddress}",
+                data: new Dictionary<string, string>
+                {
+                    { "missionId", mission.Id.ToString() },
+                    { "type", "mission_proposed" },
+                    { "priority", ((int)mission.Priority).ToString() }
+                },
+                ct: ct);
+        }
 
         return assignment;
     }

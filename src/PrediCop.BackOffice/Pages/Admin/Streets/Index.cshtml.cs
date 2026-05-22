@@ -68,6 +68,52 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostEditAsync(
+        Guid id, int baseRiskScore, int riskGrowthRatePerHour,
+        bool isRiskLocked, int? riskAdjustment)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var response = await client.PutAsJsonAsync($"/api/streets/{id}", new
+            {
+                baseRiskScore,
+                riskGrowthRatePerHour,
+                isRiskLocked,
+                riskAdjustment
+            });
+            if (response.IsSuccessStatusCode)
+                TempData["SuccessMessage"] = "Paramètres de risque mis à jour.";
+            else
+                TempData["ErrorMessage"] = $"Erreur API ({(int)response.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur modification rue {Id}", id);
+            TempData["ErrorMessage"] = "Impossible de modifier la rue.";
+        }
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRecomputeAsync()
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var resp = await client.PostAsync("/api/streets/recompute-risks", null);
+            TempData[resp.IsSuccessStatusCode ? "SuccessMessage" : "ErrorMessage"] =
+                resp.IsSuccessStatusCode
+                    ? "Recalcul des scores de risque terminé."
+                    : $"Erreur lors du recalcul ({(int)resp.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur recalcul des risques");
+            TempData["ErrorMessage"] = "Impossible de lancer le recalcul.";
+        }
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         try
@@ -90,7 +136,8 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         try
         {
             var client = httpClientFactory.CreateClient("PrediCopApi");
-            Streets = await client.GetFromJsonAsync<List<StreetDto>>("/api/streets") ?? [];
+            var streets = await client.GetFromJsonAsync<List<StreetDto>>("/api/streets") ?? [];
+            Streets = streets.OrderByDescending(s => s.CurrentRiskScore).ToList();
         }
         catch (Exception ex)
         {
@@ -107,6 +154,10 @@ public class StreetDto
     public string? District { get; set; }
     public string? City { get; set; }
     public int BaseRiskScore { get; set; }
+    public int ComputedBaseRiskScore { get; set; }
+    public bool IsRiskLocked { get; set; }
+    public int? RiskAdjustment { get; set; }
+    public int RiskGrowthRatePerHour { get; set; }
     public int CurrentRiskScore { get; set; }
     public double StartLatitude { get; set; }
     public double StartLongitude { get; set; }

@@ -13,6 +13,13 @@
     </div>
 
     <div class="p-4">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="alert alert-warning py-2 small mb-3 d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-triangle-exclamation me-2"></i>Session expirée. Reconnectez-vous.</span>
+                <a asp-page="/Account/Logout" class="btn btn-sm btn-outline-warning ms-2">Se déconnecter</a>
+            </div>
+        }
         @if (Model.ErrorMessage != null)
         {
             <div class="alert alert-danger py-2 small mb-3">
@@ -36,7 +43,7 @@
                 </div>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Mot de passe</label>
                 <div class="input-group">
                     <span class="input-group-text border-end-0">
@@ -44,6 +51,30 @@
                     </span>
                     <input asp-for="Password" type="password" class="form-control border-start-0 ps-1"
                            placeholder="••••••••" autocomplete="current-password" />
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Ville</label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0">
+                        <i class="fa-solid fa-city text-muted"></i>
+                    </span>
+                    @if (Model.Tenants.Count == 0)
+                    {
+                        <input asp-for="CitySlug" type="text" class="form-control border-start-0 ps-1"
+                               placeholder="Identifiant de la ville (ex: toulouse)" />
+                    }
+                    else
+                    {
+                        <select asp-for="CitySlug" class="form-select border-start-0">
+                            <option value="">-- Sélectionnez votre ville --</option>
+                            @foreach (var tenant in Model.Tenants)
+                            {
+                                <option value="@tenant.Slug">@tenant.Name</option>
+                            }
+                        </select>
+                    }
                 </div>
             </div>
 

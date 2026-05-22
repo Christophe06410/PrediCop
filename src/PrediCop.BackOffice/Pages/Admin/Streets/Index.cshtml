@@ -8,6 +8,15 @@
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-map-location-dot me-2 text-primary"></i>Zone géographique — Rues
     </h4>
+    @if (User.IsInRole("Admin"))
+    {
+        <form method="post" asp-page-handler="Recompute"
+              onsubmit="return confirm('Recalculer les scores de risque pour toutes les rues ? (quelques secondes)')">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-rotate me-1"></i>Recalculer les risques
+            </button>
+        </form>
+    }
 </div>
 
 @if (TempData["SuccessMessage"] != null)
@@ -29,46 +38,100 @@
     <!-- Liste des rues -->
     <div class="col-lg-8">
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-list me-2"></i>Rues enregistrées
-                    <span class="badge bg-secondary ms-2">@Model.Streets.Count</span>
-                </h6>
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-list me-2"></i>Rues enregistrées
+                        <span id="streetCount" class="badge bg-secondary ms-2">@Model.Streets.Count</span>
+                    </h6>
+                    <span id="paginationInfo" class="small text-muted"></span>
+                </div>
+                <!-- Filtres -->
+                <div class="row g-2 align-items-center">
+                    <div class="col-sm-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="searchInput" class="form-control"
+                                   placeholder="Nom, quartier, ville…">
+                            <button type="button" class="btn btn-outline-secondary" id="clearSearch"
+                                    title="Effacer la recherche" style="display:none">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <select id="riskFilter" class="form-select form-select-sm">
+                            <option value="">Tous les risques</option>
+                            <option value="high">Élevé (&gt; 70)</option>
+                            <option value="medium">Moyen (40–70)</option>
+                            <option value="low">Bas (20–40)</option>
+                            <option value="minimal">Minimal (&lt; 20)</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-2">
+                        <select id="sortOrder" class="form-select form-select-sm">
+                            <option value="risk-desc">Risque ↓</option>
+                            <option value="risk-asc">Risque ↑</option>
+                            <option value="name-asc">Nom A→Z</option>
+                            <option value="name-desc">Nom Z→A</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-2">
+                        <select id="pageSize" class="form-select form-select-sm">
+                            <option value="25" selected>25 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                            <option value="0">Tout afficher</option>
+                        </select>
+                    </div>
+                </div>
             </div>
+
             @if (Model.Streets.Any())
             {
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0">
+                    <table class="table table-hover table-sm mb-0" id="streetsTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Rue</th>
                                 <th>Quartier / Ville</th>
                                 <th>Risque base</th>
+                                <th title="Croissance du risque par heure">Croissance/h</th>
                                 <th>Risque actuel</th>
                                 <th>Dernière patrouille</th>
-                                <th>Coords début</th>
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach (var s in Model.Streets.OrderByDescending(x => x.CurrentRiskScore))
+                        <tbody id="streetsBody">
+                            @foreach (var s in Model.Streets)
                             {
                                 var badgeClass = s.CurrentRiskScore > 70 ? "bg-danger" :
                                                  s.CurrentRiskScore > 40 ? "bg-warning text-dark" :
                                                  s.CurrentRiskScore > 20 ? "bg-info text-dark" : "bg-success";
-                                <tr>
-                                    <td class="fw-semibold">@s.Name</td>
+                                var riskLevel = s.CurrentRiskScore > 70 ? "high" :
+                                                s.CurrentRiskScore > 40 ? "medium" :
+                                                s.CurrentRiskScore > 20 ? "low" : "minimal";
+                                <tr data-name="@s.Name.ToLower()"
+                                    data-district="@(s.District?.ToLower() ?? "")"
+                                    data-city="@(s.City?.ToLower() ?? "")"
+                                    data-risk="@s.CurrentRiskScore"
+                                    data-risk-level="@riskLevel">
+                                    <td class="fw-semibold">@s.Name<br/><span class="small text-muted">@s.StartLatitude.ToString("F4"), @s.StartLongitude.ToString("F4")</span></td>
                                     <td class="text-muted small">@s.District @(s.City != null ? $"— {s.City}" : "")</td>
                                     <td><span class="badge bg-secondary">@s.BaseRiskScore</span></td>
+                                    <td><span class="badge bg-secondary">@s.RiskGrowthRatePerHour</span></td>
                                     <td><span class="badge @badgeClass">@s.CurrentRiskScore</span></td>
                                     <td class="small text-muted">
                                         @(s.LastPatrolledAt.HasValue
                                             ? s.LastPatrolledAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
                                             : "Jamais")
                                     </td>
-                                    <td class="small text-muted">@s.StartLatitude.ToString("F4"), @s.StartLongitude.ToString("F4")</td>
-                                    <td>
-                                        <form method="post" asp-page-handler="Delete"
+                                    <td class="text-end" style="white-space:nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                                data-bs-toggle="modal" data-bs-target="#editModal-@s.Id">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <form method="post" asp-page-handler="Delete" class="d-inline"
                                               onsubmit="return confirm('Supprimer cette rue ?')">
                                             <input type="hidden" name="id" value="@s.Id" />
                                             <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -80,6 +143,21 @@
                             }
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Empty state when filters match nothing -->
+                <div id="noResults" class="card-body text-center text-muted py-4" style="display:none">
+                    <i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>
+                    Aucune rue ne correspond aux filtres sélectionnés.
+                    <br><button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="resetFilters()">Réinitialiser les filtres</button>
+                </div>
+
+                <!-- Pagination -->
+                <div class="card-footer py-2 d-flex justify-content-between align-items-center" id="paginationContainer">
+                    <small class="text-muted" id="pageInfo"></small>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginationNav"></ul>
+                    </nav>
                 </div>
             }
             else
@@ -172,6 +250,235 @@
     </div>
 </div>
 
+<!-- Edit modals (outside table so they survive DOM reordering) -->
+@foreach (var s in Model.Streets)
+{
+    <div class="modal fade" id="editModal-@s.Id" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Modifier — @s.Name</h6>
+                    <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" asp-page-handler="Edit">
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="@s.Id" />
+
+                        <div class="alert alert-light border py-2 mb-3 small">
+                            <i class="fa-solid fa-brain me-1 text-primary"></i>
+                            Score calculé par l'algorithme :
+                            <span class="badge bg-primary ms-1">@s.ComputedBaseRiskScore</span>
+                            <span class="text-muted">/ 100</span>
+                            <span class="ms-2 text-muted">— actuel :</span>
+                            <span class="badge bg-secondary ms-1">@s.BaseRiskScore</span>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input type="hidden" name="isRiskLocked" value="false" />
+                            <input type="checkbox" name="isRiskLocked" value="true"
+                                   class="form-check-input" id="lock-@s.Id"
+                                   @(s.IsRiskLocked ? "checked" : "")
+                                   onchange="toggleRiskMode('@s.Id', this.checked)" />
+                            <label class="form-check-label small fw-semibold" for="lock-@s.Id">
+                                <i class="fa-solid fa-lock me-1 text-warning"></i>
+                                Verrouiller (override absolu, l'algorithme n'y touche plus)
+                            </label>
+                        </div>
+
+                        <div id="abs-@s.Id" @(s.IsRiskLocked ? "" : "style=\"display:none\"") class="mb-3">
+                            <label class="form-label fw-semibold small">Score absolu (0–100)</label>
+                            <input type="number" name="baseRiskScore" class="form-control form-control-sm"
+                                   value="@s.BaseRiskScore" min="0" max="100" />
+                        </div>
+
+                        <div id="adj-@s.Id" @(s.IsRiskLocked ? "style=\"display:none\"" : "") class="mb-3">
+                            <label class="form-label fw-semibold small">Ajustement relatif (+/-)</label>
+                            <input type="number" name="riskAdjustment" class="form-control form-control-sm"
+                                   value="@(s.RiskAdjustment.HasValue ? s.RiskAdjustment.Value.ToString() : "")"
+                                   placeholder="ex: 10 ou -5 (vide = score brut de l'algo)" />
+                            <div class="form-text">Valeur ajoutée au score calculé. Vide = utiliser le score brut.</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold small">Croissance par heure (0–20)</label>
+                            <input type="number" name="riskGrowthRatePerHour" class="form-control form-control-sm"
+                                   value="@s.RiskGrowthRatePerHour" min="0" max="20" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleRiskMode(id, locked) {
+            document.getElementById('abs-' + id).style.display = locked ? '' : 'none';
+            document.getElementById('adj-' + id).style.display = locked ? 'none' : '';
+        }
+
+        (function () {
+            const tbody       = document.getElementById('streetsBody');
+            if (!tbody) return;
+
+            const allRows     = Array.from(tbody.querySelectorAll('tr'));
+            const totalCount  = allRows.length;
+            let currentPage   = 1;
+            let filteredRows  = allRows.slice();
+
+            const searchInput  = document.getElementById('searchInput');
+            const clearBtn     = document.getElementById('clearSearch');
+            const riskFilter   = document.getElementById('riskFilter');
+            const sortOrder    = document.getElementById('sortOrder');
+            const pageSizeEl   = document.getElementById('pageSize');
+            const streetCount  = document.getElementById('streetCount');
+            const pageInfo     = document.getElementById('pageInfo');
+            const paginationNav = document.getElementById('paginationNav');
+            const noResults    = document.getElementById('noResults');
+            const paginationContainer = document.getElementById('paginationContainer');
+
+            function applyFilters() {
+                const term = searchInput.value.trim().toLowerCase();
+                const risk = riskFilter.value;
+
+                clearBtn.style.display = (term || risk) ? '' : 'none';
+
+                filteredRows = allRows.filter(row => {
+                    const matchText = !term ||
+                        row.dataset.name.includes(term) ||
+                        row.dataset.district.includes(term) ||
+                        row.dataset.city.includes(term);
+                    const matchRisk = !risk || row.dataset.riskLevel === risk;
+                    return matchText && matchRisk;
+                });
+
+                applySort();
+            }
+
+            function applySort() {
+                const sort = sortOrder.value;
+                filteredRows.sort((a, b) => {
+                    if (sort === 'risk-desc') return +b.dataset.risk - +a.dataset.risk;
+                    if (sort === 'risk-asc')  return +a.dataset.risk - +b.dataset.risk;
+                    if (sort === 'name-asc')  return a.dataset.name.localeCompare(b.dataset.name);
+                    if (sort === 'name-desc') return b.dataset.name.localeCompare(a.dataset.name);
+                    return 0;
+                });
+                currentPage = 1;
+                render();
+            }
+
+            function render() {
+                const size       = parseInt(pageSizeEl.value) || 0;
+                const totalPages = size ? Math.ceil(filteredRows.length / size) : 1;
+                if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+
+                const start = size ? (currentPage - 1) * size : 0;
+                const end   = size ? start + size : filteredRows.length;
+                const pageRows = filteredRows.slice(start, end);
+
+                // Reorder rows in DOM
+                allRows.forEach(r => { r.style.display = 'none'; });
+                pageRows.forEach(r => {
+                    r.style.display = '';
+                    tbody.appendChild(r);
+                });
+
+                // Count badge
+                streetCount.textContent = filteredRows.length < totalCount
+                    ? filteredRows.length + ' / ' + totalCount
+                    : totalCount;
+
+                // No-results state
+                const hasRows = filteredRows.length > 0;
+                document.querySelector('.table-responsive').style.display = hasRows ? '' : 'none';
+                noResults.style.display = hasRows ? 'none' : '';
+                paginationContainer.style.display = (hasRows && size && totalPages > 1) ? '' : 'none';
+
+                if (!hasRows) return;
+
+                // Page info
+                const from = start + 1;
+                const to   = Math.min(end, filteredRows.length);
+                pageInfo.textContent = size
+                    ? `Affichage ${from}–${to} sur ${filteredRows.length}`
+                    : `${filteredRows.length} rue(s)`;
+
+                // Pagination nav
+                paginationNav.innerHTML = '';
+                if (!size || totalPages <= 1) return;
+
+                const prevLi = document.createElement('li');
+                prevLi.className = 'page-item' + (currentPage === 1 ? ' disabled' : '');
+                prevLi.innerHTML = `<a class="page-link" href="#">‹</a>`;
+                prevLi.querySelector('a').addEventListener('click', e => {
+                    e.preventDefault(); if (currentPage > 1) { currentPage--; render(); }
+                });
+                paginationNav.appendChild(prevLi);
+
+                const maxButtons = 7;
+                let start2 = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+                let end2   = Math.min(totalPages, start2 + maxButtons - 1);
+                if (end2 - start2 < maxButtons - 1) start2 = Math.max(1, end2 - maxButtons + 1);
+
+                if (start2 > 1) {
+                    appendPageBtn(1);
+                    if (start2 > 2) appendEllipsis();
+                }
+                for (let p = start2; p <= end2; p++) appendPageBtn(p);
+                if (end2 < totalPages) {
+                    if (end2 < totalPages - 1) appendEllipsis();
+                    appendPageBtn(totalPages);
+                }
+
+                const nextLi = document.createElement('li');
+                nextLi.className = 'page-item' + (currentPage === totalPages ? ' disabled' : '');
+                nextLi.innerHTML = `<a class="page-link" href="#">›</a>`;
+                nextLi.querySelector('a').addEventListener('click', e => {
+                    e.preventDefault(); if (currentPage < totalPages) { currentPage++; render(); }
+                });
+                paginationNav.appendChild(nextLi);
+            }
+
+            function appendPageBtn(p) {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (p === currentPage ? ' active' : '');
+                li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
+                li.querySelector('a').addEventListener('click', e => {
+                    e.preventDefault(); currentPage = p; render();
+                });
+                paginationNav.appendChild(li);
+            }
+
+            function appendEllipsis() {
+                const li = document.createElement('li');
+                li.className = 'page-item disabled';
+                li.innerHTML = '<span class="page-link">…</span>';
+                paginationNav.appendChild(li);
+            }
+
+            window.resetFilters = function () {
+                searchInput.value = '';
+                riskFilter.value  = '';
+                sortOrder.value   = 'risk-desc';
+                pageSizeEl.value  = '25';
+                applyFilters();
+            };
+
+            searchInput.addEventListener('input', () => { currentPage = 1; applyFilters(); });
+            clearBtn.addEventListener('click', resetFilters);
+            riskFilter.addEventListener('change', () => { currentPage = 1; applyFilters(); });
+            sortOrder.addEventListener('change', applySort);
+            pageSizeEl.addEventListener('change', () => { currentPage = 1; render(); });
+
+            // Initial render
+            applyFilters();
+        })();
+    </script>
 }

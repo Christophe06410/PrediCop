@@ -12,6 +12,8 @@ public class VehicleDto
     public double? LastLongitude { get; set; }
     public DateTime? LastPositionUpdate { get; set; }
     public List<string> OfficerNames { get; set; } = [];
+    public string? BeaconUuid { get; set; }
+    public Guid? AssignedGeoZoneId { get; set; }
 }
 
 public class EditVehicleDto
@@ -28,4 +30,10 @@ public class EditVehicleDto
 
     [Display(Name = "Statut")]
     public string Status { get; set; } = "Offline";
+
+    [Display(Name = "UUID Beacon BLE")]
+    public string? BeaconUuid { get; set; }
+
+    [Display(Name = "Zone de patrouille assignée")]
+    public Guid? AssignedGeoZoneId { get; set; }
 }

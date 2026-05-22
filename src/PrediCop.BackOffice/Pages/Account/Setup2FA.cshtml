@@ -1,0 +1,171 @@
+@page
+@model PrediCop.BackOffice.Pages.Account.Setup2FAModel
+@{
+    ViewData["Title"] = "Configuration 2FA";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item active">Authentification à deux facteurs</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        @if (Model.SuccessMessage != null)
+        {
+            <div class="alert alert-success d-flex align-items-center mb-3">
+                <i class="fa-solid fa-circle-check me-2"></i>
+                <div>@Model.SuccessMessage</div>
+            </div>
+        }
+        @if (Model.ErrorMessage != null)
+        {
+            <div class="alert alert-danger d-flex align-items-center mb-3">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>
+                <div>@Model.ErrorMessage</div>
+            </div>
+        }
+
+        @if (Model.TotpAlreadyEnabled)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-shield-halved me-2"></i>Authentification à deux facteurs activée
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Votre compte est protégé par l'authentification à deux facteurs (TOTP).
+                        Chaque connexion nécessite un code généré par votre application d'authentification.
+                    </p>
+                    <form method="post" asp-page-handler="Disable">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Code TOTP de confirmation</label>
+                            <div class="input-group" style="max-width:220px;">
+                                <span class="input-group-text"><i class="fa-solid fa-lock text-muted"></i></span>
+                                <input name="disableCode" type="text" class="form-control"
+                                       placeholder="123456" maxlength="16" inputmode="numeric" />
+                            </div>
+                            <div class="form-text text-muted small">Saisissez votre code actuel pour désactiver la 2FA.</div>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fa-solid fa-shield-xmark me-2"></i>Désactiver la 2FA
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-arrows-rotate me-2 text-warning"></i>Reconfigurer la 2FA
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Pour changer d'application d'authentification ou de secret, vous pouvez lancer une nouvelle configuration.
+                    </p>
+                    <a asp-page="/Account/Setup2FA" asp-route-reset="true" class="btn btn-outline-warning btn-sm">
+                        <i class="fa-solid fa-qrcode me-1"></i>Reconfigurer
+                    </a>
+                </div>
+            </div>
+        }
+        else if (Model.SetupData != null)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-qrcode me-2"></i>Étape 1 — Scanner le QR code
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <p class="text-muted mb-3">
+                        Scannez ce QR code avec votre application d'authentification
+                        (Google Authenticator, Authy, Microsoft Authenticator…)
+                    </p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?data=@Uri.EscapeDataString(Model.SetupData.QrCodeUri)&size=200x200"
+                         alt="QR Code 2FA" class="border rounded p-2 mb-3" style="background:#fff;" />
+                    <div class="mt-2 mb-2">
+                        <p class="small text-muted mb-1">Ou saisissez manuellement la clé :</p>
+                        <code class="user-select-all fs-6 text-primary">@Model.SetupData.SecretKey</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-key me-2 text-warning"></i>Codes de récupération
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning py-2 small">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        <strong>Conservez ces codes en lieu sûr.</strong> Ils vous permettront d'accéder à votre compte si vous perdez votre application d'authentification. Chaque code ne peut être utilisé qu'une seule fois.
+                    </div>
+                    <div class="row g-2 mb-2">
+                        @foreach (var code in Model.SetupData.RecoveryCodes)
+                        {
+                            <div class="col-6 col-md-3">
+                                <code class="d-block text-center bg-light border rounded px-2 py-1 small user-select-all">@code</code>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h6 class="mb-0 fw-semibold text-success">
+                        <i class="fa-solid fa-check-circle me-2"></i>Étape 2 — Confirmer l'activation
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Saisissez le code à 6 chiffres affiché dans votre application pour confirmer la configuration.
+                    </p>
+                    <form method="post" asp-page-handler="Enable">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Code TOTP</label>
+                            <div class="input-group" style="max-width:220px;">
+                                <span class="input-group-text"><i class="fa-solid fa-shield-halved text-muted"></i></span>
+                                <input asp-for="EnableCode" type="text" class="form-control"
+                                       placeholder="123456" autofocus maxlength="6" inputmode="numeric" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-solid fa-shield-halved me-2"></i>Activer la 2FA
+                        </button>
+                        <a asp-page="/Account/Setup2FA" class="btn btn-outline-secondary ms-2">Annuler</a>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Authentification à deux facteurs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        L'authentification à deux facteurs (2FA) ajoute une couche de sécurité supplémentaire à votre compte.
+                        En plus de votre mot de passe, vous devrez saisir un code généré par une application sur votre téléphone.
+                    </p>
+                    <a asp-page="/Account/Setup2FA" asp-route-reset="true" class="btn btn-primary">
+                        <i class="fa-solid fa-qrcode me-2"></i>Configurer la 2FA
+                    </a>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>

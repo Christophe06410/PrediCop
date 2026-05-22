@@ -11,6 +11,13 @@ public class PatrolVehicle : TenantEntity
     public double? LastLongitude { get; set; }
     public DateTime? LastPositionUpdate { get; set; }
 
+    /// <summary>UUID du beacon BLE installé dans le véhicule (optionnel).</summary>
+    public string? BeaconUuid { get; set; }
+
+    /// <summary>Zone de patrouille assignée pour le géofencing (optionnel).</summary>
+    public Guid? AssignedGeoZoneId { get; set; }
+    public GeoZone? AssignedGeoZone { get; set; }
+
     public ICollection<VehicleOfficer> Officers { get; set; } = [];
     public ICollection<MissionAssignment> Missions { get; set; } = [];
     public ICollection<PatrolRecord> PatrolRecords { get; set; } = [];

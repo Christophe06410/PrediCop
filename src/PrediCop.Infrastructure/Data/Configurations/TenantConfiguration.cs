@@ -35,5 +35,15 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .WithOne(s => s.Tenant)
             .HasForeignKey(s => s.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(t => t.SubscriptionStatus).HasConversion<string>().HasMaxLength(50);
+        builder.Property(t => t.SubscriptionPlan).HasConversion<string>().HasMaxLength(50);
+        builder.Property(t => t.SubscriptionPeriod).HasConversion<string>().HasMaxLength(20);
+        builder.Property(t => t.StripeCustomerId).HasMaxLength(200);
+        builder.Property(t => t.StripeSubscriptionId).HasMaxLength(200);
+        builder.Property(t => t.StripeCheckoutSessionId).HasMaxLength(200);
+        builder.HasIndex(t => t.StripeCustomerId);
+
+        builder.Property(t => t.DpoEmail).HasMaxLength(256);
     }
 }

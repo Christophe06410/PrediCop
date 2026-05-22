@@ -46,6 +46,11 @@ public class CompleteMissionRequest
     public string Report { get; set; } = string.Empty;
 }
 
+public class ForceAssignRequest
+{
+    public Guid VehicleId { get; set; }
+}
+
 public class RefuseMissionRequest
 {
     public RefusalReasonCode? ReasonCode { get; set; }
@@ -57,6 +62,7 @@ public class MissionResponse
     public Guid Id { get; set; }
     public string Reference { get; set; } = string.Empty;
     public MissionStatus Status { get; set; }
+    public CallPriority Priority { get; set; }
     public Guid CallId { get; set; }
     public string CallReference { get; set; } = string.Empty;
     public string TargetAddress { get; set; } = string.Empty;
@@ -75,6 +81,19 @@ public class MissionResponse
     public List<MissionAssignmentResponse> Assignments { get; set; } = [];
     public List<MissionIntervenantResponse> Intervenants { get; set; } = [];
     public List<MediaAttachmentResponse> Media { get; set; } = [];
+    /// <summary>Autres missions liées au même appel (non incluses dans les listings, uniquement dans GetMission).</summary>
+    public List<SiblingMissionResponse> SiblingMissions { get; set; } = [];
+}
+
+/// <summary>Résumé d'une mission sœur (même appel) pour la page de détail.</summary>
+public class SiblingMissionResponse
+{
+    public Guid Id { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public MissionStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? AssignedVehicleCallSign { get; set; }
 }
 
 public class MissionIntervenantResponse

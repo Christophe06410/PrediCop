@@ -1,0 +1,274 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.SettingsModel
+@{
+    ViewData["Title"] = "Paramètres du tenant";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item active">Paramètres</li>
+        </ol>
+    </nav>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+
+    <!-- Email DPO (RGPD) -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-shield-halved me-2 text-success"></i>RGPD — Délégué à la Protection des Données
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Adresse email du DPO de votre Police Municipale. Cette adresse sera utilisée pour les
+                    communications relatives aux demandes d'exercice de droits RGPD.
+                </p>
+                <form method="post" asp-page-handler="DpoEmail">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="dpoEmail">Email DPO</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                            <input type="email" class="form-control" id="dpoEmail" name="DpoEmail"
+                                   value="@Model.DpoEmail" placeholder="dpo@mairie-exemple.fr" />
+                        </div>
+                        <div class="form-text">Laissez vide si vous n'avez pas de DPO désigné.</div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modules optionnels -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-puzzle-piece me-2 text-warning"></i>Modules optionnels
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Activez ou désactivez les modules fonctionnels pour ce tenant.
+                </p>
+                <form method="post" asp-page-handler="Modules">
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="moduleRh" name="ModuleRhEnabled" value="true"
+                                       @(Model.Features?.ModuleRhEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="moduleRh">
+                                    <span class="fw-semibold">Module RH</span>
+                                    <span class="badge bg-secondary ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="Analyse d'Impact sur la Protection des Données. Recommandée avant l'activation de ce module car il traite des données RH et potentiellement des données de santé (Art. 35 RGPD).">AIPD recommandée</span>
+                                    <div class="text-muted small">Congés, plannings, profils agents</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="moduleFourriere" name="ModuleFourriereEnabled" value="true"
+                                       @(Model.Features?.ModuleFourriereEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="moduleFourriere">
+                                    <span class="fw-semibold">Module Fourrière</span>
+                                    <div class="text-muted small">Gestion des enlèvements</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="moduleFleet" name="ModuleFleetEnabled" value="true"
+                                       @(Model.Features?.ModuleFleetEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="moduleFleet">
+                                    <span class="fw-semibold">Module Flotte</span>
+                                    <div class="text-muted small">Carnet de bord, maintenances</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="moduleLogistics" name="ModuleLogisticsEnabled" value="true"
+                                       @(Model.Features?.ModuleLogisticsEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="moduleLogistics">
+                                    <span class="fw-semibold">Module Logistique</span>
+                                    <span class="badge bg-secondary ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="Analyse d'Impact sur la Protection des Données. Recommandée car ce module enregistre les dotations nominatives des agents (Art. 35 RGPD).">AIPD recommandée</span>
+                                    <div class="text-muted small">Dotations, uniformes, équipements</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="moduleVerbalisation" name="ModuleVerbalisationEnabled" value="true"
+                                       @(Model.Features?.ModuleVerbalisationEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="moduleVerbalisation">
+                                    <span class="fw-semibold">Module Verbalisation</span>
+                                    <div class="text-muted small">PV électroniques, export ANTAI</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer les modules
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Champs sensibles & rétention RGPD -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-user-shield me-2 text-danger"></i>Champs sensibles &amp; rétention des données
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Contrôlez la collecte des données à caractère personnel sensibles (Art. 9 &amp; 10 RGPD)
+                    et les durées de rétention recommandées par la CNIL.
+                </p>
+                <form method="post" asp-page-handler="SensitiveFields">
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="bloodType" name="AgentBloodTypeEnabled" value="true"
+                                       @(Model.Features?.AgentBloodTypeEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="bloodType">
+                                    <span class="fw-semibold">Groupe sanguin des agents</span>
+                                    <span class="badge bg-danger ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="Donnée de santé soumise à l'Art. 9 RGPD. Requiert : consentement écrit de chaque agent, AIPD dédiée, et un hébergeur certifié HDS. Désactivé par défaut.">Art. 9 RGPD</span>
+                                    <div class="text-muted small">Donnée de santé — consentement explicite requis</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="emergencyContact" name="AgentEmergencyContactEnabled" value="true"
+                                       @(Model.Features?.AgentEmergencyContactEnabled != false ? "checked" : "") />
+                                <label class="form-check-label" for="emergencyContact">
+                                    <span class="fw-semibold">Contacts d'urgence</span>
+                                    <div class="text-muted small">Personnes à contacter en cas d'incident</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="gpsTracking" name="GpsTrackingEnabled" value="true"
+                                       @(Model.Features?.GpsTrackingEnabled != false ? "checked" : "") />
+                                <label class="form-check-label" for="gpsTracking">
+                                    <span class="fw-semibold">Géolocalisation temps réel</span>
+                                    <span class="badge bg-warning text-dark ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
+                                          title="Analyse d'Impact sur la Protection des Données obligatoire (Art. 35 RGPD) : la surveillance GPS continue des agents est un traitement à risque élevé. À réaliser par votre DPO avant activation.">AIPD requise</span>
+                                    <div class="text-muted small">Suivi GPS des véhicules de patrouille</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="geofencing" name="GeofencingEnabled" value="true"
+                                       @(Model.Features?.GeofencingEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="geofencing">
+                                    <span class="fw-semibold">Géofencing</span>
+                                    <div class="text-muted small">Alertes si un véhicule quitte sa zone</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="photoAttachments" name="PhotoAttachmentsEnabled" value="true"
+                                       @(Model.Features?.PhotoAttachmentsEnabled != false ? "checked" : "") />
+                                <label class="form-check-label" for="photoAttachments">
+                                    <span class="fw-semibold">Photos (PV &amp; fourrière)</span>
+                                    <div class="text-muted small">Pièces jointes photographiques sur les dossiers</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3" />
+
+                    <h6 class="fw-semibold mb-3 text-muted small text-uppercase">Durées de rétention (en jours — 0 = pas de purge automatique)</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6 col-md-4">
+                            <label class="form-label fw-semibold small" for="gpsRetention">
+                                Données GPS
+                                <span class="text-muted fw-normal">(max. 30 j. — CNIL)</span>
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="gpsRetention"
+                                       name="GpsDataRetentionDays" min="0" max="3650"
+                                       value="@(Model.Features?.GpsDataRetentionDays ?? 30)" />
+                                <span class="input-group-text">jours</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <label class="form-label fw-semibold small" for="auditRetention">
+                                Journaux d'audit
+                                <span class="text-muted fw-normal">(min. 1 an — ANSSI)</span>
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="auditRetention"
+                                       name="AuditLogRetentionDays" min="0" max="3650"
+                                       value="@(Model.Features?.AuditLogRetentionDays ?? 365)" />
+                                <span class="input-group-text">jours</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer les paramètres RGPD
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+});
+</script>
+}

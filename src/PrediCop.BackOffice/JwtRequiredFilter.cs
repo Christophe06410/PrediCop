@@ -1,13 +1,10 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace PrediCop.BackOffice;
 
-/// <summary>
-/// Redirects to login when the cookie auth is valid but the JWT is missing from the session
-/// (happens when the BackOffice or API restarts and in-memory session is cleared).
-/// </summary>
 public class JwtRequiredFilter(IHttpContextAccessor httpContextAccessor) : IAsyncPageFilter
 {
     public Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context)
@@ -18,24 +15,38 @@ public class JwtRequiredFilter(IHttpContextAccessor httpContextAccessor) : IAsyn
         PageHandlerExecutionDelegate next)
     {
         var httpContext = httpContextAccessor.HttpContext!;
-
-        // Don't intercept Account pages (login, logout, etc.)
         var page = context.ActionDescriptor.DisplayName ?? "";
-        if (page.Contains("/Account/"))
+
+        if (page.Contains("/Account/") || page.Contains("/Public/") || page.Contains("/Subscription/Suspended"))
         {
             await next();
             return;
         }
 
         var isAuthenticated = httpContext.User.Identity?.IsAuthenticated == true;
-        var hasJwt = !string.IsNullOrEmpty(httpContext.Session.GetString("JwtToken"));
+        var jwtToken = httpContext.Session.GetString("JwtToken");
+        var hasJwt = !string.IsNullOrEmpty(jwtToken);
 
         if (isAuthenticated && !hasJwt)
         {
-            // Cookie is valid but JWT is gone — force a fresh login so the session gets a new token
             context.Result = new RedirectToPageResult("/Account/Login",
-                new { returnUrl = httpContext.Request.Path });
+                new { returnUrl = httpContext.Request.PathBase + httpContext.Request.Path + httpContext.Request.QueryString });
             return;
+        }
+
+        if (isAuthenticated && hasJwt)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (handler.CanReadToken(jwtToken))
+            {
+                var token = handler.ReadJwtToken(jwtToken);
+                var subStatus = token.Claims.FirstOrDefault(c => c.Type == "subscriptionStatus")?.Value;
+                if (subStatus is "PastDue" or "Cancelled")
+                {
+                    context.Result = new RedirectToPageResult("/Subscription/Suspended");
+                    return;
+                }
+            }
         }
 
         await next();

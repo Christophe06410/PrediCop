@@ -1,0 +1,175 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.RgpdRequests.IndexModel
+@{
+    ViewData["Title"] = "Demandes RGPD";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Demandes RGPD
+    </h4>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-secondary fs-6">@Model.Requests.Count demande(s)</span>
+        <a asp-page="/Rgpd/Index" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Page RGPD publique
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-1"></i>@ok
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Requests.Count == 0)
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-shield-halved fa-3x mb-3 opacity-25"></i>
+                <p class="mb-1 fw-semibold">Aucune demande RGPD</p>
+                <p class="small">Les demandes soumises via la page RGPD publique apparaîtront ici.</p>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Demandeur</th>
+                        <th>Email</th>
+                        <th>Description</th>
+                        <th class="text-center">Statut</th>
+                        <th class="text-end" style="width:160px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Requests)
+                    {
+                        <tr class="@(r.IsProcessed ? "table-light text-muted" : "")">
+                            <td class="small text-nowrap">@r.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <span class="badge bg-primary bg-opacity-75">@Model.GetTypeLabel(r.RequestType)</span>
+                            </td>
+                            <td class="fw-semibold">@r.RequesterName</td>
+                            <td class="small">
+                                <a href="mailto:@r.RequesterEmail">@r.RequesterEmail</a>
+                            </td>
+                            <td class="small text-muted" style="max-width:250px">
+                                <span class="d-inline-block text-truncate" style="max-width:240px"
+                                      title="@r.Description">@r.Description</span>
+                            </td>
+                            <td class="text-center">
+                                @if (r.IsProcessed)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fa-solid fa-check me-1"></i>Traitée
+                                    </span>
+                                    @if (r.ProcessedAt.HasValue)
+                                    {
+                                        <br/>
+                                        <span class="small text-muted">@r.ProcessedAt.Value.ToString("dd/MM/yyyy")</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fa-solid fa-clock me-1"></i>En attente
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (!r.IsProcessed)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#processModal"
+                                            data-id="@r.Id"
+                                            data-name="@r.RequesterName"
+                                            data-type="@Model.GetTypeLabel(r.RequestType)">
+                                        <i class="fa-solid fa-check me-1"></i>Marquer traitée
+                                    </button>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(r.AdminNotes))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="click"
+                                            data-bs-placement="left"
+                                            data-bs-content="@r.AdminNotes"
+                                            title="Notes admin">
+                                        <i class="fa-solid fa-note-sticky me-1"></i>Notes
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<!-- Modal : marquer traitée -->
+<div class="modal fade" id="processModal" tabindex="-1" aria-labelledby="processModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" asp-page-handler="Process">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="processModalLabel">
+                        <i class="fa-solid fa-check-circle me-2"></i>Marquer comme traitée
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Vous allez marquer la demande de <strong id="processModalName"></strong>
+                        (<span id="processModalType" class="text-muted"></span>) comme traitée.
+                    </p>
+                    <input type="hidden" asp-for="ProcessId" id="processModalId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes internes (facultatif)</label>
+                        <textarea asp-for="ProcessNotes" class="form-control" rows="3"
+                                  placeholder="Indiquez les actions réalisées, la réponse envoyée..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa-solid fa-check me-1"></i>Confirmer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialiser les popovers Bootstrap
+        document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+            new bootstrap.Popover(el);
+        });
+
+        // Remplir le modal avec les données de la ligne
+        document.getElementById('processModal').addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('processModalId').value = btn.dataset.id;
+            document.getElementById('processModalName').textContent = btn.dataset.name;
+            document.getElementById('processModalType').textContent = btn.dataset.type;
+            document.querySelector('[name="ProcessNotes"]').value = '';
+        });
+    </script>
+}

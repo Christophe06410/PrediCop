@@ -13,6 +13,11 @@ public class User : TenantEntity
     public bool IsActive { get; set; } = true;
     public string? DeviceToken { get; set; }
 
+    // 2FA TOTP
+    public bool TotpEnabled { get; set; }
+    public string? TotpSecretKey { get; set; }
+    public string? TotpRecoveryCodes { get; set; } // JSON array de codes usage unique
+
     public string FullName => $"{FirstName} {LastName}";
 
     public ICollection<VehicleOfficer> VehicleAssignments { get; set; } = [];

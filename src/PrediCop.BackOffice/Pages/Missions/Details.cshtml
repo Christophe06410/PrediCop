@@ -13,6 +13,15 @@
         </ol>
     </nav>
     <div class="d-flex gap-2">
+        <a asp-page="/Admin/Tickets/Create" asp-route-missionId="@Model.Mission!.Id"
+           class="btn btn-sm btn-outline-warning"
+           title="Créer un procès-verbal lié à cette mission">
+            <i class="fa-solid fa-ticket me-1"></i>Créer un PV
+        </a>
+        <a asp-page="/Missions/ExportWord" asp-route-id="@Model.Mission!.Id"
+           class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-file-word me-1"></i>Exporter Word
+        </a>
         <a asp-page="/Missions/Export" asp-route-id="@Model.Mission!.Id"
            class="btn btn-sm btn-outline-danger" target="_blank">
             <i class="fa-solid fa-file-pdf me-1"></i>Exporter PDF
@@ -33,13 +42,35 @@
                         <h5 class="fw-bold mb-1">
                             <i class="fa-solid fa-car-side me-2 text-success"></i>@mission.Reference
                         </h5>
-                        <div class="d-flex gap-2 align-items-center">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
                             @{ ViewData["Status"] = mission.Status; }
                             @await Html.PartialAsync("_StatusBadge")
+                            @{
+                                var (detPrioBadge, detPrioIcon, detPrioLabel) = mission.Priority switch
+                                {
+                                    "SOS"      => ("bg-danger",           "fa-siren-on",             "SOS"),
+                                    "Critique" => ("bg-danger",           "fa-fire",                 "Critique"),
+                                    "Urgent"   => ("bg-warning text-dark","fa-triangle-exclamation", "Urgent"),
+                                    _          => ("bg-secondary",        "fa-circle-check",         "Routine")
+                                };
+                            }
+                            @if (mission.Priority == "SOS")
+                            {
+                                <span class="badge @detPrioBadge priority-sos-pulse">
+                                    <i class="fa-solid @detPrioIcon me-1"></i>@detPrioLabel
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge @detPrioBadge">
+                                    <i class="fa-solid @detPrioIcon me-1"></i>@detPrioLabel
+                                </span>
+                            }
                             @if (!string.IsNullOrEmpty(mission.CallReference))
                             {
                                 <a asp-page="/Calls/Details" asp-route-id="@mission.CallId"
-                                   class="badge bg-info text-dark text-decoration-none">
+                                   class="badge bg-info text-dark text-decoration-none"
+                                   title="Main courante liée">
                                     <i class="fa-solid fa-phone me-1"></i>@mission.CallReference
                                 </a>
                             }
@@ -60,11 +91,81 @@
                                 </button>
                             </form>
                         }
+                        @if (Model.CanForceAssign)
+                        {
+                            <button type="button" class="btn btn-danger fw-semibold"
+                                    data-bs-toggle="modal" data-bs-target="#force-assign-modal">
+                                <i class="fa-solid fa-bolt me-2"></i>Forcer l'attribution
+                            </button>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Contexte de reprise -->
+    @if (Model.IsResumedMission)
+    {
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-start gap-3 mb-0" role="alert">
+                <i class="fa-solid fa-rotate-right fa-lg mt-1 flex-shrink-0"></i>
+                <div class="flex-grow-1">
+                    <strong>Cette mission est une reprise.</strong>
+                    @{
+                        var sibCount = mission.SiblingMissions.Count;
+                    }
+                    @sibCount intervention(s) précédente(s) ont déjà été effectuées sur la main courante
+                    <a asp-page="/Calls/Details" asp-route-id="@mission.CallId" class="alert-link">@mission.CallReference</a>.
+
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-bordered mb-0 bg-white">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Référence</th>
+                                    <th>Statut</th>
+                                    <th>Équipage</th>
+                                    <th>Créée le</th>
+                                    <th>Terminée le</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sib in mission.SiblingMissions.OrderByDescending(s => s.CreatedAt))
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@sib.Reference</td>
+                                        <td>
+                                            @{ ViewData["Status"] = sib.Status; }
+                                            @await Html.PartialAsync("_StatusBadge")
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(sib.AssignedVehicleCallSign))
+                                            {
+                                                <span class="badge bg-secondary">@sib.AssignedVehicleCallSign</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td>@sib.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@(sib.CompletedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                                        <td>
+                                            <a asp-page="/Missions/Details" asp-route-id="@sib.Id"
+                                               class="btn btn-sm btn-outline-info py-0">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
     <!-- Détails mission -->
     <div class="col-lg-6">
@@ -207,7 +308,8 @@
                             <div class="col-12">
                                 <label class="form-label small fw-semibold">Rapport narratif</label>
                                 <textarea name="narrativeReport" class="form-control form-control-sm" rows="5"
-                                          maxlength="8000" placeholder="Description détaillée de l'intervention...">@mission.NarrativeReport</textarea>
+                                          maxlength="8000" placeholder="Description détaillée de l'intervention..."
+                                          data-text-assistant>@mission.NarrativeReport</textarea>
                             </div>
                             <div class="col-12 text-end">
                                 <button type="submit" class="btn btn-sm btn-primary">
@@ -483,6 +585,73 @@
     </div>
 </div>
 
+@if (Model.CanForceAssign)
+{
+    <!-- Modal Force Assign -->
+    <div class="modal fade" id="force-assign-modal" tabindex="-1" aria-labelledby="forceAssignLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold" id="forceAssignLabel">
+                        <i class="fa-solid fa-bolt me-2"></i>Forcer l'attribution — @mission.Reference
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        Cette action réaffectera le véhicule sélectionné immédiatement, interrompant sa mission en cours.
+                    </div>
+                    @if (Model.OnMissionVehicles.Any())
+                    {
+                        <p class="fw-semibold mb-2">Sélectionner un véhicule à réaffecter :</p>
+                        <div class="list-group" id="vehicle-list-force">
+                            @foreach (var v in Model.OnMissionVehicles)
+                            {
+                                <label class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                                    <input type="radio" name="forceVehicleId" value="@v.Id" class="form-check-input mt-0" />
+                                    <div>
+                                        <strong><i class="fa-solid fa-car me-1"></i>@v.CallSign</strong>
+                                        <span class="badge bg-warning text-dark ms-2">En mission</span>
+                                        @if (v.OfficerNames.Any())
+                                        {
+                                            <div class="text-muted small">@string.Join(", ", v.OfficerNames)</div>
+                                        }
+                                    </div>
+                                </label>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-3">
+                            <i class="fa-solid fa-car-burst fa-2x mb-2 d-block"></i>
+                            Aucun véhicule actuellement en mission.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger fw-semibold" id="btn-confirm-force-assign"
+                            @(!Model.OnMissionVehicles.Any() ? "disabled" : "")>
+                        <i class="fa-solid fa-bolt me-2"></i>Confirmer la réaffectation forcée
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Styles {
+    <style>
+        @@keyframes sos-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.08); }
+        }
+        .priority-sos-pulse { animation: sos-pulse 0.8s ease-in-out infinite; }
+    </style>
+}
+
 @section Scripts {
     <script>
     // ---- Intervenants ----
@@ -555,7 +724,33 @@
     }
     </script>
     <script>
-    var map = L.map('map-mission').setView([@mission.TargetLatitude, @mission.TargetLongitude], 15);
+    var rawLat = @mission.TargetLatitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+    var rawLng = @mission.TargetLongitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+    var coordsValid = Math.abs(rawLat) > 0.001 || Math.abs(rawLng) > 0.001;
+    var missionCenter = [rawLat, rawLng];
+    var missionAddress = '@Html.Raw(mission.TargetAddress.Replace("'", "\\'"))';
+
+    var iconBase = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-';
+    var shadow   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
+    function makeIcon(color) {
+        return L.icon({ iconUrl: iconBase + color + '.png', shadowUrl: shadow,
+                        iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34] });
+    }
+
+    // Initialisation de la carte — vue préliminaire sur le premier véhicule connu si coords invalides
+    var streets = @Html.Raw(Model.StreetsJson);
+    var vehicles = @Html.Raw(Model.VehiclesJson);
+    var assignedVehicle = @Html.Raw(Model.AssignedVehicleJson);
+    var assignedCallSign = '@Html.Raw(mission.AssignedVehicleCallSign ?? "")';
+
+    var fallback = (function() {
+        var v = vehicles.find(function(v) { return v.lastLatitude && v.lastLongitude; });
+        if (v) return [v.lastLatitude, v.lastLongitude];
+        if (streets.length > 0) return [streets[0].startLatitude, streets[0].startLongitude];
+        return [43.6047, 1.4442];
+    })();
+
+    var map = L.map('map-mission').setView(coordsValid ? missionCenter : fallback, coordsValid ? 15 : 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19
@@ -563,14 +758,13 @@
 
     var bounds = L.latLngBounds();
 
-    // --- Rues (polylignes colorées par score de risque) ---
-    var streets = @Html.Raw(Model.StreetsJson);
+    // --- Rues ---
     streets.forEach(function(s) {
         var score = s.currentRiskScore || 0;
         var color = score > 70 ? '#ef4444' :
                     score > 40 ? '#f59e0b' :
                     score > 20 ? '#eab308' : '#22c55e';
-        var line = L.polyline(
+        L.polyline(
             [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
             { color: color, weight: 5, opacity: 0.8 }
         ).bindPopup(
@@ -578,18 +772,9 @@
             (s.district ? '<br><small>' + s.district + '</small>' : '') +
             '<br>Risque&nbsp;: <b>' + score + '</b>'
         ).addTo(map);
-        bounds.extend(line.getBounds());
     });
 
-    // --- Véhicules (marqueurs colorés) ---
-    var iconBase = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-';
-    var shadow   = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
-    function makeIcon(color) {
-        return L.icon({ iconUrl: iconBase + color + '.png', shadowUrl: shadow,
-                        iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34] });
-    }
-    var assignedCallSign = '@Html.Raw(mission.AssignedVehicleCallSign ?? "")';
-    var vehicles = @Html.Raw(Model.VehiclesJson);
+    // --- Véhicules ---
     vehicles.forEach(function(v) {
         if (!v.lastLatitude || !v.lastLongitude) return;
         var isAssigned = v.callSign === assignedCallSign;
@@ -606,27 +791,76 @@
         bounds.extend(ll);
     });
 
-    // --- POI mission (marqueur rouge, par-dessus tout) ---
-    var missionLL = [@mission.TargetLatitude, @mission.TargetLongitude];
-    L.marker(missionLL, { icon: makeIcon('red'), zIndexOffset: 2000 })
+    // --- POI mission ---
+    var poiMarker = L.marker(coordsValid ? missionCenter : fallback, { icon: makeIcon('red'), zIndexOffset: 2000 })
         .addTo(map)
         .bindPopup('<strong>@Html.Raw(mission.Reference)</strong><br>@Html.Raw(mission.TargetAddress.Replace("'", "\\'"))')
         .openPopup();
-    bounds.extend(missionLL);
 
-    // --- Ligne pointillée véhicule assigné → cible ---
-    var assignedVehicle = @Html.Raw(Model.AssignedVehicleJson);
-    if (assignedVehicle && assignedVehicle.lastLatitude && assignedVehicle.lastLongitude) {
-        var dist = @(Model.DistanceKm.HasValue ? Model.DistanceKm.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) : "null");
-        L.polyline(
-            [[assignedVehicle.lastLatitude, assignedVehicle.lastLongitude], missionLL],
-            { color: '#f59e0b', weight: 3, dashArray: '8 6', opacity: 0.9 }
-        ).bindPopup('Distance : <b>' + (dist !== null ? dist + ' km' : '?') + '</b>').addTo(map);
+    function finalizeBounds(center) {
+        bounds.extend(center);
+
+        // --- Ligne pointillée véhicule assigné → cible ---
+        if (assignedVehicle && assignedVehicle.lastLatitude && assignedVehicle.lastLongitude) {
+            var dist = @(Model.DistanceKm.HasValue ? Model.DistanceKm.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) : "null");
+            L.polyline(
+                [[assignedVehicle.lastLatitude, assignedVehicle.lastLongitude], center],
+                { color: '#f59e0b', weight: 3, dashArray: '8 6', opacity: 0.9 }
+            ).bindPopup('Distance : <b>' + (dist !== null ? dist + ' km' : '?') + '</b>').addTo(map);
+        }
+
+        if (bounds.isValid() && bounds.getNorthEast().distanceTo(bounds.getSouthWest()) > 100)
+            map.fitBounds(bounds.pad(0.2));
+        else
+            map.setView(center, 15);
     }
 
-    // --- Ajuster la vue pour tout montrer ---
-    if (bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.15));
+    if (coordsValid) {
+        finalizeBounds(missionCenter);
+    } else {
+        // Coordonnées absentes en DB — géocoder depuis l'adresse
+        fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(missionAddress))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data || !data.length) { finalizeBounds(fallback); return; }
+                var gc = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                poiMarker.setLatLng(gc);
+                finalizeBounds(gc);
+            })
+            .catch(function() { finalizeBounds(fallback); });
     }
     </script>
+    @if (Model.CanForceAssign)
+    {
+        <script>
+        document.getElementById('btn-confirm-force-assign')?.addEventListener('click', async function () {
+            var selected = document.querySelector('input[name="forceVehicleId"]:checked');
+            if (!selected) { alert('Veuillez sélectionner un véhicule.'); return; }
+            var vehicleId = selected.value;
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>En cours...';
+            try {
+                var r = await fetch('/api/proxy/missions/@mission.Id/force-assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vehicleId: vehicleId })
+                });
+                if (r.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('force-assign-modal')).hide();
+                    location.reload();
+                } else {
+                    var err = await r.json().catch(() => ({}));
+                    alert('Erreur : ' + (err.title || err.detail || r.status));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-bolt me-2"></i>Confirmer la réaffectation forcée';
+                }
+            } catch (e) {
+                alert('Impossible de joindre le serveur.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-bolt me-2"></i>Confirmer la réaffectation forcée';
+            }
+        });
+        </script>
+    }
 }

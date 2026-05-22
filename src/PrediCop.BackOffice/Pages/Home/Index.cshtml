@@ -1,0 +1,123 @@
+@page
+@model PrediCop.BackOffice.Pages.Home.IndexModel
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Html
+@{
+    ViewData["Title"] = "Accueil";
+    var flags  = Model.Flags;
+    var isAdminOrManager = User.IsInRole("Admin") || User.IsInRole("Manager");
+    var tenantName = User.FindFirstValue("tenantName") ?? "votre service";
+}
+
+<div class="mb-4">
+    <h4 class="fw-bold mb-0">Bonjour, bienvenue sur PrediCop</h4>
+    <p class="text-muted small mb-0">@tenantName</p>
+</div>
+
+@* ── Opérations ──────────────────────────────────────────────────────────── *@
+<h6 class="text-uppercase text-muted fw-semibold small mb-3 mt-1">
+    <i class="fa-solid fa-bolt me-1"></i>Opérations
+</h6>
+<div class="row g-3 mb-4">
+    @Tile("/Calls/Index", "fa-phone-volume", "bg-primary", "Appels", "Réception et suivi des appels entrants")
+    @Tile("/Missions/Index", "fa-car-side", "bg-indigo", "Missions", "Dispatch et suivi des interventions")
+    @Tile("/Map/Index", "fa-map-location-dot", "bg-teal", "Carte temps réel", "Positions GPS et zones de patrouille")
+    @Tile("/Missions/ShiftReports", "fa-clock-rotate-left", "bg-secondary", "Vacations", "Historique et rapports de vacation")
+</div>
+
+@* ── Analyse ─────────────────────────────────────────────────────────────── *@
+@if (isAdminOrManager)
+{
+    <h6 class="text-uppercase text-muted fw-semibold small mb-3">
+        <i class="fa-solid fa-chart-bar me-1"></i>Analyse
+    </h6>
+    <div class="row g-3 mb-4">
+        @Tile("/Dashboard/Index", "fa-gauge-high", "bg-success", "Dashboard", "KPIs, stats missions et véhicules")
+        @if (flags?.ModuleVerbalisationEnabled == true)
+        {
+            @Tile("/Admin/Tickets/Index", "fa-ticket", "bg-warning text-dark", "PV électroniques", "Suivi des procès-verbaux et export ANTAI")
+        }
+    </div>
+}
+
+@* ── Modules optionnels ──────────────────────────────────────────────────── *@
+@{
+    var hasOptional = flags != null && (
+        flags.ModuleRhEnabled ||
+        flags.ModuleFourriereEnabled ||
+        flags.ModuleFleetEnabled ||
+        flags.ModuleLogisticsEnabled);
+}
+@if (hasOptional)
+{
+    <h6 class="text-uppercase text-muted fw-semibold small mb-3">
+        <i class="fa-solid fa-puzzle-piece me-1"></i>Modules activés
+    </h6>
+    <div class="row g-3 mb-4">
+        @if (flags!.ModuleRhEnabled)
+        {
+            @Tile("/Admin/HR/Index", "fa-users-gear", "bg-orange", "Ressources humaines", "Plannings, congés et profils agents")
+        }
+        @if (flags.ModuleFourriereEnabled)
+        {
+            @Tile("/Admin/Fourriere/Index", "fa-warehouse", "bg-danger", "Fourrière", "Enlèvements, constats et cycle de vie")
+        }
+        @if (flags.ModuleFleetEnabled)
+        {
+            @Tile("/Admin/Fleet/Index", "fa-car-on", "bg-info", "Gestion de flotte", "Carnet de bord, révisions et alertes")
+        }
+        @if (flags.ModuleLogisticsEnabled)
+        {
+            @Tile("/Admin/Logistics/Index", "fa-box-open", "bg-purple", "Logistique", "Équipements, dotations et uniformes")
+        }
+    </div>
+}
+
+@* ── Administration ──────────────────────────────────────────────────────── *@
+@if (isAdminOrManager)
+{
+    <h6 class="text-uppercase text-muted fw-semibold small mb-3">
+        <i class="fa-solid fa-screwdriver-wrench me-1"></i>Administration
+    </h6>
+    <div class="row g-3 mb-4">
+        @Tile("/Admin/GeoZones/Index", "fa-draw-polygon", "bg-primary", "Zones de patrouille", "Délimitation des secteurs et détection de rues")
+        @Tile("/Admin/Streets/Index", "fa-road", "bg-secondary", "Rues & risques", "Scores de risque et historique des patrouilles")
+        @Tile("/Admin/Vehicles/Index", "fa-truck-ramp-box", "bg-dark", "Véhicules", "Gestion de la flotte et affectations")
+        @if (User.IsInRole("Admin"))
+        {
+            @Tile("/Admin/Settings", "fa-gear", "bg-secondary", "Configuration", "Modules, données sensibles et rétention")
+            @Tile("/Admin/Audit/Index", "fa-list-check", "bg-dark", "Journal d'audit", "Traçabilité des actions utilisateurs")
+        }
+    </div>
+}
+
+<style>
+.home-tile { transition: transform .15s, box-shadow .15s; text-decoration: none; }
+.home-tile:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.12) !important; }
+.tile-icon { width: 52px; height: 52px; border-radius: .75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bg-indigo  { background-color: #6610f2 !important; }
+.bg-teal    { background-color: #0d9488 !important; }
+.bg-orange  { background-color: #fd7e14 !important; }
+.bg-purple  { background-color: #7c3aed !important; }
+</style>
+
+@functions {
+    HtmlString Tile(string page, string icon, string colorCls, string title, string desc)
+    {
+        var url = Url.Page(page) ?? "#";
+        return new HtmlString(
+            $"""
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <a href="{url}" class="card shadow-sm border-0 p-3 d-flex flex-row align-items-center gap-3 home-tile h-100">
+                    <div class="tile-icon {colorCls} text-white">
+                        <i class="fa-solid {icon} fa-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="fw-semibold text-dark">{title}</div>
+                        <div class="text-muted small">{desc}</div>
+                    </div>
+                </a>
+            </div>
+            """);
+    }
+}

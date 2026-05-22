@@ -6,6 +6,7 @@ public class Mission : TenantEntity
 {
     public string Reference { get; set; } = string.Empty;
     public MissionStatus Status { get; set; } = MissionStatus.Pending;
+    public CallPriority Priority { get; set; } = CallPriority.Routine;
 
     public Guid CallId { get; set; }
     public Call Call { get; set; } = null!;

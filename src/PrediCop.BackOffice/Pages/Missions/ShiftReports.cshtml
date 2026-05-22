@@ -1,0 +1,186 @@
+@page
+@model PrediCop.BackOffice.Pages.Missions.ShiftReportsModel
+@{
+    ViewData["Title"] = "Historique des vacations";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Historique des rapports de vacation
+    </h4>
+    <a asp-page="/Missions/ShiftReport" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i>Nouveau rapport
+    </a>
+</div>
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-sm-4 col-md-3">
+                <label class="form-label small fw-semibold mb-1">Véhicule</label>
+                <select name="VehicleFilter" class="form-select form-select-sm">
+                    <option value="">— Tous les véhicules —</option>
+                    @foreach (var v in Model.Vehicles)
+                    {
+                        <option value="@v.Id" selected="@(Model.VehicleFilter == v.Id)">
+                            @v.CallSign — @v.LicensePlate
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-sm-3 col-md-2">
+                <label class="form-label small fw-semibold mb-1">Du</label>
+                <input type="date" name="DateFrom" class="form-control form-control-sm" value="@Model.DateFrom" />
+            </div>
+            <div class="col-sm-3 col-md-2">
+                <label class="form-label small fw-semibold mb-1">Au</label>
+                <input type="date" name="DateTo" class="form-control form-control-sm" value="@Model.DateTo" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-filter me-1"></i>Filtrer
+                </button>
+                <a asp-page="/Missions/ShiftReports" class="btn btn-outline-secondary btn-sm ms-1">
+                    <i class="fa-solid fa-xmark me-1"></i>Réinitialiser
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Reports.Count == 0)
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-file-contract fa-3x mb-3 opacity-25"></i>
+                <p class="mb-1 fw-semibold">Aucun rapport trouvé</p>
+                <p class="small">Modifiez les filtres ou générez un nouveau rapport.</p>
+                <a asp-page="/Missions/ShiftReport" class="btn btn-primary btn-sm mt-2">
+                    <i class="fa-solid fa-plus me-1"></i>Générer un rapport
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Véhicule</th>
+                            <th>Agents</th>
+                            <th>Début vacation</th>
+                            <th>Fin vacation</th>
+                            <th class="text-center">Durée</th>
+                            <th class="text-center">Missions</th>
+                            <th class="text-center">Patrouilles</th>
+                            <th class="text-center">Km estimés</th>
+                            <th class="text-center">Statut</th>
+                            <th class="text-end" style="width:90px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Reports)
+                        {
+                            var dur = r.Duration;
+                            <tr>
+                                <td class="fw-semibold">@r.VehicleCallSign</td>
+                                <td class="text-muted">@(string.IsNullOrEmpty(r.OfficerNames) ? "—" : r.OfficerNames)</td>
+                                <td>@r.ShiftStart.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@r.ShiftEnd.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-center">
+                                    @((int)dur.TotalHours)h@dur.Minutes.ToString("D2")
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-semibold">@r.MissionCount</span>
+                                    @if (r.CompletedMissionCount > 0 || r.RefusedMissionCount > 0)
+                                    {
+                                        <span class="text-muted ms-1 small">
+                                            (<span class="text-success">@r.CompletedMissionCount ✓</span>
+                                            @if (r.RefusedMissionCount > 0)
+                                            {
+                                                <span class="text-danger ms-1">@r.RefusedMissionCount ✗</span>
+                                            })
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center text-muted">@r.PatrolRecordCount</td>
+                                <td class="text-center text-muted">@r.EstimatedKm.ToString("F1")</td>
+                                <td class="text-center">
+                                    @if (r.IsSigned)
+                                    {
+                                        <span class="badge bg-success"
+                                              title="Signé le @r.SignedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
+                                            <i class="fa-solid fa-signature me-1"></i>Signé
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Non signé</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a asp-page="/Missions/ShiftReportExport" asp-route-id="@r.Id"
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-danger"
+                                       title="Télécharger le PDF">
+                                        <i class="fa-solid fa-file-pdf"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+                    <div class="text-muted small">
+                        Page @Model.CurrentPage sur @Model.TotalPages
+                        (@Model.TotalCount rapport(s))
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                <a class="page-link"
+                                   asp-page="/Missions/ShiftReports"
+                                   asp-route-PageNumber="@(Model.CurrentPage - 1)"
+                                   asp-route-VehicleFilter="@Model.VehicleFilter"
+                                   asp-route-DateFrom="@Model.DateFrom"
+                                   asp-route-DateTo="@Model.DateTo">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            @for (var p = Math.Max(1, Model.CurrentPage - 2);
+                                  p <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); p++)
+                            {
+                                <li class="page-item @(p == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link"
+                                       asp-page="/Missions/ShiftReports"
+                                       asp-route-PageNumber="@p"
+                                       asp-route-VehicleFilter="@Model.VehicleFilter"
+                                       asp-route-DateFrom="@Model.DateFrom"
+                                       asp-route-DateTo="@Model.DateTo">@p</a>
+                                </li>
+                            }
+                            <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                                <a class="page-link"
+                                   asp-page="/Missions/ShiftReports"
+                                   asp-route-PageNumber="@(Model.CurrentPage + 1)"
+                                   asp-route-VehicleFilter="@Model.VehicleFilter"
+                                   asp-route-DateFrom="@Model.DateFrom"
+                                   asp-route-DateTo="@Model.DateTo">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+    </div>
+</div>

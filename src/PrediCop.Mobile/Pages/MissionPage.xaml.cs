@@ -9,13 +9,22 @@ public partial class MissionPage : ContentPage
 {
     public MissionViewModel ViewModel { get; }
     private readonly ApiService _api;
+    private readonly SignalRService _signalR;
+    private readonly LocalDbService _localDb;
+    private readonly IConnectivityService _connectivity;
+    private readonly SyncService _syncService;
 
-    public MissionPage(MissionViewModel vm, ApiService api)
+    public MissionPage(MissionViewModel vm, ApiService api, SignalRService signalR,
+        LocalDbService localDb, IConnectivityService connectivity, SyncService syncService)
     {
         InitializeComponent();
         ViewModel = vm;
         BindingContext = vm;
         _api = api;
+        _signalR = signalR;
+        _localDb = localDb;
+        _connectivity = connectivity;
+        _syncService = syncService;
     }
 
     protected override void OnAppearing()
@@ -24,13 +33,19 @@ public partial class MissionPage : ContentPage
         ViewModel.LoadCurrentMissionCommand.Execute(null);
         WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
             await DisplayAlert(m.Title, m.Text, "OK"));
+        _signalR.MissionProposed += OnMissionProposed;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         WeakReferenceMessenger.Default.UnregisterAll(this);
+        _signalR.MissionProposed -= OnMissionProposed;
     }
+
+    private void OnMissionProposed(object? sender, MissionProposedArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() =>
+            ViewModel.LoadCurrentMissionCommand.Execute(null));
 
     public void ShowMissionProposal(MissionInfo mission) =>
         ViewModel.SetMissionProposal(mission);
@@ -38,7 +53,7 @@ public partial class MissionPage : ContentPage
     private async void OnViewMissionDetails(object sender, EventArgs e)
     {
         if (ViewModel.CurrentMissionId is not { } missionId) return;
-        await Navigation.PushAsync(new MissionDetailPage(missionId, _api));
+        await Navigation.PushAsync(new MissionDetailPage(missionId, _api, _localDb, _connectivity, _syncService));
     }
 
     private static readonly (string Label, string Code, bool NeedsText)[] RefusalOptions =

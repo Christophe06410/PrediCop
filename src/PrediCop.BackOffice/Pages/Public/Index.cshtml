@@ -1,0 +1,156 @@
+@page
+@model PrediCop.BackOffice.Pages.Public.IndexModel
+@{
+    ViewData["Title"] = "PrediCop — Gestion de Police Municipale";
+    Layout = "~/Pages/Shared/_LandingLayout.cshtml";
+}
+
+<div class="hero-section">
+    <div class="container text-center">
+        <div class="mb-4">
+            <span class="badge bg-primary mb-3 px-3 py-2">SaaS Police Municipale</span>
+            <h1 class="display-4 fw-bold mb-3">Sécurisez votre ville.<br/>Pilotez vos patrouilles.</h1>
+            <p class="lead text-white-50 mb-4 mx-auto" style="max-width:600px">
+                PrediCop est la plateforme tout-en-un pour les polices municipales : réception d'appels, dispatch en temps réel, suivi GPS et prédiction des risques.
+            </p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a asp-page="/Public/Signup/Index" asp-route-plan="Essential" class="btn btn-primary btn-lg px-4">
+                    <i class="fa-solid fa-rocket me-2"></i>Démarrer gratuitement
+                </a>
+                <a asp-page="/Public/Pricing" class="btn btn-outline-light btn-lg px-4">Voir les tarifs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold">Tout ce dont votre PM a besoin</h2>
+        <p class="text-muted">Une seule application pour gérer l'ensemble de vos opérations</p>
+    </div>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-phone"></i></div>
+                <h5 class="fw-semibold">Réception d'appels</h5>
+                <p class="text-muted mb-0">Saisissez rapidement chaque main courante avec adresse géolocalisée et description de l'incident.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-car-side"></i></div>
+                <h5 class="fw-semibold">Dispatch intelligent</h5>
+                <p class="text-muted mb-0">Proposez automatiquement la patrouille la plus proche et suivez l'acceptation en temps réel.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h5 class="fw-semibold">Carte temps réel</h5>
+                <p class="text-muted mb-0">Visualisez les positions GPS de vos véhicules et les scores de risque des rues en direct.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-chart-line"></i></div>
+                <h5 class="fw-semibold">Indice de risque</h5>
+                <p class="text-muted mb-0">L'algorithme PrediCop calcule le risque de chaque rue en fonction des incidents et du temps écoulé.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-file-pdf"></i></div>
+                <h5 class="fw-semibold">Rapports officiels</h5>
+                <p class="text-muted mb-0">Exportez chaque main courante en PDF ou Word au format officiel, prêt à être signé.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="feature-icon mb-3"><i class="fa-solid fa-gauge"></i></div>
+                <h5 class="fw-semibold">Dashboard manager</h5>
+                <p class="text-muted mb-0">KPIs, statistiques par véhicule, taux de réponse et suivi des missions refusées.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modules optionnels -->
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="badge bg-warning text-dark px-3 py-2 mb-3">Modules optionnels</span>
+            <h2 class="fw-bold">Étendez PrediCop selon vos besoins</h2>
+            <p class="text-muted">Activez uniquement les modules dont votre service a besoin, à tout moment.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-users-gear fa-lg text-warning"></i>
+                        <h5 class="fw-semibold mb-0">Module RH</h5>
+                        <span class="badge bg-warning text-dark ms-auto small">+39 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">Plannings des vacations, gestion des congés, profils d'urgence (groupe sanguin, contacts). Workflow d'approbation intégré.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-warehouse fa-lg text-warning"></i>
+                        <h5 class="fw-semibold mb-0">Module Fourrière</h5>
+                        <span class="badge bg-warning text-dark ms-auto small">+29 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">Enregistrement des enlèvements, constats d'état, suivi du cycle de vie des véhicules, statistiques de la fourrière.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-car-on fa-lg text-warning"></i>
+                        <h5 class="fw-semibold mb-0">Gestion de flotte</h5>
+                        <span class="badge bg-warning text-dark ms-auto small">+29 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">Carnet de bord numérique, révisions planifiées, contrôles techniques, alertes d'échéances et historique des coûts.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-box-open fa-lg text-warning"></i>
+                        <h5 class="fw-semibold mb-0">Module Logistique</h5>
+                        <span class="badge bg-warning text-dark ms-auto small">+25 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">Catalogue d'équipements, dotations avec expiration, fiches de tailles uniformes et alertes de renouvellement.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-ticket fa-lg text-warning"></i>
+                        <h5 class="fw-semibold mb-0">Verbalisation électronique</h5>
+                        <span class="badge bg-warning text-dark ms-auto small">+49 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">PV électroniques signés depuis le mobile, numérotation automatique, statistiques et export ANTAI (CSV/Excel).</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-3 border-start border-4 border-info">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="fa-solid fa-draw-polygon fa-lg text-info"></i>
+                        <h5 class="fw-semibold mb-0">Géofencing</h5>
+                        <span class="badge bg-info text-dark ms-auto small">+19 €/mois</span>
+                    </div>
+                    <p class="text-muted mb-0 small">Alertes automatiques lorsqu'un véhicule sort de sa zone de patrouille assignée. Notification SignalR + email manager.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-primary text-white py-5">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-3">Prêt à moderniser votre PM ?</h2>
+        <p class="mb-4 opacity-75">Démarrez avec l'offre Essentielle, évoluez quand vous en avez besoin.</p>
+        <a asp-page="/Public/Pricing" class="btn btn-light btn-lg px-5">Voir les tarifs</a>
+    </div>
+</div>

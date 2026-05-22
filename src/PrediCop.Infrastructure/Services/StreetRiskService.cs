@@ -8,7 +8,6 @@ namespace PrediCop.Infrastructure.Services;
 public class StreetRiskService(AppDbContext context) : IStreetRiskService
 {
     private const int MaxTemporalBonus = 50;
-    private const int TemporalBonusPerTwoHours = 1;
 
     public async Task<int> CalculateCurrentRiskScoreAsync(Guid streetId, CancellationToken ct = default)
     {
@@ -77,8 +76,8 @@ public class StreetRiskService(AppDbContext context) : IStreetRiskService
 
         var reference = street.LastPatrolledAt ?? street.CreatedAt;
         var hoursSincePatrol = (now - reference).TotalHours;
-        var temporalBonus = Math.Min((int)(hoursSincePatrol / 2) * TemporalBonusPerTwoHours, MaxTemporalBonus);
+        var temporalBonus = Math.Min((int)(hoursSincePatrol * street.RiskGrowthRatePerHour), MaxTemporalBonus);
 
-        return street.BaseRiskScore + activeEventsScore + temporalBonus;
+        return Math.Min(street.BaseRiskScore + activeEventsScore + temporalBonus, 100);
     }
 }

@@ -1,0 +1,255 @@
+@page
+@model PrediCop.BackOffice.Pages.Rgpd.IndexModel
+@{
+    ViewData["Title"] = "Protection des données (RGPD)";
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+
+        <!-- En-tête -->
+        <div class="d-flex align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold mb-1">
+                    <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Protection des données personnelles
+                </h3>
+                @if (!string.IsNullOrWhiteSpace(Model.TenantName))
+                {
+                    <p class="text-muted mb-0">@Model.TenantName &mdash; Politique de confidentialité et droits RGPD</p>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Politique de confidentialité et droits RGPD</p>
+                }
+            </div>
+        </div>
+
+        <!-- ======================== SECTION 1 : POLITIQUE ======================== -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-file-shield me-2"></i>Politique de confidentialité</h5>
+            </div>
+            <div class="card-body">
+
+                <h6 class="fw-bold text-primary mt-2">1. Données collectées</h6>
+                <p class="mb-2">Dans le cadre de l'exploitation du logiciel PrediCop, les catégories de données suivantes sont traitées :</p>
+                <ul>
+                    <li><strong>Identité des agents</strong> : nom, prénom, numéro de badge, adresse email professionnelle, rôle</li>
+                    <li><strong>Positions GPS des véhicules</strong> : coordonnées géographiques transmises <em>pendant les heures de service uniquement</em></li>
+                    <li><strong>Interventions et missions</strong> : détails des appels reçus, missions créées, comptes rendus d'intervention</li>
+                    <li><strong>Habilitations et qualifications</strong> : certificats professionnels, dates de validité, autorités émettrices</li>
+                    <li><strong>Journaux d'activité</strong> : actions réalisées dans le système à des fins de traçabilité</li>
+                </ul>
+
+                <h6 class="fw-bold text-primary mt-3">2. Base légale du traitement</h6>
+                <p>
+                    Les traitements sont fondés sur l'<strong>exécution d'une mission de service public</strong> au sens de l'article 6.1.e du Règlement Général sur la Protection des Données (RGPD),
+                    dans le cadre des attributions légales de la Police Municipale.
+                </p>
+
+                <h6 class="fw-bold text-primary mt-3">3. Durées de conservation</h6>
+                <table class="table table-sm table-bordered mt-2">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Catégorie de données</th>
+                            <th>Durée de conservation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Positions GPS des véhicules</td>
+                            <td><strong>1 mois</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Interventions et missions</td>
+                            <td><strong>5 ans</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Documents officiels et habilitations</td>
+                            <td><strong>10 ans</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Journaux d'audit</td>
+                            <td><strong>3 ans</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Comptes utilisateurs inactifs</td>
+                            <td><strong>3 ans après la dernière connexion</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h6 class="fw-bold text-primary mt-3">4. Géolocalisation et géofencing</h6>
+                <div class="alert alert-info d-flex gap-2 align-items-start">
+                    <i class="fa-solid fa-location-dot mt-1"></i>
+                    <div>
+                        Les positions GPS des véhicules de patrouille sont suivies en <strong>temps réel pendant les heures de service uniquement</strong>,
+                        conformément aux recommandations de la Commission Nationale de l'Informatique et des Libertés (CNIL).
+                        La géolocalisation est automatiquement désactivée hors des plages horaires d'affectation.
+                        Les données de position sont conservées pendant <strong>1 mois</strong> puis supprimées automatiquement.
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-primary mt-3">5. Destinataires des données</h6>
+                <p>Les données sont accessibles aux seuls agents habilités de la Police Municipale concernée. Elles ne sont ni cédées, ni vendues à des tiers.</p>
+
+                <h6 class="fw-bold text-primary mt-3">6. Vos droits</h6>
+                <p>Conformément au RGPD, vous disposez des droits suivants :</p>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-eye text-primary fa-lg mb-1 d-block"></i>
+                            <strong>Droit d'accès</strong><br/>
+                            <span class="text-muted">Obtenir une copie de vos données</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-pen-to-square text-success fa-lg mb-1 d-block"></i>
+                            <strong>Rectification</strong><br/>
+                            <span class="text-muted">Corriger des données inexactes</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-trash text-danger fa-lg mb-1 d-block"></i>
+                            <strong>Suppression</strong><br/>
+                            <span class="text-muted">Demander l'effacement</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-file-export text-info fa-lg mb-1 d-block"></i>
+                            <strong>Portabilité</strong><br/>
+                            <span class="text-muted">Recevoir vos données</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-ban text-warning fa-lg mb-1 d-block"></i>
+                            <strong>Opposition</strong><br/>
+                            <span class="text-muted">Vous opposer au traitement</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 text-center small">
+                            <i class="fa-solid fa-pause text-secondary fa-lg mb-1 d-block"></i>
+                            <strong>Limitation</strong><br/>
+                            <span class="text-muted">Limiter l'utilisation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-primary mt-4">7. Contact du Délégué à la Protection des Données (DPO)</h6>
+                @if (!string.IsNullOrWhiteSpace(Model.DpoEmail))
+                {
+                    <p>
+                        Pour exercer vos droits ou poser toute question relative à la protection de vos données, contactez le DPO :
+                        <a href="mailto:@Model.DpoEmail"><strong>@Model.DpoEmail</strong></a>
+                    </p>
+                }
+                else
+                {
+                    <p>
+                        Pour exercer vos droits, utilisez le formulaire ci-dessous. Votre demande sera transmise au responsable du traitement compétent.
+                        Vous pouvez également vous adresser à la CNIL : <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>.
+                    </p>
+                }
+
+            </div>
+        </div>
+
+        <!-- ======================== SECTION 2 : FORMULAIRE ======================== -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-envelope-open-text me-2"></i>Formulaire de demande RGPD</h5>
+            </div>
+            <div class="card-body">
+
+                @if (Model.SubmitSuccess)
+                {
+                    <div class="alert alert-success d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-circle-check fa-lg"></i>
+                        <div>
+                            <strong>Demande enregistrée !</strong> Votre demande a bien été transmise.
+                            Un email de confirmation vous a été envoyé. Vous recevrez une réponse dans un délai maximum d'un mois, conformément au RGPD.
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.SubmitError))
+                {
+                    <div class="alert alert-danger">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i>@Model.SubmitError
+                    </div>
+                }
+
+                @if (string.IsNullOrWhiteSpace(Model.TenantSlug))
+                {
+                    <div class="alert alert-warning">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        Aucune organisation identifiée. Ajoutez le paramètre <code>?tenant=slug</code> à l'URL pour soumettre une demande.
+                    </div>
+                }
+                else if (!Model.SubmitSuccess)
+                {
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger small" style="display:none"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nom complet <span class="text-danger">*</span></label>
+                            <input asp-for="Input.RequesterName" class="form-control"
+                                   placeholder="Prénom NOM" />
+                            <span asp-validation-for="Input.RequesterName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Adresse email <span class="text-danger">*</span></label>
+                            <input asp-for="Input.RequesterEmail" class="form-control" type="email"
+                                   placeholder="votre@email.fr" />
+                            <span asp-validation-for="Input.RequesterEmail" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Type de demande <span class="text-danger">*</span></label>
+                            <select asp-for="Input.RequestType" class="form-select">
+                                <option value="">-- Sélectionner un type --</option>
+                                <option value="AccesData">Droit d'accès — obtenir une copie de mes données</option>
+                                <option value="Rectification">Droit de rectification — corriger des données inexactes</option>
+                                <option value="Suppression">Droit à l'effacement — supprimer mes données</option>
+                                <option value="Portabilite">Droit à la portabilité — recevoir mes données dans un format standard</option>
+                                <option value="Opposition">Droit d'opposition — m'opposer à un traitement</option>
+                                <option value="Limitation">Droit à la limitation — limiter l'utilisation de mes données</option>
+                            </select>
+                            <span asp-validation-for="Input.RequestType" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description de votre demande <span class="text-danger">*</span></label>
+                            <textarea asp-for="Input.Description" class="form-control" rows="5"
+                                      placeholder="Décrivez votre demande avec précision (nature des données concernées, contexte, etc.)"></textarea>
+                            <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p class="small text-muted mb-0">
+                                <i class="fa-solid fa-lock me-1"></i>
+                                Vos données sont traitées uniquement pour répondre à votre demande.
+                            </p>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-paper-plane me-1"></i>Envoyer ma demande
+                            </button>
+                        </div>
+                    </form>
+                }
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

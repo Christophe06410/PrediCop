@@ -1,0 +1,106 @@
+@page "{id:guid?}"
+@model PrediCop.BackOffice.Pages.Admin.Qualifications.EditModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Modifier l'habilitation" : "Nouvelle habilitation";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Admin/Qualifications/Index">Habilitations</a></li>
+            <li class="breadcrumb-item active">@(Model.IsEdit ? "Modifier" : "Nouvelle")</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">
+                    <i class="fa-solid fa-id-card me-2"></i>
+                    @(Model.IsEdit ? "Modifier l'habilitation" : "Nouvelle habilitation")
+                </h5>
+            </div>
+            <div class="card-body">
+
+                @if (TempData["ErrorMessage"] is string err)
+                {
+                    <div class="alert alert-danger">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
+                    </div>
+                }
+
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Agent <span class="text-danger">*</span></label>
+                        <select asp-for="Input.AgentId" class="form-select" required>
+                            <option value="">-- Sélectionner un agent --</option>
+                            @foreach (var agent in Model.Agents)
+                            {
+                                <option value="@agent.Id">@agent.FullName (@agent.BadgeNumber)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Input.AgentId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Type d'habilitation <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Type" class="form-select" required>
+                            <option value="">-- Sélectionner un type --</option>
+                            <option value="APJA">APJA - Agent de Police Judiciaire Adjoint</option>
+                            <option value="PorteArme">Port d'arme</option>
+                            <option value="PermisConduire">Permis de conduire</option>
+                            <option value="FormationSecours">Formation secours (PSC1, SAUV...)</option>
+                            <option value="HabilitationPrefectorale">Habilitation préfectorale</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                        <span asp-validation-for="Input.Type" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Numéro de référence / certificat <span class="text-danger">*</span></label>
+                        <input asp-for="Input.Reference" class="form-control" placeholder="Ex: APJA-2024-001234" required />
+                        <span asp-validation-for="Input.Reference" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Autorité émettrice <span class="text-danger">*</span></label>
+                        <input asp-for="Input.IssuingAuthority" class="form-control" placeholder="Ex: Préfecture du Rhône, CNFPT..." required />
+                        <span asp-validation-for="Input.IssuingAuthority" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Date d'émission <span class="text-danger">*</span></label>
+                            <input asp-for="Input.IssuedAt" type="date" class="form-control" required />
+                            <span asp-validation-for="Input.IssuedAt" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Date d'expiration <span class="text-danger">*</span></label>
+                            <input asp-for="Input.ExpiresAt" type="date" class="form-control" required />
+                            <span asp-validation-for="Input.ExpiresAt" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea asp-for="Input.Notes" class="form-control" rows="3"
+                                  placeholder="Informations complémentaires, conditions particulières..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a asp-page="/Admin/Qualifications/Index" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-arrow-left me-1"></i>Retour
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>
+                            @(Model.IsEdit ? "Enregistrer les modifications" : "Créer l'habilitation")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

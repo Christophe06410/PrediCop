@@ -96,7 +96,8 @@ public class CallsController(
             Notes = request.Notes,
             InternalNotes = request.InternalNotes,
             OperatorId = UserId,
-            Status = CallStatus.Open
+            Status = CallStatus.Open,
+            Priority = request.Priority,
         };
 
         db.Calls.Add(call);
@@ -135,6 +136,7 @@ public class CallsController(
         if (request.ThirdParties is not null) call.ThirdParties = request.ThirdParties;
         if (request.Notes is not null) call.Notes = request.Notes;
         if (request.InternalNotes is not null) call.InternalNotes = request.InternalNotes;
+        if (request.Priority.HasValue) call.Priority = request.Priority.Value;
 
         await db.SaveChangesAsync(ct);
         return Ok(MapToResponse(call));
@@ -165,19 +167,22 @@ public class CallsController(
     public async Task<ActionResult<MissionResponse>> CreateMission(Guid id, CancellationToken ct)
     {
         var call = await db.Calls
+            .Include(c => c.Missions)
             .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);
 
         if (call is null)
             return Problem(title: "Appel non trouvé", statusCode: 404);
 
-        if (call.Status == CallStatus.Closed)
-            return Problem(title: "Impossible de créer une mission depuis un appel fermé", statusCode: 400);
+        // Bloquer uniquement si une mission est déjà active (proposée, acceptée, en cours)
+        if (call.Missions.Any(m =>
+                m.Status == MissionStatus.Proposed ||
+                m.Status == MissionStatus.Accepted ||
+                m.Status == MissionStatus.InProgress))
+            return Problem(title: "Une mission est déjà active sur cet appel", statusCode: 400);
 
         try
         {
             var mission = await missionService.CreateMissionFromCallAsync(call.Id, ct);
-            call.Status = CallStatus.MissionCreated;
-            await db.SaveChangesAsync(ct);
 
             var response = await BuildMissionResponseAsync(mission.Id, ct);
             return CreatedAtAction("GetMission", "Missions", new { id = mission.Id }, response);
@@ -205,6 +210,7 @@ public class CallsController(
         Reference = c.Reference,
         ReceivedAt = c.ReceivedAt,
         Status = c.Status,
+        Priority = c.Priority,
         CallerName = c.CallerName,
         CallerPhone = c.CallerPhone,
         IncidentDescription = c.IncidentDescription,
@@ -237,6 +243,7 @@ public class CallsController(
         Id = m.Id,
         Reference = m.Reference,
         Status = m.Status,
+        Priority = m.Priority,
         CallId = m.CallId,
         CallReference = m.Call?.Reference ?? string.Empty,
         TargetAddress = m.TargetAddress,

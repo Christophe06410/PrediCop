@@ -1,0 +1,235 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Tickets.StatsModel
+@using PrediCop.Core.Enums
+@using System.Globalization
+@using PrediCop.BackOffice.Pages.Admin.Tickets
+@{
+    ViewData["Title"] = "Statistiques de verbalisation";
+    var culture = new CultureInfo("fr-FR");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-chart-bar me-2 text-primary"></i>Statistiques de verbalisation
+    </h4>
+    <div class="d-flex gap-2">
+        <a href="/Admin/Tickets/Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Retour aux PV
+        </a>
+        <a href="/api/tickets/export?format=xlsx&dateFrom=@Model.DateFrom&dateTo=@Model.DateTo@(Model.AgentFilter.HasValue ? "&agentId=" + Model.AgentFilter : "")"
+           class="btn btn-sm btn-success" target="_blank">
+            <i class="fa-solid fa-file-excel me-1"></i>Exporter Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label small mb-1">Du</label>
+                <input type="date" name="DateFrom" value="@Model.DateFrom" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label small mb-1">Au</label>
+                <input type="date" name="DateTo" value="@Model.DateTo" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrer
+                </button>
+                <a href="/Admin/Tickets/Stats" class="btn btn-outline-secondary btn-sm ms-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Stats is null)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>Aucune donnée disponible pour la période sélectionnée.
+    </div>
+}
+else
+{
+    <!-- Résumé KPIs -->
+    <div class="row g-3 mb-3">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Total PV émis</div>
+                        <div class="kpi-value text-primary">@Model.Stats.TotalIssued</div>
+                    </div>
+                    <i class="fa-solid fa-ticket kpi-icon text-primary"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Payés</div>
+                        <div class="kpi-value text-success">@Model.Stats.TotalPaid</div>
+                    </div>
+                    <i class="fa-solid fa-circle-check kpi-icon text-success"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Montant total</div>
+                        <div class="kpi-value text-success" style="font-size:1.4rem">
+                            @Model.Stats.TotalFineAmount.ToString("C0", culture)
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-euro-sign kpi-icon text-success"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">En litige / Annulés</div>
+                        <div class="kpi-value text-warning">
+                            @Model.Stats.TotalContested
+                            <span class="text-secondary" style="font-size:1.2rem"> / @Model.Stats.TotalCancelled</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-scale-balanced kpi-icon text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Répartition par infraction -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-chart-pie me-2 text-primary"></i>Répartition par type d'infraction
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Type d'infraction</th>
+                                    <th class="text-end">Nb PV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var kv in Model.Stats.ByInfractionType.OrderByDescending(x => x.Value))
+                                {
+                                    if (Enum.TryParse<InfractionType>(kv.Key, out var infType))
+                                    {
+                                        <tr>
+                                            <td class="small">@IndexModel.GetInfractionLabel(infType)</td>
+                                            <td class="text-end fw-semibold">@kv.Value</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top agents -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-trophy me-2 text-warning"></i>Top agents verbalisateurs
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Agent</th>
+                                    <th class="text-end">Nb PV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var rank = 1;
+                                }
+                                @foreach (var kv in Model.Stats.ByAgent.OrderByDescending(x => x.Value))
+                                {
+                                    <tr>
+                                        <td class="small">
+                                            @if (rank <= 3)
+                                            {
+                                                var medalClass = rank == 1 ? "text-warning" : rank == 2 ? "text-secondary" : "text-danger";
+                                                <i class="fa-solid fa-medal @medalClass me-1" style="font-size:.75rem"></i>
+                                            }
+                                            @kv.Key
+                                        </td>
+                                        <td class="text-end fw-semibold">@kv.Value</td>
+                                    </tr>
+                                    rank++;
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition par jour de la semaine -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fa-solid fa-calendar-week me-2 text-info"></i>Par jour de semaine
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    @{
+                        var dayOrder = new[] { "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche" };
+                        var maxDay = Model.Stats.ByDayOfWeek.Values.DefaultIfEmpty(0).Max();
+                    }
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Jour</th>
+                                    <th class="text-end">Nb PV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var day in dayOrder)
+                                {
+                                    var count = Model.Stats.ByDayOfWeek.TryGetValue(day, out var c) ? c : 0;
+                                    <tr>
+                                        <td class="small">@day</td>
+                                        <td class="text-end">
+                                            <span class="fw-semibold">@count</span>
+                                            @if (maxDay > 0)
+                                            {
+                                                <div class="progress mt-1" style="height:4px;">
+                                                    <div class="progress-bar bg-primary" style="width:@(count * 100 / maxDay)%"></div>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

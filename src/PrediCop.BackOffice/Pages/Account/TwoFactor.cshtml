@@ -1,0 +1,58 @@
+@page
+@model PrediCop.BackOffice.Pages.Account.TwoFactorModel
+@{
+    Layout = "~/Pages/Shared/_LoginLayout.cshtml";
+    ViewData["Title"] = "Vérification 2FA";
+}
+
+<div class="login-card">
+    <div class="login-header">
+        <img src="~/favicon.png" alt="PrediCop" style="height:80px;width:80px;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.4);" />
+        <h4 class="text-white mt-3 mb-1 fw-bold">Authentification à deux facteurs</h4>
+        <p class="text-secondary mb-0 small">Saisissez le code généré par votre application TOTP</p>
+    </div>
+
+    <div class="p-4">
+        @if (Model.ErrorMessage != null)
+        {
+            <div class="alert alert-danger py-2 small mb-3">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>@Model.ErrorMessage
+            </div>
+        }
+
+        <form method="post">
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">
+                    Code TOTP (6 chiffres) ou code de récupération
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0">
+                        <i class="fa-solid fa-shield-halved text-muted"></i>
+                    </span>
+                    <input asp-for="Code" type="text" class="form-control border-start-0 ps-1"
+                           placeholder="123456" autofocus autocomplete="one-time-code"
+                           inputmode="numeric" maxlength="16" />
+                </div>
+                <div class="form-text text-muted small mt-1">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Ouvrez votre application d'authentification (Google Authenticator, Authy…) et saisissez le code à 6 chiffres.
+                    Vous pouvez aussi utiliser un code de récupération.
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                <i class="fa-solid fa-check me-2"></i>Vérifier
+            </button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a asp-page="/Account/Login" class="small text-muted">
+                <i class="fa-solid fa-arrow-left me-1"></i>Retour à la connexion
+            </a>
+        </div>
+    </div>
+
+    <div class="text-center pb-3 text-muted" style="font-size:.78rem">
+        <i class="fa-solid fa-shield-halved me-1"></i>PrediCop &copy; @DateTime.Now.Year — v1.0
+    </div>
+</div>

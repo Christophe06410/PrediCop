@@ -1,7 +1,7 @@
 @page "{id:guid}"
 @model PrediCop.BackOffice.Pages.Calls.EditModel
 @{
-    ViewData["Title"] = $"Modifier l'appel {Model.Call?.Reference}";
+    ViewData["Title"] = $"Modifier la main courante {Model.Call?.Reference}";
     var callId = Model.Call?.Id ?? Guid.Empty;
     var isClosed = Model.Call?.Status == "Closed";
 }
@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Appels</a></li>
+            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Mains courantes</a></li>
             <li class="breadcrumb-item">
                 <a asp-page="/Calls/Details" asp-route-id="@callId">@Model.Call?.Reference</a>
             </li>
@@ -34,7 +34,7 @@
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-phone me-2 text-primary"></i>Modifier l'appel @Model.Call?.Reference
+                    <i class="fa-solid fa-phone me-2 text-primary"></i>Modifier la main courante @Model.Call?.Reference
                 </h6>
                 @{ ViewData["Status"] = Model.Call?.Status; }
                 @await Html.PartialAsync("_StatusBadge")
@@ -87,7 +87,7 @@
                         </div>
                         <div class="col-12">
                             <label asp-for="Input.IncidentDescription" class="form-label fw-semibold"></label>
-                            <textarea asp-for="Input.IncidentDescription" class="form-control" rows="3"></textarea>
+                            <textarea asp-for="Input.IncidentDescription" class="form-control" rows="3" data-text-assistant></textarea>
                             <span asp-validation-for="Input.IncidentDescription" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6">
@@ -126,15 +126,15 @@
             <div class="card shadow-sm border-danger">
                 <div class="card-header bg-danger text-white">
                     <h6 class="mb-0 fw-semibold">
-                        <i class="fa-solid fa-circle-xmark me-2"></i>Fermer l'appel
+                        <i class="fa-solid fa-circle-xmark me-2"></i>Fermer la main courante
                     </h6>
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        Clôture définitive. L'appel passera en statut <strong>Fermé</strong>.
+                        Clôture définitive. La main courante passera en statut <strong>Fermé</strong>.
                     </p>
                     <form method="post" asp-page-handler="Close"
-                          onsubmit="return confirm('Confirmer la fermeture de cet appel ?')">
+                          onsubmit="return confirm('Confirmer la fermeture de cette main courante ?')">
                         <input type="hidden" name="id" value="@callId" />
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">Note de clôture</label>
@@ -142,7 +142,7 @@
                                       placeholder="Motif de fermeture, résolution…"></textarea>
                         </div>
                         <button type="submit" class="btn btn-danger w-100">
-                            <i class="fa-solid fa-lock me-2"></i>Fermer l'appel
+                            <i class="fa-solid fa-lock me-2"></i>Fermer la main courante
                         </button>
                     </form>
                 </div>

@@ -1,12 +1,17 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using PrediCop.BackOffice;
+using PrediCop.BackOffice.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages(options =>
+{
     options.Conventions.AddFolderApplicationModelConvention("/", m =>
-        m.Filters.Add(new TypeFilterAttribute(typeof(JwtRequiredFilter)))));
+        m.Filters.Add(new TypeFilterAttribute(typeof(JwtRequiredFilter))));
+    options.Conventions.AllowAnonymousToFolder("/Public");
+    options.Conventions.AllowAnonymousToFolder("/Subscription");
+});
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -37,6 +42,33 @@ builder.Services.AddHttpClient("PrediCopApi", client =>
 })
 .AddHttpMessageHandler<JwtSessionHandler>();
 
+builder.Services.AddHttpClient("PrediCopApiAnon", client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+});
+
+builder.Services.AddHttpClient("OsmTiles", c =>
+{
+    c.BaseAddress = new Uri("https://tile.openstreetmap.org");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("PrediCop/1.0 (police-municipale-saas)");
+    c.Timeout = TimeSpan.FromSeconds(10);
+});
+
+builder.Services.AddHttpClient("Anthropic", c =>
+{
+    c.BaseAddress = new Uri("https://api.anthropic.com");
+    c.Timeout = TimeSpan.FromSeconds(45);
+});
+
+builder.Services.AddTransient<MapSnapshotService>();
+builder.Services.AddTransient<TextAssistantService>();
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -52,6 +84,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+var pathBase = builder.Configuration["PathBase"];
+if (!string.IsNullOrEmpty(pathBase))
+    app.UsePathBase(pathBase);
 
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -84,6 +120,18 @@ proxy.MapDelete("/missions/{id:guid}/intervenants/{iid:guid}", async (
     var client = factory.CreateClient("PrediCopApi");
     var r = await client.DeleteAsync($"/api/missions/{id}/intervenants/{iid}", ct);
     ctx.Response.StatusCode = (int)r.StatusCode;
+});
+
+proxy.MapPost("/missions/{id:guid}/force-assign", async (
+    Guid id, HttpContext ctx, IHttpClientFactory factory, CancellationToken ct) =>
+{
+    var client = factory.CreateClient("PrediCopApi");
+    using var body = new StreamContent(ctx.Request.Body);
+    body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+    var r = await client.PostAsync($"/api/missions/{id}/force-assign", body, ct);
+    ctx.Response.StatusCode = (int)r.StatusCode;
+    ctx.Response.ContentType = r.Content.Headers.ContentType?.ToString() ?? "application/json";
+    await r.Content.CopyToAsync(ctx.Response.Body, ct);
 });
 
 proxy.MapPost("/media", async (
@@ -127,4 +175,44 @@ proxy.MapGet("/media/{mediaId:guid}/file", async (
     }
 });
 
+// ── Text assistant endpoints ──────────────────────────────────────────────────
+
+app.MapPost("/text-assistant/correct", async (TextAssistantInput input, TextAssistantService svc, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(input.Text)) return Results.Ok(new { correctedText = "" });
+    try
+    {
+        var corrected = await svc.CorrectSpellingAsync(input.Text, ct);
+        return Results.Ok(new { correctedText = corrected });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 502);
+    }
+}).RequireAuthorization();
+
+app.MapPost("/text-assistant/improve", async (TextAssistantInput input, TextAssistantService svc, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(input.Text)) return Results.Ok(new { suggestions = Array.Empty<object>() });
+    try
+    {
+        var suggestions = await svc.ImproveAsync(input.Text, ct);
+        return Results.Ok(new { suggestions });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 502);
+    }
+}).RequireAuthorization();
+
 app.Run();
+
+record TextAssistantInput(string Text);

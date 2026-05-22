@@ -1,0 +1,161 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Qualifications.IndexModel
+@{
+    ViewData["Title"] = "Habilitations des agents";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-id-card me-2 text-primary"></i>Habilitations des agents
+    </h4>
+    <a asp-page="/Admin/Qualifications/Edit" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i>Nouvelle habilitation
+    </a>
+</div>
+
+@if (Model.ExpiringCount > 0)
+{
+    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation fa-lg"></i>
+        <div>
+            <strong>Attention !</strong> @Model.ExpiringCount habilitation(s) expire(nt) dans moins de 30 jours.
+            Pensez à les renouveler.
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-1"></i>@ok
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Agent</label>
+                <select name="agentId" class="form-select form-select-sm">
+                    <option value="">-- Tous les agents --</option>
+                    @foreach (var agent in Model.Agents)
+                    {
+                        <option value="@agent.Id" selected="@(Model.AgentFilter == agent.Id)">
+                            @agent.FullName (@agent.BadgeNumber)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Type d'habilitation</label>
+                <select name="typeFilter" class="form-select form-select-sm">
+                    <option value="">-- Tous les types --</option>
+                    @foreach (var t in Model.QualificationTypes)
+                    {
+                        <option value="@t.Value" selected="@(Model.TypeFilter == t.Value)">@t.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="expiredOnly" id="expiredOnly"
+                           value="true" @(Model.ExpiredOnly ? "checked" : "") />
+                    <label class="form-check-label small" for="expiredOnly">Expirées seulement</label>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="fa-solid fa-filter me-1"></i>Filtrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Qualifications.Count == 0)
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-id-card fa-3x mb-3 opacity-25"></i>
+                <p class="mb-1 fw-semibold">Aucune habilitation trouvée</p>
+                <p class="small">Créez des habilitations pour suivre les certifications de vos agents.</p>
+                <a asp-page="/Admin/Qualifications/Edit" class="btn btn-primary btn-sm mt-2">
+                    <i class="fa-solid fa-plus me-1"></i>Nouvelle habilitation
+                </a>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Badge</th>
+                        <th>Type</th>
+                        <th>Référence</th>
+                        <th>Autorité émettrice</th>
+                        <th class="text-center">Émise le</th>
+                        <th class="text-center">Expire le</th>
+                        <th class="text-center">Statut</th>
+                        <th class="text-end" style="width:130px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var q in Model.Qualifications)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@q.AgentFullName</td>
+                            <td><span class="badge bg-secondary">@q.AgentBadgeNumber</span></td>
+                            <td>
+                                <span class="badge bg-primary bg-opacity-75">@Model.GetTypeLabel(q.Type)</span>
+                            </td>
+                            <td class="text-muted small">@q.Reference</td>
+                            <td class="text-muted small">@q.IssuingAuthority</td>
+                            <td class="text-center small">@q.IssuedAt.ToString("dd/MM/yyyy")</td>
+                            <td class="text-center small">@q.ExpiresAt.ToString("dd/MM/yyyy")</td>
+                            <td class="text-center">
+                                @if (q.IsExpired)
+                                {
+                                    <span class="badge bg-danger">Expirée</span>
+                                }
+                                else if (q.ExpiresWithin30Days)
+                                {
+                                    <span class="badge bg-warning text-dark">Expire bientôt</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Valide</span>
+                                }
+                            </td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <a asp-page="/Admin/Qualifications/Edit" asp-route-id="@q.Id"
+                                   class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form asp-page-handler="Delete" asp-route-id="@q.Id"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Supprimer cette habilitation ?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

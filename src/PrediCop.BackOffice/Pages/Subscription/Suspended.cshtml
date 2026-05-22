@@ -1,0 +1,25 @@
+@page
+@model PrediCop.BackOffice.Pages.Subscription.SuspendedModel
+@{
+    ViewData["Title"] = "Abonnement suspendu — PrediCop";
+    Layout = "~/Pages/Shared/_LandingLayout.cshtml";
+}
+<div class="container py-5 text-center">
+    <div class="card shadow border-0 mx-auto" style="max-width:560px">
+        <div class="card-body p-5">
+            <i class="fa-solid fa-triangle-exclamation text-danger mb-3" style="font-size:4rem"></i>
+            <h2 class="fw-bold mb-3">Abonnement suspendu</h2>
+            <p class="text-muted mb-2">Votre abonnement PrediCop est expiré ou en retard de paiement.</p>
+            <p class="text-muted mb-4">Veuillez régulariser votre situation pour accéder à nouveau à l'application.</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a asp-page="/Admin/Subscription/Index" class="btn btn-primary">
+                    <i class="fa-solid fa-credit-card me-2"></i>Gérer mon abonnement
+                </a>
+                <a asp-page="/Account/Logout" class="btn btn-outline-secondary">Se déconnecter</a>
+            </div>
+            <div class="mt-4">
+                <small class="text-muted">Besoin d'aide ? <a href="mailto:support@predicop.fr">support@predicop.fr</a></small>
+            </div>
+        </div>
+    </div>
+</div>

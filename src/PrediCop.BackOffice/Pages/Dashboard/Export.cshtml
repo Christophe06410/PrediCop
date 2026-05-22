@@ -1,0 +1,74 @@
+@page
+@model PrediCop.BackOffice.Pages.Dashboard.ExportModel
+@{
+    ViewData["Title"] = "Export statistiques";
+    var currentYear = DateTime.Now.Year;
+    var currentMonth = DateTime.Now.Month;
+}
+
+<div class="d-flex align-items-center mb-4">
+    <a asp-page="/Dashboard/Index" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-file-export me-2 text-primary"></i>Export statistiques mensuelles
+    </h4>
+</div>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation me-2"></i>@Model.ErrorMessage</div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold"><i class="fa-solid fa-calendar me-2 text-primary"></i>Sélectionner la période</h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mois à exporter</label>
+                        <input type="month" class="form-control" name="Period"
+                               value="@($"{currentYear:D4}-{currentMonth:D2}")"
+                               min="2020-01" max="@($"{currentYear:D4}-{currentMonth:D2}")" required />
+                        <div class="form-text">Toutes les données du mois sélectionné seront incluses.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Format</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="Format" id="fmtXlsx" value="xlsx" checked />
+                                <label class="form-check-label" for="fmtXlsx">
+                                    <i class="fa-solid fa-file-excel text-success me-1"></i>Excel (.xlsx) — 4 onglets
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="Format" id="fmtCsv" value="csv" />
+                                <label class="form-check-label" for="fmtCsv">
+                                    <i class="fa-solid fa-file-csv text-secondary me-1"></i>CSV — missions uniquement
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border mb-4">
+                        <p class="fw-semibold mb-2"><i class="fa-solid fa-table me-2 text-primary"></i>Contenu de l'export Excel :</p>
+                        <ul class="mb-0 small">
+                            <li><strong>Missions</strong> — référence, statut, adresse, véhicule, dates, temps de réponse</li>
+                            <li><strong>Véhicules</strong> — missions proposées, acceptées, refusées, taux d'acceptation</li>
+                            <li><strong>Appels</strong> — référence, appelant, adresse, catégorie, statut, opérateur</li>
+                            <li><strong>Documents</strong> — référence, type, statut, mission associée</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-download me-2"></i>Télécharger
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

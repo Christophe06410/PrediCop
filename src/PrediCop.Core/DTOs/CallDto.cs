@@ -15,6 +15,7 @@ public class CreateCallRequest
     public string? ThirdParties { get; set; }
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
+    public CallPriority Priority { get; set; } = CallPriority.Routine;
 }
 
 public class UpdateCallRequest
@@ -30,6 +31,7 @@ public class UpdateCallRequest
     public string? ThirdParties { get; set; }
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
+    public CallPriority? Priority { get; set; }
 }
 
 public class CallResponse
@@ -38,6 +40,7 @@ public class CallResponse
     public string Reference { get; set; } = string.Empty;
     public DateTime ReceivedAt { get; set; }
     public CallStatus Status { get; set; }
+    public CallPriority Priority { get; set; }
     public string CallerName { get; set; } = string.Empty;
     public string CallerPhone { get; set; } = string.Empty;
     public string IncidentDescription { get; set; } = string.Empty;

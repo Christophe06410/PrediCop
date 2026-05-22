@@ -4,7 +4,7 @@
              x:Class="PrediCop.Mobile.Pages.PatrolPage"
              BackgroundColor="#1a2035">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
         <Grid Grid.Row="0" BackgroundColor="#243050" Padding="16,12">
             <Grid.ColumnDefinitions>
@@ -19,7 +19,20 @@
                     Command="{Binding LoadStreetsCommand}"/>
         </Grid>
 
-        <CollectionView Grid.Row="1"
+        <!-- Bouton SOS -->
+        <Grid Grid.Row="1" BackgroundColor="#1a2035" Padding="16,10">
+            <Button Text="🆘 SOS"
+                    BackgroundColor="#dc2626"
+                    TextColor="White"
+                    CornerRadius="50"
+                    HeightRequest="56"
+                    FontAttributes="Bold"
+                    FontSize="18"
+                    HorizontalOptions="Fill"
+                    Command="{Binding SOSCommand}"/>
+        </Grid>
+
+        <CollectionView Grid.Row="2"
                         ItemsSource="{Binding Streets}"
                         BackgroundColor="Transparent">
             <CollectionView.ItemTemplate>

@@ -50,6 +50,36 @@
     </div>
 </div>
 
+@* Token CSRF pour les appels AJAX POST *@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var token = Antiforgery.GetAndStoreTokens(HttpContext).RequestToken;
+}
+<input type="hidden" name="__RequestVerificationToken" value="@token" id="csrf-token" />
+
+<!-- Modal : Changer de mission -->
+<div class="modal fade" id="rerouteModal" tabindex="-1" aria-labelledby="rerouteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rerouteModalLabel">
+                    <i class="fa-solid fa-route me-2 text-primary"></i>Changer de mission
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" id="rerouteModalBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Chargement des missions…</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -106,6 +136,7 @@
 
     // --- Couche véhicules (mise à jour dynamique) ---
     var vehicleLayer = L.layerGroup().addTo(map);
+    var _rerouteVehicleId = null;
 
     function vehicleIcon(status) {
         var color = status === 'Available' ? 'green' :
@@ -123,6 +154,15 @@
                status === 'Unavailable' ? 'Indisponible'  : status;
     }
 
+    function missionStatusLabel(s) {
+        return s === 'Pending'    ? 'En attente'   :
+               s === 'Proposed'   ? 'Proposée'     :
+               s === 'Accepted'   ? 'Acceptée'     :
+               s === 'InProgress' ? 'En cours'     :
+               s === 'Completed'  ? 'Terminée'     :
+               s === 'Cancelled'  ? 'Annulée'      : (s || '');
+    }
+
     function renderVehicles(vehicles) {
         vehicleLayer.clearLayers();
         vehicles.forEach(function (v) {
@@ -133,18 +173,142 @@
             var lastSeen = v.lastPositionUpdate
                 ? new Date(v.lastPositionUpdate).toLocaleTimeString('fr-FR')
                 : '—';
+
+            // Mission section
+            var missionHtml = '';
+            if (v.currentMissionRef) {
+                missionHtml =
+                    '<hr style="margin:6px 0">' +
+                    '<small><i class="fa-solid fa-location-dot me-1 text-danger"></i>' +
+                    '<b>' + v.currentMissionRef + '</b></small>' +
+                    '<br><small class="text-muted" style="word-break:break-word">' + (v.currentMissionAddress || '') + '</small>' +
+                    '<br><small><span class="badge" style="background:#f59e0b;font-size:.7em">' +
+                    missionStatusLabel(v.currentMissionStatus) + '</span></small>';
+            } else {
+                missionHtml = '<hr style="margin:6px 0"><small class="text-muted"><em>Aucune mission en cours</em></small>';
+            }
+
+            // Reroute button (only for Available or OnMission vehicles)
+            var rerouteBtn = '';
+            if (v.status === 'Available' || v.status === 'OnMission') {
+                rerouteBtn =
+                    '<br><button class="btn btn-sm btn-outline-primary mt-2 w-100 btn-reroute" ' +
+                    'style="font-size:.75em" data-vehicle-id="' + v.id + '" data-call-sign="' + v.callSign + '">' +
+                    '<i class="fa-solid fa-route me-1"></i>Changer de mission</button>';
+            }
+
             var popup =
-                '<div style="min-width:160px">' +
+                '<div style="min-width:190px">' +
                 '<strong style="font-size:1.05em">' + v.callSign + '</strong>' +
                 '<br><span class="badge" style="background:' +
                     (v.status === 'Available' ? '#22c55e' : v.status === 'OnMission' ? '#f59e0b' : '#6b7280') +
                 '">' + statusLabel(v.status) + '</span>' +
                 '<br><small><i class="fa-solid fa-user me-1"></i>' + officers + '</small>' +
                 '<br><small class="text-muted">Vu à ' + lastSeen + '</small>' +
+                missionHtml +
+                rerouteBtn +
                 '</div>';
+
             L.marker([v.lastLatitude, v.lastLongitude], { icon: vehicleIcon(v.status) })
                 .bindPopup(popup)
                 .addTo(vehicleLayer);
+        });
+
+        // Re-attach click handlers after popup DOM is rendered
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-reroute');
+            if (!btn) return;
+            _rerouteVehicleId = btn.getAttribute('data-vehicle-id');
+            var callSign = btn.getAttribute('data-call-sign');
+            document.getElementById('rerouteModalLabel').innerHTML =
+                '<i class="fa-solid fa-route me-2 text-primary"></i>Changer de mission — ' + callSign;
+            openRerouteModal();
+        }, { once: false });
+    }
+
+    function openRerouteModal() {
+        var body = document.getElementById('rerouteModalBody');
+        body.innerHTML =
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>' +
+            '<span class="ms-2">Chargement des missions…</span>' +
+            '</div>';
+
+        var modal = new bootstrap.Modal(document.getElementById('rerouteModal'));
+        modal.show();
+
+        fetch('?handler=PendingMissions', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (missions) {
+                if (!missions || missions.length === 0) {
+                    body.innerHTML = '<p class="text-muted text-center py-3">Aucune mission en attente disponible.</p>';
+                    return;
+                }
+                var html = '<div class="list-group list-group-flush">';
+                missions.forEach(function (m) {
+                    var created = new Date(m.createdAt).toLocaleString('fr-FR');
+                    html +=
+                        '<button class="list-group-item list-group-item-action mission-pick" ' +
+                        'data-mission-id="' + m.id + '">' +
+                        '<div class="d-flex justify-content-between">' +
+                        '<strong>' + m.reference + '</strong>' +
+                        '<small class="text-muted">' + created + '</small>' +
+                        '</div>' +
+                        '<small class="text-muted">' + (m.targetAddress || '') + '</small>' +
+                        '</button>';
+                });
+                html += '</div>';
+                body.innerHTML = html;
+
+                body.querySelectorAll('.mission-pick').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        assignMission(this.getAttribute('data-mission-id'), modal);
+                    });
+                });
+            })
+            .catch(function () {
+                body.innerHTML = '<p class="text-danger text-center py-3">Erreur lors du chargement des missions.</p>';
+            });
+    }
+
+    function assignMission(missionId, modal) {
+        var body = document.getElementById('rerouteModalBody');
+        body.innerHTML =
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>' +
+            '<span class="ms-2">Attribution en cours…</span>' +
+            '</div>';
+
+        fetch('?handler=RerouteMission', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'RequestVerificationToken': document.getElementById('csrf-token')?.value || ''
+            },
+            body: JSON.stringify({ missionId: missionId, vehicleId: _rerouteVehicleId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (result) {
+            if (result.success) {
+                body.innerHTML =
+                    '<div class="alert alert-success mb-0">' +
+                    '<i class="fa-solid fa-check-circle me-2"></i>Mission attribuée avec succès.' +
+                    '</div>';
+                setTimeout(function () { modal.hide(); refreshVehicles(); }, 1500);
+            } else {
+                body.innerHTML =
+                    '<div class="alert alert-danger mb-0">' +
+                    '<i class="fa-solid fa-exclamation-triangle me-2"></i>' +
+                    (result.error || 'Erreur lors de l\'attribution.') +
+                    '</div>';
+            }
+        })
+        .catch(function () {
+            body.innerHTML =
+                '<div class="alert alert-danger mb-0">' +
+                '<i class="fa-solid fa-exclamation-triangle me-2"></i>Erreur réseau.' +
+                '</div>';
         });
     }
 

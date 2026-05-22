@@ -1,12 +1,12 @@
 ﻿@page
 @model PrediCop.BackOffice.Pages.Calls.IndexModel
 @{
-    ViewData["Title"] = "Gestion des appels";
+    ViewData["Title"] = "Mains courantes";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">
-        <i class="fa-solid fa-phone me-2 text-primary"></i>Gestion des appels
+        <i class="fa-solid fa-phone me-2 text-primary"></i>Mains courantes
         <span class="badge bg-secondary ms-2">@Model.TotalCount</span>
     </h4>
     <a asp-page="/Calls/Receive" class="btn btn-primary">
@@ -47,7 +47,7 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">Catégorie</label>
                 <select name="FilterCategory" class="form-select form-select-sm">
                     <option value="">Toutes catégories</option>
@@ -57,11 +57,21 @@
                     }
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Priorité</label>
+                <select name="FilterPriority" class="form-select form-select-sm">
+                    <option value="">Toutes priorités</option>
+                    <option value="Routine" selected="@(Model.FilterPriority == "Routine")">Routine</option>
+                    <option value="Urgent" selected="@(Model.FilterPriority == "Urgent")">Urgent</option>
+                    <option value="Critique" selected="@(Model.FilterPriority == "Critique")">Critique</option>
+                    <option value="SOS" selected="@(Model.FilterPriority == "SOS")">SOS</option>
+                </select>
+            </div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
                     <i class="fa-solid fa-search me-1"></i>Filtrer
                 </button>
-                <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary">
+                <a asp-page="/Calls/Index" class="btn btn-sm btn-outline-secondary" title="Réinitialiser">
                     <i class="fa-solid fa-rotate-left"></i>
                 </a>
             </div>
@@ -80,6 +90,7 @@
                         <th>Heure</th>
                         <th>Appelant</th>
                         <th>Téléphone</th>
+                        <th>Priorité</th>
                         <th>Catégorie</th>
                         <th>Adresse</th>
                         <th>Statut</th>
@@ -99,6 +110,29 @@
                             <td>@call.CallerName</td>
                             <td>@call.CallerPhone</td>
                             <td>
+                                @{
+                                    var (prioBadge, prioIcon, prioLabel) = call.Priority switch
+                                    {
+                                        "SOS"      => ("bg-danger",          "fa-siren-on",             "SOS"),
+                                        "Critique" => ("bg-danger",          "fa-fire",                 "Critique"),
+                                        "Urgent"   => ("bg-warning text-dark","fa-triangle-exclamation","Urgent"),
+                                        _          => ("bg-secondary",       "fa-circle-check",         "Routine")
+                                    };
+                                }
+                                @if (call.Priority == "SOS")
+                                {
+                                    <span class="badge @prioBadge priority-sos-pulse">
+                                        <i class="fa-solid @prioIcon me-1"></i>@prioLabel
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge @prioBadge">
+                                        <i class="fa-solid @prioIcon me-1"></i>@prioLabel
+                                    </span>
+                                }
+                            </td>
+                            <td>
                                 <span class="badge bg-info text-dark">
                                     @call.IncidentCategory
                                 </span>
@@ -111,19 +145,25 @@
                                 @await Html.PartialAsync("_StatusBadge")
                             </td>
                             <td class="text-end">
-                                <a asp-page="/Calls/Details" asp-route-id="@call.Id"
-                                   class="btn btn-sm btn-outline-primary" title="Détails">
-                                    <i class="fa-solid fa-eye"></i>
-                                </a>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a asp-page="/Calls/Details" asp-route-id="@call.Id"
+                                       class="btn btn-sm btn-outline-primary" title="Détails">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    <a asp-page="/Calls/Edit" asp-route-id="@call.Id"
+                                       class="btn btn-sm btn-outline-secondary" title="Modifier">
+                                        <i class="fa-solid fa-pencil"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     }
                     @if (!Model.Calls.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="9" class="text-center text-muted py-4">
                                 <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
-                                Aucun appel trouvé avec les filtres sélectionnés.
+                                Aucune main courante trouvée avec les filtres sélectionnés.
                             </td>
                         </tr>
                     }
@@ -141,7 +181,8 @@
                            asp-route-pageNumber="@(Model.PageNumber - 1)"
                            asp-route-filterDate="@Model.FilterDate"
                            asp-route-filterStatus="@Model.FilterStatus"
-                           asp-route-filterCategory="@Model.FilterCategory">
+                           asp-route-filterCategory="@Model.FilterCategory"
+                           asp-route-filterPriority="@Model.FilterPriority">
                             <i class="fa-solid fa-chevron-left"></i>
                         </a>
                     </li>
@@ -152,7 +193,8 @@
                                asp-route-pageNumber="@p"
                                asp-route-filterDate="@Model.FilterDate"
                                asp-route-filterStatus="@Model.FilterStatus"
-                               asp-route-filterCategory="@Model.FilterCategory">@p</a>
+                               asp-route-filterCategory="@Model.FilterCategory"
+                               asp-route-filterPriority="@Model.FilterPriority">@p</a>
                         </li>
                     }
                     <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
@@ -160,7 +202,8 @@
                            asp-route-pageNumber="@(Model.PageNumber + 1)"
                            asp-route-filterDate="@Model.FilterDate"
                            asp-route-filterStatus="@Model.FilterStatus"
-                           asp-route-filterCategory="@Model.FilterCategory">
+                           asp-route-filterCategory="@Model.FilterCategory"
+                           asp-route-filterPriority="@Model.FilterPriority">
                             <i class="fa-solid fa-chevron-right"></i>
                         </a>
                     </li>
@@ -169,3 +212,13 @@
         </div>
     }
 </div>
+
+@section Styles {
+    <style>
+        @@keyframes sos-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .7; transform: scale(1.08); }
+        }
+        .priority-sos-pulse { animation: sos-pulse 0.8s ease-in-out infinite; }
+    </style>
+}

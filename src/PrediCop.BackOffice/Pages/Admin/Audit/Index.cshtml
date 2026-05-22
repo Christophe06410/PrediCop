@@ -36,16 +36,21 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <label class="form-label small fw-semibold">Utilisateur</label>
+                <input type="text" name="FilterUserName" class="form-control form-control-sm"
+                       placeholder="Nom ou login" value="@Model.FilterUserName" />
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold">Du</label>
                 <input type="date" name="FilterFrom" class="form-control form-control-sm"
                        value="@Model.FilterFrom" />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="form-label small fw-semibold">Au</label>
                 <input type="date" name="FilterTo" class="form-control form-control-sm"
                        value="@Model.FilterTo" />
             </div>
-            <div class="col-md-3 d-flex gap-2">
+            <div class="col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrer
                 </button>
@@ -145,6 +150,7 @@
                        asp-route-CurrentPage="@pageNum"
                        asp-route-FilterEntityName="@Model.FilterEntityName"
                        asp-route-FilterAction="@Model.FilterAction"
+                       asp-route-FilterUserName="@Model.FilterUserName"
                        asp-route-FilterFrom="@Model.FilterFrom"
                        asp-route-FilterTo="@Model.FilterTo">
                         @pageNum

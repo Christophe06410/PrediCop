@@ -34,6 +34,9 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? FilterCategory { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public string? FilterPriority { get; set; }
+
     public int TotalPages => TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
 
     public static readonly List<string> Statuses = new() { "Open", "InProgress", "MissionCreated", "Closed" };
@@ -54,6 +57,7 @@ public class IndexModel : PageModel
             if (!string.IsNullOrWhiteSpace(FilterDate)) url += $"&date={FilterDate}";
             if (!string.IsNullOrWhiteSpace(FilterStatus)) url += $"&status={FilterStatus}";
             if (!string.IsNullOrWhiteSpace(FilterCategory)) url += $"&category={FilterCategory}";
+            if (!string.IsNullOrWhiteSpace(FilterPriority)) url += $"&priority={FilterPriority}";
             var result = await client.GetFromJsonAsync<PagedResult<CallDto>>(url);
             Calls = result?.Items ?? [];
             TotalCount = result?.TotalCount ?? 0;

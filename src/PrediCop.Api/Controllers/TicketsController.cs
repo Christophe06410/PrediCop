@@ -51,6 +51,7 @@ public class TicketsController(AppDbContext db) : ControllerBase
 
         var query = db.Set<ElectronicTicket>()
             .Include(t => t.IssuedBy)
+            .Include(t => t.Mission)
             .Where(t => t.TenantId == TenantId);
 
         if (agentId.HasValue)
@@ -85,6 +86,7 @@ public class TicketsController(AppDbContext db) : ControllerBase
 
         var ticket = await db.Set<ElectronicTicket>()
             .Include(t => t.IssuedBy)
+            .Include(t => t.Mission)
             .FirstOrDefaultAsync(t => t.Id == id && t.TenantId == TenantId, ct);
 
         if (ticket is null)
@@ -119,6 +121,16 @@ public class TicketsController(AppDbContext db) : ControllerBase
 
         var ticketNumber = $"PV-{year}-{countThisYear + 1:D5}";
 
+        // Vérifier que la mission appartient au tenant (si fournie)
+        Mission? mission = null;
+        if (request.MissionId.HasValue)
+        {
+            mission = await db.Set<Mission>()
+                .FirstOrDefaultAsync(m => m.Id == request.MissionId.Value && m.TenantId == TenantId, ct);
+            if (mission is null)
+                return Problem(title: "Mission introuvable ou n'appartient pas au tenant", statusCode: 422);
+        }
+
         var ticket = new ElectronicTicket
         {
             TenantId = TenantId,
@@ -136,13 +148,15 @@ public class TicketsController(AppDbContext db) : ControllerBase
             ArticleCode = request.ArticleCode,
             FineAmount = request.FineAmount,
             Notes = request.Notes,
-            Status = TicketStatus.Issued
+            Status = TicketStatus.Issued,
+            MissionId = request.MissionId
         };
 
         db.Set<ElectronicTicket>().Add(ticket);
         await db.SaveChangesAsync(ct);
 
         ticket.IssuedBy = agent;
+        ticket.Mission = mission;
         return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, MapToResponse(ticket));
     }
 
@@ -159,6 +173,7 @@ public class TicketsController(AppDbContext db) : ControllerBase
 
         var ticket = await db.Set<ElectronicTicket>()
             .Include(t => t.IssuedBy)
+            .Include(t => t.Mission)
             .FirstOrDefaultAsync(t => t.Id == id && t.TenantId == TenantId, ct);
 
         if (ticket is null)
@@ -415,6 +430,8 @@ public class TicketsController(AppDbContext db) : ControllerBase
         t.SignedAt,
         t.ExportedToAntai,
         t.ExportedAt,
-        t.CreatedAt
+        t.CreatedAt,
+        t.MissionId,
+        t.Mission?.Reference
     );
 }

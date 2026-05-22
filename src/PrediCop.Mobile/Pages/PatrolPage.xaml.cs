@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.Messaging;
 using PrediCop.Mobile.Messages;
+using PrediCop.Mobile.Services;
 using PrediCop.Mobile.ViewModels;
 
 namespace PrediCop.Mobile.Pages;
@@ -19,6 +20,16 @@ public partial class PatrolPage : ContentPage
         ((PatrolViewModel)BindingContext).LoadStreetsCommand.Execute(null);
         WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
             await DisplayAlert(m.Title, m.Text, "OK"));
+        WeakReferenceMessenger.Default.Register<SosConfirmationRequest>(this, async (_, req) =>
+        {
+            var vm = (PatrolViewModel)BindingContext;
+            var confirmed = await DisplayAlert(
+                "🆘 Alerte SOS",
+                "Êtes-vous en danger ? Envoyer une alerte SOS à tous les opérateurs ?",
+                "Envoyer SOS", "Annuler");
+            if (confirmed)
+                await vm.ConfirmAndSendSOSAsync(req.VehicleId);
+        });
     }
 
     protected override void OnDisappearing()

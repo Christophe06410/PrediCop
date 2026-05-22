@@ -21,6 +21,14 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
     public string VehiclesJson { get; set; } = "[]";
     public string AssignedVehicleJson { get; set; } = "null";
     public double? DistanceKm { get; set; }
+    public List<VehicleDto> OnMissionVehicles { get; set; } = [];
+    public bool CanForceAssign =>
+        Mission is not null
+        && (Mission.Priority == "Critique" || Mission.Priority == "SOS")
+        && (Mission.Status is "Pending" or "Proposed");
+
+    /// <summary>Vrai si cet appel a des missions antérieures (mission de reprise).</summary>
+    public bool IsResumedMission => Mission?.SiblingMissions.Count > 0;
 
     private List<VehicleMapItem> _vehicles = [];
 
@@ -35,6 +43,10 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         if (Mission is null) return NotFound();
 
         ComputeDistanceToTarget();
+
+        if (CanForceAssign)
+            await LoadOnMissionVehiclesAsync(client);
+
         return Page();
     }
 
@@ -153,6 +165,19 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Impossible de charger les véhicules pour la carte de mission");
+        }
+    }
+
+    private async Task LoadOnMissionVehiclesAsync(HttpClient client)
+    {
+        try
+        {
+            var vehicles = await client.GetFromJsonAsync<List<VehicleDto>>("/api/vehicles?status=OnMission", JsonOpts);
+            OnMissionVehicles = vehicles ?? [];
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Impossible de charger les véhicules OnMission");
         }
     }
 

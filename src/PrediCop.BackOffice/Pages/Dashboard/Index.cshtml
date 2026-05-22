@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Dashboard Manager";
     var d = Model.Dashboard;
+    var ts = Model.TimeSeriesStats;
     var hoursJson = JsonSerializer.Serialize(d.MissionsByHour.Select(h => h.Hour + "h"));
     var countsJson = JsonSerializer.Serialize(d.MissionsByHour.Select(h => h.Count));
 }
@@ -12,9 +13,14 @@
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-gauge me-2 text-primary"></i>Dashboard Manager
     </h4>
-    <span class="text-muted small">
-        <i class="fa-regular fa-clock me-1"></i>@DateTime.Now.ToString("dddd dd MMMM yyyy", new System.Globalization.CultureInfo("fr-FR")) — @DateTime.Now.ToString("HH:mm")
-    </span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">
+            <i class="fa-regular fa-clock me-1"></i>@DateTime.Now.ToString("dddd dd MMMM yyyy", new System.Globalization.CultureInfo("fr-FR")) — @DateTime.Now.ToString("HH:mm")
+        </span>
+        <a asp-page="/Dashboard/Export" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-file-export me-1"></i>Exporter
+        </a>
+    </div>
 </div>
 
 <!-- KPI Cards -->
@@ -23,7 +29,7 @@
         <div class="card shadow-sm kpi-card border-start border-4 border-primary">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="text-muted small fw-semibold text-uppercase">Appels aujourd'hui</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Mains courantes aujourd'hui</div>
                     <div class="kpi-value text-primary">@d.CallsToday</div>
                 </div>
                 <div class="kpi-icon text-primary">
@@ -178,6 +184,195 @@
                                    class="btn btn-sm btn-outline-primary">
                                     <i class="fa-solid fa-eye"></i>
                                 </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== ÉVOLUTION TEMPORELLE ===================== -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fa-solid fa-chart-line me-2 text-primary"></i>Évolution sur @Model.Days jours
+            <small class="text-muted fw-normal ms-2">(@ts.CurrentPeriod.PeriodLabel)</small>
+        </h6>
+        <!-- Sélecteur de période -->
+        <div class="btn-group btn-group-sm" role="group">
+            <a asp-page="/Dashboard/Index" asp-route-days="7"
+               class="btn @(Model.Days == 7 ? "btn-primary" : "btn-outline-primary")">7j</a>
+            <a asp-page="/Dashboard/Index" asp-route-days="14"
+               class="btn @(Model.Days == 14 ? "btn-primary" : "btn-outline-primary")">14j</a>
+            <a asp-page="/Dashboard/Index" asp-route-days="30"
+               class="btn @(Model.Days == 30 ? "btn-primary" : "btn-outline-primary")">30j</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Cartes de comparaison -->
+        <div class="row g-3 mb-4">
+            <!-- Appels -->
+            <div class="col-md-4">
+                <div class="card border h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">
+                            <i class="fa-solid fa-phone me-1"></i>Appels
+                        </div>
+                        <div class="fs-2 fw-bold text-primary">@ts.CurrentPeriod.TotalCalls</div>
+                        <div class="text-muted small">vs @ts.PreviousPeriod.TotalCalls période précédente</div>
+                        @if (ts.CurrentPeriod.CallsDeltaPercent.HasValue)
+                        {
+                            var delta = ts.CurrentPeriod.CallsDeltaPercent.Value;
+                            @if (delta > 0)
+                            {
+                                <span class="badge bg-danger-subtle text-danger mt-1">
+                                    <i class="fa-solid fa-arrow-up me-1"></i>@delta.ToString("F1")%
+                                </span>
+                            }
+                            else if (delta < 0)
+                            {
+                                <span class="badge bg-success-subtle text-success mt-1">
+                                    <i class="fa-solid fa-arrow-down me-1"></i>@Math.Abs(delta).ToString("F1")%
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary mt-1">= stable</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary mt-1">nouveau</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <!-- Missions complétées -->
+            <div class="col-md-4">
+                <div class="card border h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">
+                            <i class="fa-solid fa-flag-checkered me-1"></i>Missions complétées
+                        </div>
+                        <div class="fs-2 fw-bold text-success">@ts.CurrentPeriod.CompletedMissions</div>
+                        <div class="text-muted small">vs @ts.PreviousPeriod.CompletedMissions période précédente</div>
+                        @if (ts.CurrentPeriod.MissionsDeltaPercent.HasValue)
+                        {
+                            var delta = ts.CurrentPeriod.MissionsDeltaPercent.Value;
+                            @if (delta > 0)
+                            {
+                                <span class="badge bg-success-subtle text-success mt-1">
+                                    <i class="fa-solid fa-arrow-up me-1"></i>@delta.ToString("F1")%
+                                </span>
+                            }
+                            else if (delta < 0)
+                            {
+                                <span class="badge bg-danger-subtle text-danger mt-1">
+                                    <i class="fa-solid fa-arrow-down me-1"></i>@Math.Abs(delta).ToString("F1")%
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary mt-1">= stable</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary mt-1">nouveau</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <!-- Temps de réponse moyen -->
+            <div class="col-md-4">
+                <div class="card border h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small fw-semibold text-uppercase mb-1">
+                            <i class="fa-solid fa-stopwatch me-1"></i>Temps de réponse moyen
+                        </div>
+                        <div class="fs-2 fw-bold text-info">@ts.CurrentPeriod.AverageResponseTimeMinutes.ToString("F1") min</div>
+                        <div class="text-muted small">vs @ts.PreviousPeriod.AverageResponseTimeMinutes.ToString("F1") min période préc.</div>
+                        @if (ts.CurrentPeriod.ResponseTimeDeltaPercent.HasValue)
+                        {
+                            var delta = ts.CurrentPeriod.ResponseTimeDeltaPercent.Value;
+                            @if (delta > 0)
+                            {
+                                <span class="badge bg-danger-subtle text-danger mt-1">
+                                    <i class="fa-solid fa-arrow-up me-1"></i>@delta.ToString("F1")%
+                                </span>
+                            }
+                            else if (delta < 0)
+                            {
+                                <span class="badge bg-success-subtle text-success mt-1">
+                                    <i class="fa-solid fa-arrow-down me-1"></i>@Math.Abs(delta).ToString("F1")%
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary mt-1">= stable</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary mt-1">nouveau</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableau des jours -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th class="text-center">Appels</th>
+                        <th class="text-center">Missions</th>
+                        <th class="text-center">Complétées</th>
+                        <th class="text-center">Tps réponse moy.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var day in ts.Days.OrderByDescending(x => x.Date))
+                    {
+                        <tr>
+                            <td class="fw-semibold">
+                                @day.Date.ToLocalTime().ToString("ddd dd/MM/yyyy",
+                                    new System.Globalization.CultureInfo("fr-FR"))
+                            </td>
+                            <td class="text-center">
+                                @if (day.Calls > 0)
+                                {
+                                    <span class="badge bg-primary">@day.Calls</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                            <td class="text-center">@day.Missions</td>
+                            <td class="text-center">
+                                @if (day.CompletedMissions > 0)
+                                {
+                                    <span class="badge bg-success">@day.CompletedMissions</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (day.AverageResponseTimeMinutes > 0)
+                                {
+                                    <span class="text-info fw-semibold">@day.AverageResponseTimeMinutes.ToString("F1") min</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
                             </td>
                         </tr>
                     }

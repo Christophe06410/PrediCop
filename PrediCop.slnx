@@ -5,5 +5,7 @@
     <Project Path="src/PrediCop.Core/PrediCop.Core.csproj" />
     <Project Path="src/PrediCop.Infrastructure/PrediCop.Infrastructure.csproj" />
     <Project Path="src/PrediCop.Mobile/PrediCop.Mobile.csproj" />
+    <Project Path="src/PrediCop.BackOffice.Tests/PrediCop.BackOffice.Tests.csproj" />
+    <Project Path="src/PrediCop.BackOffice.UITests/PrediCop.BackOffice.UITests.csproj" />
   </Folder>
 </Solution>

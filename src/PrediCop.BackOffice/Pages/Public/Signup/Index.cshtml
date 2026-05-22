@@ -1,0 +1,207 @@
+@page
+@model PrediCop.BackOffice.Pages.Public.Signup.IndexModel
+@{
+    ViewData["Title"] = "Créer votre compte — PrediCop";
+    Layout = "~/Pages/Shared/_LandingLayout.cshtml";
+
+    var moduleList = new[]
+    {
+        new { Key = "rh",            Icon = "fa-users-gear",    Label = "Module RH",                   Price = 39, Desc = "Plannings, congés, profils d'urgence." },
+        new { Key = "verbalisation", Icon = "fa-ticket",        Label = "Verbalisation électronique",  Price = 49, Desc = "PV mobiles, numérotation, export ANTAI." },
+        new { Key = "fourriere",     Icon = "fa-warehouse",     Label = "Module Fourrière",             Price = 29, Desc = "Enlèvements, constats, cycle de vie." },
+        new { Key = "fleet",         Icon = "fa-car-on",        Label = "Gestion de flotte",           Price = 29, Desc = "Carnet de bord, révisions, alertes." },
+        new { Key = "logistics",     Icon = "fa-box-open",      Label = "Module Logistique",           Price = 25, Desc = "Équipements, dotations, uniformes." },
+        new { Key = "geofencing",    Icon = "fa-draw-polygon",  Label = "Géofencing",                  Price = 19, Desc = "Alertes de sortie de zone de patrouille." },
+    };
+
+    var selectedKeys = (Model.Input.Modules ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(k => k.ToLowerInvariant())
+        .ToHashSet();
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-semibold"><i class="fa-solid fa-shield-halved me-2"></i>Créer votre compte PrediCop</h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (Model.ErrorMessage is not null)
+                    {
+                        <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>@Model.ErrorMessage</div>
+                    }
+
+                    <form method="post" id="signupForm">
+                        <!-- Récap formule -->
+                        <div class="alert alert-info small mb-4 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fa-solid fa-info-circle me-1"></i>
+                                    Formule : <strong>@Model.Input.Plan</strong> —
+                                    facturation <strong>@(Model.Input.Period == "Yearly" ? "annuelle" : "mensuelle")</strong>
+                                </span>
+                                <a asp-page="/Public/Pricing" class="alert-link small text-nowrap ms-2">Changer</a>
+                            </div>
+                        </div>
+
+                        <!-- Coordonnées -->
+                        <div class="mb-3">
+                            <label asp-for="Input.TenantName" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.TenantName" class="form-control" placeholder="ex: Police Municipale de Lyon" />
+                            <span asp-validation-for="Input.TenantName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Slug" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text text-muted">predicop.com/</span>
+                                <input asp-for="Input.Slug" class="form-control" placeholder="lyon-pm" id="slugInput" />
+                            </div>
+                            <div class="form-text">Identifiant de connexion unique, impossible à changer par la suite.</div>
+                            <span asp-validation-for="Input.Slug" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.Email" class="form-control" type="email" placeholder="admin@example.fr" />
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <label asp-for="Input.Password" class="form-label fw-semibold"></label>
+                                <input asp-for="Input.Password" class="form-control" type="password" />
+                                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                            </div>
+                            <div class="col-6">
+                                <label asp-for="Input.ConfirmPassword" class="form-label fw-semibold"></label>
+                                <input asp-for="Input.ConfirmPassword" class="form-control" type="password" />
+                                <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Modules optionnels -->
+                        <div class="mb-4">
+                            <div class="fw-semibold mb-2">
+                                <i class="fa-solid fa-puzzle-piece me-1 text-warning"></i>Modules optionnels
+                                <span class="text-muted fw-normal small ms-1">— cochez les modules souhaités</span>
+                            </div>
+                            <div class="row g-2">
+                                @foreach (var m in moduleList)
+                                {
+                                    var isChecked = selectedKeys.Contains(m.Key);
+                                    <div class="col-sm-6">
+                                        <label class="module-option d-flex align-items-start gap-2 p-2 rounded border cursor-pointer @(isChecked ? "selected" : "")"
+                                               data-price="@m.Price">
+                                            <input type="checkbox" class="form-check-input mt-1 module-checkbox flex-shrink-0"
+                                                   value="@m.Key" @(isChecked ? "checked" : "") />
+                                            <div class="flex-grow-1 min-width-0">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="fw-semibold small">
+                                                        <i class="fa-solid @m.Icon me-1 text-warning"></i>@m.Label
+                                                    </span>
+                                                    <span class="badge bg-warning text-dark ms-1 flex-shrink-0">+@m.Price €/mois</span>
+                                                </div>
+                                                <div class="text-muted" style="font-size:.75rem">@m.Desc</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Total modules -->
+                            <div id="modules-total-line" class="mt-2 small text-muted" style="display:none">
+                                Total modules : <strong id="modules-total-amount" class="text-warning"></strong>/mois
+                            </div>
+                        </div>
+
+                        <input type="hidden" asp-for="Input.Plan" />
+                        <input type="hidden" asp-for="Input.Period" />
+                        <input type="hidden" asp-for="Input.Modules" id="modulesHidden" />
+
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fa-solid fa-credit-card me-2"></i>Continuer vers le paiement
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fa-brands fa-stripe me-1"></i>Paiement sécurisé par Stripe
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.module-option {
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+    border-color: #dee2e6 !important;
+    user-select: none;
+}
+.module-option:hover { border-color: #ffc107 !important; background-color: #fffdf5; }
+.module-option.selected { border-color: #ffc107 !important; background-color: #fffdf0; }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    var prices = {};
+    document.querySelectorAll('.module-option').forEach(function (label) {
+        var cb = label.querySelector('.module-checkbox');
+        prices[cb.value] = parseInt(label.dataset.price, 10);
+
+        label.addEventListener('click', function (e) {
+            if (e.target === cb) return; // let native checkbox handle it
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change'));
+        });
+        cb.addEventListener('change', function () {
+            label.classList.toggle('selected', cb.checked);
+            updateModules();
+        });
+    });
+
+    function updateModules() {
+        var checked = [];
+        var total = 0;
+        document.querySelectorAll('.module-checkbox:checked').forEach(function (cb) {
+            checked.push(cb.value);
+            total += prices[cb.value] || 0;
+        });
+
+        document.getElementById('modulesHidden').value = checked.join(',');
+
+        var line = document.getElementById('modules-total-line');
+        var amt = document.getElementById('modules-total-amount');
+        if (total > 0) {
+            amt.textContent = total + ' €';
+            line.style.display = '';
+        } else {
+            line.style.display = 'none';
+        }
+    }
+
+    // Slug auto-fill
+    var tenantInput = document.querySelector('[name="Input.TenantName"]');
+    var slugInput = document.getElementById('slugInput');
+    if (tenantInput && slugInput && !slugInput.value) {
+        tenantInput.addEventListener('input', function () {
+            if (!slugInput.dataset.manual) {
+                slugInput.value = this.value.toLowerCase()
+                    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            }
+        });
+        slugInput.addEventListener('input', function () { this.dataset.manual = '1'; });
+    }
+
+    updateModules();
+})();
+</script>
+}

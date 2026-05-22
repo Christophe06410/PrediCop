@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Plugin.BLE;
+using Plugin.BLE.Abstractions.Contracts;
 using PrediCop.Mobile.Pages;
 using PrediCop.Mobile.Services;
 using PrediCop.Mobile.ViewModels;
@@ -21,7 +23,7 @@ public static class MauiProgram
 #if WINDOWS
         var apiBaseUrl = "https://localhost:7229";
 #else
-        var apiBaseUrl = "https://10.164.73.59:7229";
+        var apiBaseUrl = "https://192.168.0.92:7229";
 #endif
 
         var httpHandler = new HttpClientHandler
@@ -44,14 +46,26 @@ public static class MauiProgram
         });
 
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<TenantFeaturesService>();
         builder.Services.AddSingleton<GpsTrackingService>();
         builder.Services.AddSingleton(new SignalRService(apiBaseUrl));
 
+        // Offline mode
+        builder.Services.AddSingleton<LocalDbService>();
+        builder.Services.AddSingleton<IConnectivityService, ConnectivityService>();
+        builder.Services.AddSingleton<SyncService>();
+
+        // Plugin.BLE — BLE beacon vehicle auto-detection
+        builder.Services.AddSingleton<IBluetoothLE>(CrossBluetoothLE.Current);
+        builder.Services.AddSingleton<IAdapter>(CrossBluetoothLE.Current.Adapter);
+        builder.Services.AddSingleton<BleVehicleScanner>();
+
         // ViewModels
-        builder.Services.AddTransient<LoginViewModel>();
+        builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddTransient<MissionViewModel>();
         builder.Services.AddTransient<PatrolViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
+        builder.Services.AddTransient<TicketingViewModel>();
 
         // Pages
         builder.Services.AddTransient<LoginPage>();
@@ -59,11 +73,35 @@ public static class MauiProgram
         builder.Services.AddTransient<PatrolPage>();
         builder.Services.AddTransient<MapPage>();
         builder.Services.AddTransient<ProfilePage>();
+        builder.Services.AddTransient<TicketingPage>();
+        // MissionDetailPage is instantiated manually (missionId is a runtime parameter)
 
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
 
-        return builder.Build();
+#if ANDROID
+        // Ensure WebView can load external resources (CDN scripts for maps)
+        Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping(
+            "PrediCopWebViewSettings", (handler, _) =>
+            {
+                handler.PlatformView.Settings.JavaScriptEnabled = true;
+                handler.PlatformView.Settings.DomStorageEnabled = true;
+                handler.PlatformView.Settings.SetGeolocationEnabled(true);
+                handler.PlatformView.Settings.MixedContentMode =
+                    Android.Webkit.MixedContentHandling.AlwaysAllow;
+            });
+#endif
+
+        var app = builder.Build();
+
+        // Initialise la base SQLite locale et démarre la sync automatique au retour du réseau
+        var localDb = app.Services.GetRequiredService<LocalDbService>();
+        Task.Run(async () => await localDb.InitAsync()).GetAwaiter().GetResult();
+
+        var syncService = app.Services.GetRequiredService<SyncService>();
+        syncService.StartAutoSync();
+
+        return app;
     }
 }

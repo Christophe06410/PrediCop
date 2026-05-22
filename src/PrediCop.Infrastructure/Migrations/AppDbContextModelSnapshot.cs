@@ -22,6 +22,115 @@ namespace PrediCop.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("PrediCop.Core.Entities.AgentProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BloodType")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmergencyContact1Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmergencyContact1Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EmergencyContact1Relationship")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EmergencyContact2Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmergencyContact2Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("TenantId", "AgentId")
+                        .IsUnique();
+
+                    b.ToTable("AgentProfiles");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.AgentQualification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssuingAuthority")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("AgentQualifications");
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -130,6 +239,9 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<Guid>("OperatorId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ReceivedAt")
                         .HasColumnType("datetime2");
 
@@ -163,6 +275,225 @@ namespace PrediCop.Infrastructure.Migrations
                     b.HasIndex("TenantId", "Status");
 
                     b.ToTable("Calls");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ElectronicTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ArticleCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExportedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("ExportedToAntai")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("FineAmount")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("InfractionType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSigned")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssuedAtAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("IssuedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<Guid?>("MissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PhotoUrls")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("PlateNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("SignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VehicleColor")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("VehicleMake")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("VehicleModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IssuedById");
+
+                    b.HasIndex("MissionId");
+
+                    b.HasIndex("TenantId", "IssuedAt");
+
+                    b.HasIndex("TenantId", "PlateNumber");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.HasIndex("TenantId", "TicketNumber")
+                        .IsUnique();
+
+                    b.ToTable("ElectronicTickets");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.EquipmentCatalog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DefaultLifespanMonths")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReferenceCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("EquipmentCatalog");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.EquipmentIssuance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EquipmentCatalogId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsReturned")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReturnedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SerialNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Size")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("EquipmentCatalogId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("EquipmentIssuances");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.GeoZone", b =>
@@ -236,6 +567,173 @@ namespace PrediCop.Infrastructure.Migrations
                     b.HasIndex("GeoZoneId");
 
                     b.ToTable("GeoZoneVertices");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ImpoundedVehicle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConditionNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DestroyedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ImpoundedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Make")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("OriginalAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PhotoUrls")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("PlateNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReleasedToIdNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReleasedToName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StorageLocation")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("TenantId", "PlateNumber");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("ImpoundedVehicles");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.Leave", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ApprovedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("TenantId", "AgentId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Leaves");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.MediaAttachment", b =>
@@ -351,6 +849,9 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<string>("NarrativeReport")
                         .HasMaxLength(8000)
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
 
                     b.Property<string>("Reference")
                         .IsRequired()
@@ -541,6 +1042,12 @@ namespace PrediCop.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AssignedGeoZoneId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BeaconUuid")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CallSign")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -577,6 +1084,8 @@ namespace PrediCop.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignedGeoZoneId");
+
                     b.HasIndex("TenantId", "CallSign")
                         .IsUnique();
 
@@ -584,6 +1093,178 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("PatrolVehicles");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.RgpdRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsProcessed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequesterEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RequesterName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("RgpdRequests");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ShiftReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CompletedMissionCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DocumentCount")
+                        .HasColumnType("int");
+
+                    b.Property<double>("EstimatedKm")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSigned")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MissionCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OfficerNames")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PatrolRecordCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RefusedMissionCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ShiftEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ShiftStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("ShiftReports");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ShiftSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<TimeOnly>("ShiftEnd")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("ShiftStart")
+                        .HasColumnType("time");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("VehicleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.HasIndex("TenantId", "AgentId", "Date");
+
+                    b.ToTable("ShiftSchedules");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.Street", b =>
@@ -595,9 +1276,18 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<int>("BaseRiskScore")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("BuildingDensityFetchedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("BuildingDensityScore")
+                        .HasColumnType("int");
+
                     b.Property<string>("City")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ComputedBaseRiskScore")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -618,7 +1308,13 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<string>("GeoJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("GeoZoneId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRiskLocked")
                         .HasColumnType("bit");
 
                     b.Property<DateTime?>("LastPatrolledAt")
@@ -630,6 +1326,12 @@ namespace PrediCop.Infrastructure.Migrations
                         .HasColumnType("nvarchar(300)");
 
                     b.Property<int>("PatrolIntervalHours")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RiskAdjustment")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RiskGrowthRatePerHour")
                         .HasColumnType("int");
 
                     b.Property<double>("StartLatitude")
@@ -645,6 +1347,8 @@ namespace PrediCop.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GeoZoneId");
 
                     b.HasIndex("LastPatrolledAt");
 
@@ -710,8 +1414,33 @@ namespace PrediCop.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AgentBloodTypeEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AgentEmergencyContactEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("AuditLogRetentionDays")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CurrentPeriodEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DpoEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("GeofencingEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("GpsDataRetentionDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("GpsTrackingEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -719,23 +1448,79 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("ModuleFleetEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ModuleFourriereEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ModuleLogisticsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ModuleRhEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ModuleVerbalisationEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("PhotoAttachmentsEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("StripeCheckoutSessionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SubscriptionPeriod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SubscriptionPlan")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("SubscriptionStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("TrialEndsAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("UserLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VehicleLimit")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("StripeCustomerId");
 
                     b.ToTable("Tenants");
                 });
@@ -842,6 +1627,54 @@ namespace PrediCop.Infrastructure.Migrations
                     b.ToTable("TrackingEntries");
                 });
 
+            modelBuilder.Entity("PrediCop.Core.Entities.UniformProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HatSize")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JacketSize")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PantSize")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShirtSize")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ShoeSize")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("UniformProfiles");
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -892,6 +1725,15 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("TotpEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TotpRecoveryCodes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TotpSecretKey")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -904,6 +1746,124 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.VehicleLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Destination")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("FuelAdded")
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("KmEnd")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KmStart")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("OfficerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OfficerId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("TenantId", "VehicleId", "Date");
+
+                    b.ToTable("VehicleLogEntries");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.VehicleMaintenance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("Cost")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("KmAtService")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ProviderName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("TenantId", "VehicleId", "ScheduledDate");
+
+                    b.ToTable("VehicleMaintenances");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.VehicleOfficer", b =>
@@ -945,6 +1905,44 @@ namespace PrediCop.Infrastructure.Migrations
                     b.ToTable("VehicleOfficers");
                 });
 
+            modelBuilder.Entity("PrediCop.Core.Entities.AgentProfile", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.AgentQualification", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.Call", b =>
                 {
                     b.HasOne("PrediCop.Core.Entities.User", "Operator")
@@ -960,6 +1958,70 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Operator");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ElectronicTicket", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "IssuedBy")
+                        .WithMany()
+                        .HasForeignKey("IssuedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Mission", "Mission")
+                        .WithMany()
+                        .HasForeignKey("MissionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("IssuedBy");
+
+                    b.Navigation("Mission");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.EquipmentCatalog", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.EquipmentIssuance", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.EquipmentCatalog", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentCatalogId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Equipment");
 
                     b.Navigation("Tenant");
                 });
@@ -984,6 +2046,44 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("GeoZone");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ImpoundedVehicle", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.Leave", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.MediaAttachment", b =>
@@ -1105,22 +2205,91 @@ namespace PrediCop.Infrastructure.Migrations
 
             modelBuilder.Entity("PrediCop.Core.Entities.PatrolVehicle", b =>
                 {
+                    b.HasOne("PrediCop.Core.Entities.GeoZone", "AssignedGeoZone")
+                        .WithMany("AssignedVehicles")
+                        .HasForeignKey("AssignedGeoZoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
                         .WithMany("Vehicles")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("AssignedGeoZone");
+
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.RgpdRequest", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ShiftReport", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.PatrolVehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.ShiftSchedule", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.PatrolVehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Vehicle");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.Street", b =>
                 {
+                    b.HasOne("PrediCop.Core.Entities.GeoZone", "GeoZone")
+                        .WithMany()
+                        .HasForeignKey("GeoZoneId");
+
                     b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
                         .WithMany("Streets")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("GeoZone");
 
                     b.Navigation("Tenant");
                 });
@@ -1198,6 +2367,25 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("PrediCop.Core.Entities.UniformProfile", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.User", b =>
                 {
                     b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
@@ -1207,6 +2395,52 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.VehicleLogEntry", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.User", "Officer")
+                        .WithMany()
+                        .HasForeignKey("OfficerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.PatrolVehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Officer");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("PrediCop.Core.Entities.VehicleMaintenance", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.PatrolVehicle", "Vehicle")
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Vehicle");
                 });
 
             modelBuilder.Entity("PrediCop.Core.Entities.VehicleOfficer", b =>
@@ -1235,6 +2469,8 @@ namespace PrediCop.Infrastructure.Migrations
 
             modelBuilder.Entity("PrediCop.Core.Entities.GeoZone", b =>
                 {
+                    b.Navigation("AssignedVehicles");
+
                     b.Navigation("Vertices");
                 });
 

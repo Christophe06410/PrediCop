@@ -18,7 +18,8 @@ public class MissionsController(
     AppDbContext db,
     IMissionService missionService,
     IHubContext<PoliceHub> hubContext,
-    IEmailService emailService) : ControllerBase
+    IEmailService emailService,
+    IPushNotificationService pushService) : ControllerBase
 {
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
 
@@ -40,7 +41,7 @@ public class MissionsController(
         var totalCount = await query.CountAsync(ct);
 
         var missions = await query
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.Priority).ThenByDescending(m => m.CreatedAt)
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync(ct);
@@ -59,6 +60,8 @@ public class MissionsController(
     {
         var mission = await db.Missions
             .Include(m => m.Call)
+                .ThenInclude(c => c.Missions)
+                    .ThenInclude(sm => sm.Assignments).ThenInclude(a => a.Vehicle)
             .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
             .Include(m => m.Intervenants.OrderBy(i => i.Order))
             .Include(m => m.MediaAttachments).ThenInclude(ma => ma.CreatedBy)
@@ -67,7 +70,30 @@ public class MissionsController(
         if (mission is null)
             return Problem(title: "Mission non trouvée", statusCode: 404);
 
-        return Ok(MapToResponse(mission));
+        var response = MapToResponse(mission);
+
+        // Missions sœurs : toutes les missions du même appel sauf celle-ci
+        if (mission.Call?.Missions is not null)
+        {
+            response.SiblingMissions = mission.Call.Missions
+                .Where(sm => sm.Id != id)
+                .OrderByDescending(sm => sm.CreatedAt)
+                .Select(sm => new SiblingMissionResponse
+                {
+                    Id = sm.Id,
+                    Reference = sm.Reference,
+                    Status = sm.Status,
+                    CreatedAt = sm.CreatedAt,
+                    CompletedAt = sm.CompletedAt,
+                    AssignedVehicleCallSign = sm.Assignments
+                        .FirstOrDefault(a => a.Status == MissionStatus.Accepted
+                                          || a.Status == MissionStatus.InProgress)
+                        ?.Vehicle?.CallSign
+                })
+                .ToList();
+        }
+
+        return Ok(response);
     }
 
     [HttpGet("active")]
@@ -113,7 +139,7 @@ public class MissionsController(
         }
 
         var missions = await baseQuery
-            .OrderBy(m => m.CreatedAt)
+            .OrderByDescending(m => m.Priority).ThenBy(m => m.CreatedAt)
             .ToListAsync(ct);
 
         return Ok(missions.Select(MapToResponse).ToList());
@@ -426,6 +452,144 @@ public class MissionsController(
         return NoContent();
     }
 
+    // -------- Force Assign --------
+
+    [HttpPost("{id:guid}/force-assign")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
+    public async Task<ActionResult<MissionResponse>> ForceAssign(
+        Guid id,
+        [FromBody] ForceAssignRequest request,
+        CancellationToken ct)
+    {
+        // 1. Charger la mission
+        var mission = await db.Missions
+            .Include(m => m.Call)
+            .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
+            .FirstOrDefaultAsync(m => m.Id == id && m.TenantId == TenantId, ct);
+
+        if (mission is null)
+            return Problem(title: "Mission non trouvée", statusCode: 404);
+
+        // 2. Vérifier la priorité
+        if (mission.Priority < CallPriority.Critique)
+            return Problem(
+                title: "Priorité insuffisante",
+                detail: "Le force-assign n'est autorisé que pour les missions de priorité Critique ou SOS.",
+                statusCode: 400);
+
+        // 3. Charger le véhicule cible
+        var vehicle = await db.PatrolVehicles
+            .Include(v => v.Officers).ThenInclude(o => o.User)
+            .FirstOrDefaultAsync(v => v.Id == request.VehicleId && v.TenantId == TenantId, ct);
+
+        if (vehicle is null)
+            return Problem(title: "Véhicule non trouvé", statusCode: 404);
+
+        // 4. Si le véhicule est déjà en mission, libérer son assignment actif
+        if (vehicle.Status == VehicleStatus.OnMission)
+        {
+            var activeAssignment = await db.MissionAssignments
+                .Include(a => a.Mission).ThenInclude(m => m.Assignments)
+                .FirstOrDefaultAsync(a =>
+                    a.VehicleId == vehicle.Id
+                    && (a.Status == MissionStatus.Accepted || a.Status == MissionStatus.Proposed),
+                    ct);
+
+            if (activeAssignment is not null)
+            {
+                activeAssignment.Status = MissionStatus.Refused;
+                activeAssignment.RefusalReasonCode = RefusalReasonCode.Other;
+                activeAssignment.RefusalReason = "Réaffecté pour mission prioritaire";
+                activeAssignment.RespondedAt = DateTime.UtcNow;
+
+                // Remettre la mission précédente en Pending si plus d'assignment actif
+                var prevMission = activeAssignment.Mission;
+                var hasActiveAssignment = prevMission.Assignments
+                    .Any(a => a.Id != activeAssignment.Id
+                              && (a.Status == MissionStatus.Accepted || a.Status == MissionStatus.InProgress));
+
+                if (!hasActiveAssignment && prevMission.Status == MissionStatus.Accepted)
+                    prevMission.Status = MissionStatus.Pending;
+            }
+        }
+
+        // 5. Libérer temporairement le véhicule
+        vehicle.Status = VehicleStatus.Available;
+
+        // 6. Créer l'assignment direct
+        var nextOrder = mission.Assignments.Any()
+            ? mission.Assignments.Max(a => a.ProposalOrder) + 1
+            : 1;
+
+        var newAssignment = new MissionAssignment
+        {
+            MissionId = mission.Id,
+            VehicleId = vehicle.Id,
+            Vehicle = vehicle,
+            ProposalOrder = nextOrder,
+            Status = MissionStatus.Accepted,
+            ProposedAt = DateTime.UtcNow,
+            RespondedAt = DateTime.UtcNow,
+            DistanceAtProposal = 0
+        };
+        db.MissionAssignments.Add(newAssignment);
+
+        // 7. Mettre à jour la mission
+        mission.Status = MissionStatus.Accepted;
+        mission.AcceptedAt = DateTime.UtcNow;
+
+        // 8. Mettre le véhicule en OnMission
+        vehicle.Status = VehicleStatus.OnMission;
+
+        await db.SaveChangesAsync(ct);
+
+        // Reload pour le mapping
+        await db.Entry(mission).Collection(m => m.Assignments).LoadAsync(ct);
+        foreach (var a in mission.Assignments)
+            await db.Entry(a).Reference(x => x.Vehicle).LoadAsync(ct);
+
+        var missionResponse = MapToResponse(mission);
+
+        // 9. Push notification à l'équipage
+        var deviceTokens = vehicle.Officers
+            .Where(o => o.IsActive && !string.IsNullOrWhiteSpace(o.User?.DeviceToken))
+            .Select(o => o.User!.DeviceToken!)
+            .ToList();
+
+        if (deviceTokens.Any())
+        {
+            try
+            {
+                await pushService.SendToDevicesAsync(
+                    deviceTokens,
+                    "🚨 MISSION FORCÉE - Priorité absolue",
+                    $"Mission {mission.Reference} — {mission.TargetAddress}",
+                    new Dictionary<string, string>
+                    {
+                        ["missionId"] = mission.Id.ToString(),
+                        ["type"] = "ForceAssign"
+                    },
+                    ct);
+            }
+            catch (Exception)
+            {
+                // Le push ne doit pas faire échouer l'action principale
+            }
+        }
+
+        // 10. SignalR — opérateurs
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("MissionStatusChanged", missionResponse, ct);
+
+        // 11. SignalR — tablette véhicule
+        await hubContext.Clients
+            .Group($"vehicle_{vehicle.Id}")
+            .SendAsync("MissionProposed", MapAssignmentToResponse(newAssignment), ct);
+
+        return Ok(missionResponse);
+    }
+
     // -------- Mappers --------
 
     private static MissionResponse MapToResponse(Mission m) => new()
@@ -433,6 +597,7 @@ public class MissionsController(
         Id = m.Id,
         Reference = m.Reference,
         Status = m.Status,
+        Priority = m.Priority,
         CallId = m.CallId,
         CallReference = m.Call?.Reference ?? string.Empty,
         TargetAddress = m.TargetAddress,

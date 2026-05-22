@@ -26,21 +26,35 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
     [BindProperty]
     public string Password { get; set; } = string.Empty;
 
+    [BindProperty]
+    public string CitySlug { get; set; } = string.Empty;
+
+    public List<TenantSummaryDto> Tenants { get; set; } = [];
     public string? ErrorMessage { get; set; }
     public string? ErrorDetails { get; set; }
 
-    public IActionResult OnGet(string? returnUrl)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl)
     {
-        if (User.Identity?.IsAuthenticated == true)
-            return Redirect(returnUrl ?? "/");
+        var hasJwt = !string.IsNullOrEmpty(HttpContext.Session.GetString("JwtToken"));
+        if (User.Identity?.IsAuthenticated == true && hasJwt)
+            return !string.IsNullOrEmpty(returnUrl) ? LocalRedirect(returnUrl) : RedirectToPage("/Home/Index");
+        await LoadTenantsAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl)
     {
+        await LoadTenantsAsync();
+
         if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
         {
             ErrorMessage = "Email et mot de passe requis.";
+            return Page();
+        }
+
+        if (string.IsNullOrWhiteSpace(CitySlug))
+        {
+            ErrorMessage = "Veuillez sélectionner votre ville.";
             return Page();
         }
 
@@ -48,17 +62,30 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
         {
             var client = httpClientFactory.CreateClient("PrediCopApi");
             var response = await client.PostAsJsonAsync("/api/auth/login",
-                new LoginRequest { Email = Email, Password = Password },
+                new LoginRequest { Email = Email, Password = Password, TenantSlug = CitySlug },
                 HttpJsonOptions);
 
             if (!response.IsSuccessStatusCode)
             {
-                ErrorMessage = "Identifiants invalides.";
+                ErrorMessage = "Identifiants invalides ou ville incorrecte.";
                 return Page();
             }
 
             var result = await response.Content.ReadFromJsonAsync<LoginResponse>(HttpJsonOptions);
             if (result is null)
+            {
+                ErrorMessage = "Réponse inattendue du serveur.";
+                return Page();
+            }
+
+            // Flux 2FA : stocker le TempToken et rediriger vers la page de vérification
+            if (result.RequiresTwoFactor && !string.IsNullOrEmpty(result.TempToken))
+            {
+                HttpContext.Session.SetString("TempTotpToken", result.TempToken);
+                return RedirectToPage("/Account/TwoFactor", new { returnUrl });
+            }
+
+            if (string.IsNullOrEmpty(result.AccessToken) || result.User is null)
             {
                 ErrorMessage = "Réponse inattendue du serveur.";
                 return Page();
@@ -73,6 +100,8 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
                 new(ClaimTypes.Email, result.User.Email),
                 new(ClaimTypes.Role, result.User.Role.ToString()),
                 new("tenantId", result.User.TenantId.ToString()),
+                new("tenantSlug", result.User.TenantSlug),
+                new("tenantName", result.User.TenantName),
                 new("userId", result.User.Id.ToString()),
                 new("badgeNumber", result.User.BadgeNumber)
             };
@@ -82,7 +111,7 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-            return Redirect(returnUrl ?? "/");
+            return !string.IsNullOrEmpty(returnUrl) ? LocalRedirect(returnUrl) : RedirectToPage("/Home/Index");
         }
         catch (HttpRequestException ex)
         {
@@ -106,6 +135,20 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
             ErrorMessage = "Réponse inattendue du serveur.";
             ErrorDetails = "Détail: format de réponse invalide reçu depuis l'API.";
             return Page();
+        }
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var tenants = await client.GetFromJsonAsync<List<TenantSummaryDto>>("/api/auth/tenants", HttpJsonOptions);
+            Tenants = tenants ?? [];
+        }
+        catch
+        {
+            Tenants = [];
         }
     }
 }

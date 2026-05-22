@@ -1,5 +1,45 @@
 ﻿namespace PrediCop.Core.DTOs;
 
+public class PeriodStatsResponse
+{
+    // Métadonnées période
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public string PeriodLabel { get; set; } = string.Empty;
+
+    // Appels
+    public int TotalCalls { get; set; }
+    public int ClosedCalls { get; set; }
+    public int CallsWithMission { get; set; }
+
+    // Missions
+    public int TotalMissions { get; set; }
+    public int CompletedMissions { get; set; }
+    public int RefusedMissions { get; set; }
+    public double AverageResponseTimeMinutes { get; set; }
+
+    // Comparaison avec la période précédente (en %)
+    public double? CallsDeltaPercent { get; set; }
+    public double? MissionsDeltaPercent { get; set; }
+    public double? ResponseTimeDeltaPercent { get; set; }
+}
+
+public class TimeSeriesStatsResponse
+{
+    public List<DayStats> Days { get; set; } = [];
+    public PeriodStatsResponse CurrentPeriod { get; set; } = new();
+    public PeriodStatsResponse PreviousPeriod { get; set; } = new();
+}
+
+public class DayStats
+{
+    public DateTime Date { get; set; }
+    public int Calls { get; set; }
+    public int Missions { get; set; }
+    public int CompletedMissions { get; set; }
+    public double AverageResponseTimeMinutes { get; set; }
+}
+
 public class DashboardStats
 {
     public int TotalCallsToday { get; set; }

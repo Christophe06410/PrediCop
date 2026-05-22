@@ -1,0 +1,54 @@
+@model PrediCop.Core.DTOs.TenantFeatureFlagsResponse?
+
+@{
+    var any = Model is { } m &&
+              (m.ModuleRhEnabled || m.ModuleFleetEnabled ||
+               m.ModuleLogisticsEnabled || m.ModuleFourriereEnabled ||
+               m.ModuleVerbalisationEnabled);
+}
+
+@if (any)
+{
+    <li><hr class="dropdown-divider" /></li>
+
+    @if (Model!.ModuleRhEnabled)
+    {
+        <li>
+            <a class="dropdown-item" asp-page="/Admin/HR/Index">
+                <i class="fa-solid fa-users-gear me-2"></i>RH — Plannings &amp; Congés
+            </a>
+        </li>
+    }
+    @if (Model!.ModuleFleetEnabled)
+    {
+        <li>
+            <a class="dropdown-item" asp-page="/Admin/Fleet/Index">
+                <i class="fa-solid fa-car-on me-2"></i>Gestion de flotte
+            </a>
+        </li>
+    }
+    @if (Model!.ModuleLogisticsEnabled)
+    {
+        <li>
+            <a class="dropdown-item" asp-page="/Admin/Logistics/Index">
+                <i class="fa-solid fa-box-open me-2"></i>Logistique &amp; Équipements
+            </a>
+        </li>
+    }
+    @if (Model!.ModuleFourriereEnabled)
+    {
+        <li>
+            <a class="dropdown-item" asp-page="/Admin/Fourriere/Index">
+                <i class="fa-solid fa-warehouse me-2"></i>Fourrière
+            </a>
+        </li>
+    }
+    @if (Model!.ModuleVerbalisationEnabled)
+    {
+        <li>
+            <a class="dropdown-item" asp-page="/Admin/Tickets/Index">
+                <i class="fa-solid fa-ticket me-2"></i>Verbalisation
+            </a>
+        </li>
+    }
+}

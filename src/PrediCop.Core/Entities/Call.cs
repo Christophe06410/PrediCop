@@ -7,6 +7,7 @@ public class Call : TenantEntity
     public string Reference { get; set; } = string.Empty;
     public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
     public CallStatus Status { get; set; } = CallStatus.Open;
+    public CallPriority Priority { get; set; } = CallPriority.Routine;
 
     public string CallerName { get; set; } = string.Empty;
     public string CallerPhone { get; set; } = string.Empty;

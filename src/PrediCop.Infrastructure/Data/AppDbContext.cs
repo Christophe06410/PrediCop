@@ -40,12 +40,71 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<GeoZone> GeoZones => Set<GeoZone>();
     public DbSet<GeoZoneVertex> GeoZoneVertices => Set<GeoZoneVertex>();
+    public DbSet<ShiftReport> ShiftReports => Set<ShiftReport>();
+    public DbSet<AgentQualification> AgentQualifications => Set<AgentQualification>();
+    public DbSet<RgpdRequest> RgpdRequests => Set<RgpdRequest>();
+
+    // ---- Module RH ----
+    public DbSet<AgentProfile> AgentProfiles => Set<AgentProfile>();
+    public DbSet<Leave> Leaves => Set<Leave>();
+    public DbSet<ShiftSchedule> ShiftSchedules => Set<ShiftSchedule>();
+
+    // ---- Module Logistique ----
+    public DbSet<EquipmentCatalog> EquipmentCatalog => Set<EquipmentCatalog>();
+    public DbSet<EquipmentIssuance> EquipmentIssuances => Set<EquipmentIssuance>();
+    public DbSet<UniformProfile> UniformProfiles => Set<UniformProfile>();
+
+    // ---- Module Flotte ----
+    public DbSet<VehicleLogEntry> VehicleLogEntries => Set<VehicleLogEntry>();
+    public DbSet<VehicleMaintenance> VehicleMaintenances => Set<VehicleMaintenance>();
+
+    // ---- Module Verbalisation ----
+    public DbSet<ElectronicTicket> ElectronicTickets => Set<ElectronicTicket>();
+
+    // ---- Module Fourrière ----
+    public DbSet<ImpoundedVehicle> ImpoundedVehicles => Set<ImpoundedVehicle>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        modelBuilder.Entity<EquipmentCatalog>()
+            .HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EquipmentIssuance>()
+            .HasOne(e => e.Agent)
+            .WithMany()
+            .HasForeignKey(e => e.AgentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EquipmentIssuance>()
+            .HasOne(e => e.Equipment)
+            .WithMany()
+            .HasForeignKey(e => e.EquipmentCatalogId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EquipmentIssuance>()
+            .HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UniformProfile>()
+            .HasOne(e => e.Agent)
+            .WithMany()
+            .HasForeignKey(e => e.AgentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UniformProfile>()
+            .HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Filtre global IsDeleted uniquement sur TenantEntity (pas sur BaseEntity ni AuditLog)
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

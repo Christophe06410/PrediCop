@@ -23,8 +23,11 @@ public static class InfrastructureExtensions
         services.AddScoped<IGpsService, GpsService>();
         services.AddScoped<IStreetRiskService, StreetRiskService>();
         services.AddScoped<IMissionService, MissionService>();
+        services.AddScoped<ITotpService, TotpService>();
+        services.AddScoped<IShiftReportService, ShiftReportService>();
 
         services.AddSingleton<IEmailService, SmtpEmailService>();
+        services.AddSingleton<IPushNotificationService, FcmPushNotificationService>();
 
         return services;
     }

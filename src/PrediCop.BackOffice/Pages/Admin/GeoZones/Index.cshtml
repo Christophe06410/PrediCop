@@ -27,6 +27,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
+@if (TempData["WarningMessage"] is string warn)
+{
+    <div class="alert alert-warning alert-dismissible fade show">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>@warn
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
 <div class="card shadow-sm">
     <div class="card-body p-0">
@@ -49,9 +56,8 @@
                         <th style="width:40px"></th>
                         <th>Nom</th>
                         <th>Description</th>
-                        <th class="text-center">Sommets</th>
                         <th class="text-center">Statut</th>
-                        <th class="text-end">Actions</th>
+                        <th class="text-end" style="width:280px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,9 +71,6 @@
                             <td class="fw-semibold">@z.Name</td>
                             <td class="text-muted small">@(z.Description ?? "—")</td>
                             <td class="text-center">
-                                <span class="badge bg-secondary">@z.Vertices.Count pts</span>
-                            </td>
-                            <td class="text-center">
                                 @if (z.IsActive)
                                 {
                                     <span class="badge bg-success">Active</span>
@@ -77,11 +80,19 @@
                                     <span class="badge bg-secondary">Inactive</span>
                                 }
                             </td>
-                            <td class="text-end">
+                            <td class="text-end" style="white-space:nowrap">
                                 <a asp-page="/Admin/GeoZones/Edit" asp-route-id="@z.Id"
                                    class="btn btn-sm btn-outline-primary me-1">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
+                                <form asp-page-handler="DetectStreets" asp-route-id="@z.Id"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Détecter les rues pour « @z.Name » ? Les rues déjà existantes (même nom) seront ignorées.')">
+                                    <button type="submit" class="btn btn-sm btn-outline-success me-1"
+                                            title="Détecter les rues via OpenStreetMap">
+                                        <i class="fa-solid fa-map-location-dot me-1"></i>Détecter les rues
+                                    </button>
+                                </form>
                                 <form asp-page-handler="Delete" asp-route-id="@z.Id"
                                       method="post" class="d-inline"
                                       onsubmit="return confirm('Supprimer la zone « @z.Name » ?')">

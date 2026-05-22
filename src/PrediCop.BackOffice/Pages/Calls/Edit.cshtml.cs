@@ -67,7 +67,7 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
             return await ReloadAndReturn(id);
         }
 
-        TempData["SuccessMessage"] = "Appel mis à jour avec succès.";
+        TempData["SuccessMessage"] = "Main courante mise à jour avec succès.";
         return RedirectToPage("/Calls/Details", new { id });
     }
 
@@ -82,11 +82,11 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
 
             if (!response.IsSuccessStatusCode)
             {
-                TempData["ErrorMessage"] = $"Impossible de fermer l'appel ({(int)response.StatusCode}).";
+                TempData["ErrorMessage"] = $"Impossible de fermer la main courante ({(int)response.StatusCode}).";
             }
             else
             {
-                TempData["SuccessMessage"] = "Appel fermé avec succès.";
+                TempData["SuccessMessage"] = "Main courante fermée avec succès.";
             }
         }
         catch (Exception ex)

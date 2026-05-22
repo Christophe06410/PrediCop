@@ -17,6 +17,23 @@
 
         <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
             <VerticalStackLayout Spacing="12">
+                <Label Text="Véhicule de service" TextColor="White"
+                       FontSize="16" FontAttributes="Bold"/>
+                <Label Text="{Binding CurrentVehicle}" TextColor="#93c5fd" FontSize="14"/>
+                <Button Text="Sélectionner mon véhicule"
+                        BackgroundColor="#2563eb" TextColor="White"
+                        CornerRadius="10" HeightRequest="44"
+                        Clicked="OnSelectVehicleClicked"/>
+                <Button x:Name="BtnDetectVehicle"
+                        Text="Détecter mon véhicule (BLE)"
+                        BackgroundColor="#0f766e" TextColor="White"
+                        CornerRadius="10" HeightRequest="44"
+                        Clicked="OnDetectVehicleClicked"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Paramètres" TextColor="White"
                        FontSize="16" FontAttributes="Bold"/>
                 <Grid ColumnDefinitions="*,Auto">

@@ -38,5 +38,12 @@ public class PatrolVehicleConfiguration : IEntityTypeConfiguration<PatrolVehicle
             .WithOne(pr => pr.Vehicle)
             .HasForeignKey(pr => pr.VehicleId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Relation optionnelle vers la zone de patrouille assignée (géofencing)
+        builder.HasOne(v => v.AssignedGeoZone)
+            .WithMany(z => z.AssignedVehicles)
+            .HasForeignKey(v => v.AssignedGeoZoneId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
     }
 }

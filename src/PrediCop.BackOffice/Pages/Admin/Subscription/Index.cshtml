@@ -1,0 +1,118 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Subscription.IndexModel
+@{
+    ViewData["Title"] = "Mon abonnement";
+    var statusColors = new Dictionary<string, string> {
+        ["Active"] = "success", ["Trialing"] = "info", ["None"] = "secondary",
+        ["PastDue"] = "warning", ["Cancelled"] = "danger"
+    };
+    var statusLabels = new Dictionary<string, string> {
+        ["Active"] = "Actif", ["Trialing"] = "Période d'essai", ["None"] = "Non activé",
+        ["PastDue"] = "Impayé", ["Cancelled"] = "Annulé"
+    };
+    var badgeColor = statusColors.GetValueOrDefault(Model.SubscriptionStatus, "secondary");
+    var badgeLabel = statusLabels.GetValueOrDefault(Model.SubscriptionStatus, Model.SubscriptionStatus);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-credit-card me-2 text-primary"></i>Mon abonnement</h4>
+</div>
+
+@if (TempData["ErrorMessage"] is string errMsg)
+{
+    <div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>@errMsg</div>
+}
+@if (TempData["SuccessMessage"] is string okMsg)
+{
+    <div class="alert alert-success">@okMsg</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header fw-semibold">
+                <i class="fa-solid fa-info-circle me-2 text-primary"></i>Détails de l'abonnement
+            </div>
+            <div class="card-body">
+                <dl class="row g-2 mb-0">
+                    <dt class="col-6 text-muted">Statut</dt>
+                    <dd class="col-6"><span class="badge bg-@badgeColor">@badgeLabel</span></dd>
+
+                    <dt class="col-6 text-muted">Formule</dt>
+                    <dd class="col-6 fw-semibold">@Model.SubscriptionPlan</dd>
+
+                    <dt class="col-6 text-muted">Facturation</dt>
+                    <dd class="col-6">@Model.BillingPeriod</dd>
+
+                    @if (Model.CurrentPeriodEnd.HasValue)
+                    {
+                        <dt class="col-6 text-muted">Prochaine échéance</dt>
+                        <dd class="col-6">@Model.CurrentPeriodEnd.Value.ToLocalTime().ToString("dd/MM/yyyy")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header fw-semibold">
+                <i class="fa-solid fa-chart-bar me-2 text-success"></i>Utilisation
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small fw-semibold">Véhicules</span>
+                        <span class="small text-muted">@Model.VehicleCount / @(Model.VehicleLimit >= 9999 ? "∞" : Model.VehicleLimit.ToString())</span>
+                    </div>
+                    @{
+                        var vPct = Model.VehicleLimit >= 9999 ? 20 : (Model.VehicleLimit == 0 ? 0 : Math.Min(100, Model.VehicleCount * 100 / Model.VehicleLimit));
+                        var vColor = vPct >= 90 ? "danger" : vPct >= 70 ? "warning" : "success";
+                    }
+                    <div class="progress" style="height:8px">
+                        <div class="progress-bar bg-@vColor" style="width:@vPct%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small fw-semibold">Utilisateurs</span>
+                        <span class="small text-muted">@Model.UserCount / @(Model.UserLimit >= 9999 ? "∞" : Model.UserLimit.ToString())</span>
+                    </div>
+                    @{
+                        var uPct = Model.UserLimit >= 9999 ? 20 : (Model.UserLimit == 0 ? 0 : Math.Min(100, Model.UserCount * 100 / Model.UserLimit));
+                        var uColor = uPct >= 90 ? "danger" : uPct >= 70 ? "warning" : "success";
+                    }
+                    <div class="progress" style="height:8px">
+                        <div class="progress-bar bg-@uColor" style="width:@uPct%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.HasStripeSubscription)
+    {
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-2">Gérer votre abonnement</h6>
+                    <p class="text-muted small mb-3">Modifiez votre formule, vos données de paiement ou annulez votre abonnement depuis le portail Stripe.</p>
+                    <form method="post" asp-page-handler="Portal">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-2"></i>Ouvrir le portail de facturation
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fa-solid fa-info-circle me-2"></i>
+                Pour gérer votre abonnement, contactez <a href="mailto:support@predicop.fr" class="alert-link">support@predicop.fr</a>.
+            </div>
+        </div>
+    }
+</div>

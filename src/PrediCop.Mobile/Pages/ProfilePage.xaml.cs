@@ -5,25 +5,88 @@ namespace PrediCop.Mobile.Pages;
 
 public partial class ProfilePage : ContentPage
 {
-    private readonly ApiService _api;
+    private readonly ProfileViewModel _vm;
+    private readonly BleVehicleScanner? _bleScanner;
 
-    public ProfilePage(ProfileViewModel vm, ApiService api)
+    public ProfilePage(ProfileViewModel vm, BleVehicleScanner? bleScanner = null)
     {
         InitializeComponent();
+        _vm = vm;
+        _bleScanner = bleScanner;
         BindingContext = vm;
-        _api = api;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        ((ProfileViewModel)BindingContext).LoadProfile();
+        _vm.LoadProfile();
     }
 
     private void OnGpsToggled(object sender, ToggledEventArgs e)
     {
-        if (!e.Value)
-            ((ProfileViewModel)BindingContext).StopGps();
+        if (!e.Value) _vm.StopGps();
+    }
+
+    private async void OnDetectVehicleClicked(object sender, EventArgs e)
+    {
+        if (_bleScanner is null)
+        {
+            await DisplayAlert("Non disponible", "La détection BLE n'est pas disponible sur cette plateforme.", "OK");
+            return;
+        }
+
+        BtnDetectVehicle.IsEnabled = false;
+        BtnDetectVehicle.Text = "Scan en cours…";
+
+        try
+        {
+            var callSign = await _bleScanner.ScanAndAssignAsync();
+            if (callSign is not null)
+            {
+                _vm.CurrentVehicle = callSign;
+                await DisplayAlert("Véhicule détecté", $"Véhicule {callSign} détecté et assigné automatiquement.", "OK");
+            }
+            else
+            {
+                await DisplayAlert(
+                    "Aucun véhicule détecté",
+                    "Aucun beacon BLE reconnu à proximité. Vérifiez que le Bluetooth est activé et que vous êtes bien dans le véhicule, ou sélectionnez manuellement.",
+                    "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Erreur", $"Erreur lors du scan BLE : {ex.Message}", "OK");
+        }
+        finally
+        {
+            BtnDetectVehicle.IsEnabled = true;
+            BtnDetectVehicle.Text = "Détecter mon véhicule (BLE)";
+        }
+    }
+
+    private async void OnSelectVehicleClicked(object sender, EventArgs e)
+    {
+        var vehicles = await _vm.LoadVehiclesAsync();
+        if (vehicles.Count == 0)
+        {
+            await DisplayAlert("Véhicules", "Aucun véhicule disponible.", "OK");
+            return;
+        }
+
+        var labels = vehicles.Select(v => v.IsCurrent ? $"✓ {v.Label}" : v.Label).ToArray();
+        var selected = await DisplayActionSheet("Sélectionner votre véhicule", "Annuler", null, labels);
+        if (selected == null || selected == "Annuler") return;
+
+        var item = vehicles.FirstOrDefault(v =>
+            selected == v.Label || selected == $"✓ {v.Label}");
+        if (item == null) return;
+
+        var success = await _vm.SelectVehicleAsync(item.Id, item.Label);
+        if (success)
+            await DisplayAlert("Véhicule", $"Véhicule {item.Label} sélectionné.", "OK");
+        else
+            await DisplayAlert("Erreur", "Impossible de sélectionner ce véhicule.", "OK");
     }
 
     private async void OnChangePasswordClicked(object sender, EventArgs e)
@@ -52,7 +115,9 @@ public partial class ProfilePage : ContentPage
             return;
         }
 
-        var (success, error) = await _api.ChangePasswordAsync(current, newPwd);
+        var api = Handler?.MauiContext?.Services.GetService<ApiService>();
+        if (api == null) return;
+        var (success, error) = await api.ChangePasswordAsync(current, newPwd);
         if (success)
             await DisplayAlert("Succès", "Mot de passe modifié avec succès.", "OK");
         else
@@ -63,6 +128,6 @@ public partial class ProfilePage : ContentPage
     {
         var confirm = await DisplayAlert("Déconnexion", "Se déconnecter ?", "Oui", "Annuler");
         if (!confirm) return;
-        await ((ProfileViewModel)BindingContext).LogoutCommand.ExecuteAsync(null);
+        await _vm.LogoutCommand.ExecuteAsync(null);
     }
 }

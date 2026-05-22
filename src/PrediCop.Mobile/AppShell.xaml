@@ -16,26 +16,41 @@
         </Style>
     </Shell.Resources>
 
-    <!-- Login (no tab bar) -->
+    <!-- Login (sans barre d'onglets) -->
     <ShellContent Route="login"
                   ContentTemplate="{DataTemplate pages:LoginPage}"
                   Shell.NavBarIsVisible="False"
                   Shell.TabBarIsVisible="False" />
 
-    <!-- Main app (tab bar) -->
-    <TabBar Route="main">
-        <ShellContent Route="missions" Title="Missions"
-                      ContentTemplate="{DataTemplate pages:MissionPage}"
-                      Shell.NavBarIsVisible="False" />
-        <ShellContent Route="patrol" Title="Patrouille"
-                      ContentTemplate="{DataTemplate pages:PatrolPage}"
-                      Shell.NavBarIsVisible="False" />
-        <ShellContent Route="map" Title="Carte"
-                      ContentTemplate="{DataTemplate pages:MapPage}"
-                      Shell.NavBarIsVisible="False" />
-        <ShellContent Route="profile" Title="Profil"
-                      ContentTemplate="{DataTemplate pages:ProfilePage}"
-                      Shell.NavBarIsVisible="False" />
+    <!-- Application principale -->
+    <TabBar x:Name="MainTabBar" Route="main">
+
+        <!-- Onglets Officer (patrouille) -->
+        <Tab x:Name="TabMissions" Route="missions" Title="Missions">
+            <ShellContent ContentTemplate="{DataTemplate pages:MissionPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+        <Tab x:Name="TabPatrol" Route="patrol" Title="Patrouille">
+            <ShellContent ContentTemplate="{DataTemplate pages:PatrolPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+        <Tab x:Name="TabMap" Route="map" Title="Carte">
+            <ShellContent ContentTemplate="{DataTemplate pages:MapPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+
+        <!-- Onglet Verbalisation — caché par défaut, affiché si module activé -->
+        <Tab x:Name="TabTickets" Route="tickets" Title="PV" IsVisible="False">
+            <ShellContent ContentTemplate="{DataTemplate pages:TicketingPage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+
+        <!-- Profil — toujours visible -->
+        <Tab x:Name="TabProfile" Route="profile" Title="Profil">
+            <ShellContent ContentTemplate="{DataTemplate pages:ProfilePage}"
+                          Shell.NavBarIsVisible="False" />
+        </Tab>
+
     </TabBar>
 
 </Shell>

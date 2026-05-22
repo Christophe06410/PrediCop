@@ -5,6 +5,7 @@ public class MissionDto
     public Guid Id { get; set; }
     public string Reference { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string Priority { get; set; } = "Routine";
     public Guid CallId { get; set; }
     public string CallReference { get; set; } = string.Empty;
     public string TargetAddress { get; set; } = string.Empty;
@@ -23,6 +24,17 @@ public class MissionDto
     public List<MissionAssignmentDto> Assignments { get; set; } = [];
     public List<MissionIntervenantDto> Intervenants { get; set; } = [];
     public List<MissionMediaDto> Media { get; set; } = [];
+    public List<SiblingMissionDto> SiblingMissions { get; set; } = [];
+}
+
+public class SiblingMissionDto
+{
+    public Guid Id { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? AssignedVehicleCallSign { get; set; }
 }
 
 public class MissionIntervenantDto

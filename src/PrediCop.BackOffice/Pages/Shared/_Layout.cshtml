@@ -46,19 +46,46 @@
             <div class="collapse navbar-collapse" id="navbarMain">
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
+                        <a class="nav-link" asp-page="/Home/Index">
+                            <i class="fa-solid fa-house me-1"></i>Accueil
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" asp-page="/Calls/Receive">
                             <i class="fa-solid fa-phone me-1"></i>Réception appel
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" asp-page="/Calls/Index">
-                            <i class="fa-solid fa-list me-1"></i>Appels
+                            <i class="fa-solid fa-list me-1"></i>Mains courantes
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" asp-page="/Missions/Index">
                             <i class="fa-solid fa-car-side me-1"></i>Missions
                         </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-page="/Crews/Index">
+                            <i class="fa-solid fa-users me-1"></i>Équipages
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-file-contract me-1"></i>Vacations
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" asp-page="/Missions/ShiftReport">
+                                    <i class="fa-solid fa-plus me-2 text-primary"></i>Nouveau rapport
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-page="/Missions/ShiftReports">
+                                    <i class="fa-solid fa-clock-rotate-left me-2 text-secondary"></i>Historique
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" asp-page="/Map/Index">
@@ -79,8 +106,18 @@
                             <li><a class="dropdown-item" asp-page="/Admin/Users/Index"><i class="fa-solid fa-users me-2"></i>Utilisateurs</a></li>
                             <li><a class="dropdown-item" asp-page="/Admin/Streets/Index"><i class="fa-solid fa-map-location-dot me-2"></i>Rues &amp; scores de risque</a></li>
                             <li><a class="dropdown-item" asp-page="/Admin/GeoZones/Index"><i class="fa-solid fa-draw-polygon me-2"></i>Zones de patrouille</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/RiskEvents/Index"><i class="fa-solid fa-triangle-exclamation me-2"></i>Événements de risque</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Qualifications/Index"><i class="fa-solid fa-id-card me-2"></i>Habilitations agents</a></li>
+                            @await Component.InvokeAsync("OptionalModulesMenu")
                             <li><hr class="dropdown-divider" /></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/Audit/Index"><i class="fa-solid fa-clipboard-list me-2"></i>Journal d'audit</a></li>
+                            <li><a class="dropdown-item" asp-page="/Admin/Subscription/Index"><i class="fa-solid fa-credit-card me-2"></i>Mon abonnement</a></li>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <li><hr class="dropdown-divider" /></li>
+                                <li><a class="dropdown-item" asp-page="/Admin/Audit/Index"><i class="fa-solid fa-clipboard-list me-2"></i>Journal d'audit</a></li>
+                                <li><a class="dropdown-item" asp-page="/Admin/RgpdRequests/Index"><i class="fa-solid fa-shield-halved me-2"></i>Demandes RGPD</a></li>
+                                <li><a class="dropdown-item" asp-page="/Admin/Settings"><i class="fa-solid fa-sliders me-2"></i>Paramètres</a></li>
+                            }
                         </ul>
                     </li>
                     <li class="nav-item ms-2">
@@ -139,7 +176,12 @@
     <footer class="bg-dark text-secondary py-2 mt-auto">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <span class="small"><i class="fa-solid fa-shield-halved me-1"></i>PrediCop &copy; @DateTime.Now.Year</span>
-            <span class="small">Back-Office v1.0 &mdash; .NET 10</span>
+            <span class="small">
+                <a asp-page="/Rgpd/Index" class="text-secondary text-decoration-none me-3">
+                    <i class="fa-solid fa-shield-halved me-1"></i>RGPD
+                </a>
+                Back-Office v1.0 &mdash; .NET 10
+            </span>
         </div>
     </footer>
 
@@ -147,6 +189,137 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/text-assistant.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    <partial name="_TextAssistantModal" />
+
+    <!-- === Modal SOS === -->
+    <div class="modal fade" id="sos-alert-modal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="sosAlertLabel" aria-modal="true" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 bg-danger text-white">
+                <div class="modal-header border-0 pb-0">
+                    <h4 class="modal-title fw-bold" id="sosAlertLabel">
+                        <i class="fa-solid fa-siren-on fa-beat me-2"></i>ALERTE SOS
+                    </h4>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fs-3 fw-bold mb-2" id="sos-reference">—</p>
+                    <p class="fs-5 mb-4" id="sos-address">—</p>
+                    <div class="d-flex gap-3 justify-content-center">
+                        <a id="sos-link" href="#" class="btn btn-light btn-lg text-danger fw-bold">
+                            <i class="fa-solid fa-eye me-2"></i>Voir l'appel
+                        </a>
+                        <button type="button" class="btn btn-outline-light btn-lg" data-bs-dismiss="modal">
+                            <i class="fa-solid fa-xmark me-2"></i>Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === Toast Container (critiques + missions) === -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999">
+        <div id="critique-toast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+            <div class="d-flex">
+                <div class="toast-body fw-semibold" id="critique-toast-body">
+                    <i class="fa-solid fa-fire me-2"></i>APPEL CRITIQUE
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fermer"></button>
+            </div>
+        </div>
+        <div id="mission-completed-toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="polite" aria-atomic="true" data-bs-delay="5000">
+            <div class="d-flex">
+                <div class="toast-body fw-semibold" id="mission-completed-toast-body">
+                    &#x2705; Mission — TERMINÉE
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fermer"></button>
+            </div>
+        </div>
+        <div id="mission-accepted-toast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="polite" aria-atomic="true" data-bs-delay="5000">
+            <div class="d-flex">
+                <div class="toast-body fw-semibold" id="mission-accepted-toast-body">
+                    &#x1F697; Mission acceptée
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fermer"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === SignalR + Alertes priorité === -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+    (function () {
+        // ---- Web Audio beeps ----
+        function playAlertBeeps(count) {
+            try {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                for (var i = 0; i < count; i++) {
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.4 + 0.3);
+                    osc.start(ctx.currentTime + i * 0.4);
+                    osc.stop(ctx.currentTime + i * 0.4 + 0.3);
+                }
+            } catch (e) { /* AudioContext non disponible */ }
+        }
+
+        function showSosModal(data) {
+            document.getElementById('sos-reference').textContent = '🚨 ALERTE SOS — ' + (data.reference || '');
+            document.getElementById('sos-address').textContent = data.incidentAddress || '';
+            document.getElementById('sos-link').href = '/Calls/Details/' + data.id;
+            var modal = new bootstrap.Modal(document.getElementById('sos-alert-modal'));
+            modal.show();
+            playAlertBeeps(3);
+        }
+
+        function showCritiqueToast(data) {
+            var body = '⚠️ APPEL CRITIQUE — ' + (data.incidentAddress || '');
+            document.getElementById('critique-toast-body').textContent = body;
+            var toastEl = document.getElementById('critique-toast');
+            var toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+            toast.show();
+        }
+
+        // ---- SignalR connection ----
+        var connection = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/police')
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on('NewCallReceived', function (data) {
+            var priority = data.priority;
+            if (priority === 'SOS' || priority === 3) {
+                showSosModal(data);
+            } else if (priority === 'Critique' || priority === 2) {
+                showCritiqueToast(data);
+            }
+        });
+
+        connection.on('MissionStatusChanged', function (data) {
+            if (data.status === 'Completed') {
+                var body = '✅ Mission ' + (data.reference || '') + ' — TERMINÉE';
+                document.getElementById('mission-completed-toast-body').textContent = body;
+                var toastEl = document.getElementById('mission-completed-toast');
+                bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 5000 }).show();
+            } else if (data.status === 'Accepted') {
+                var callSign = (data.vehicleCallSign || data.callSign || '');
+                var body2 = '🚗 Mission ' + (data.reference || '') + ' acceptée' + (callSign ? ' par ' + callSign : '');
+                document.getElementById('mission-accepted-toast-body').textContent = body2;
+                var toastEl2 = document.getElementById('mission-accepted-toast');
+                bootstrap.Toast.getOrCreateInstance(toastEl2, { delay: 5000 }).show();
+            }
+        });
+
+        connection.start().catch(function (err) {
+            console.warn('[PrediCop] SignalR connection failed:', err);
+        });
+    })();
+    </script>
 </body>
 </html>

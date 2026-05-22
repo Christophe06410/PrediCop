@@ -61,7 +61,8 @@
                     <div class="mb-4">
                         <label asp-for="Input.BriefingText" class="form-label fw-semibold"></label>
                         <textarea asp-for="Input.BriefingText" class="form-control" rows="5"
-                                  placeholder="Instructions pour l'équipe de patrouille…"></textarea>
+                                  placeholder="Instructions pour l'équipe de patrouille…"
+                                  data-text-assistant></textarea>
                         <span asp-validation-for="Input.BriefingText" class="text-danger small"></span>
                     </div>
 
@@ -97,7 +98,8 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">Rapport d'intervention</label>
                             <textarea name="completionReport" class="form-control" rows="4"
-                                      placeholder="Résumé de l'intervention, résolution…"></textarea>
+                                      placeholder="Résumé de l'intervention, résolution…"
+                                      data-text-assistant></textarea>
                         </div>
                         <button type="submit" class="btn btn-success w-100">
                             <i class="fa-solid fa-flag-checkered me-2"></i>Clôturer la mission

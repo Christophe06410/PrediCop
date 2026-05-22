@@ -31,6 +31,25 @@
                        IsPassword="True" Margin="16,4" />
             </Frame>
 
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+                <Grid ColumnDefinitions="*,Auto" Margin="16,0">
+                    <Picker Grid.Column="0"
+                            Title="Sélectionnez votre ville"
+                            TitleColor="#6b7a99"
+                            TextColor="White"
+                            BackgroundColor="Transparent"
+                            ItemsSource="{Binding Tenants}"
+                            ItemDisplayBinding="{Binding Name}"
+                            SelectedItem="{Binding SelectedTenant}" />
+                    <ActivityIndicator Grid.Column="1"
+                                       IsRunning="{Binding IsLoadingTenants}"
+                                       IsVisible="{Binding IsLoadingTenants}"
+                                       Color="#6b7a99"
+                                       HeightRequest="20" WidthRequest="20"
+                                       Margin="0,0,4,0" />
+                </Grid>
+            </Frame>
+
             <Label Text="{Binding ErrorMessage}" TextColor="#ff4444"
                    HorizontalTextAlignment="Center"
                    IsVisible="{Binding HasError}" />

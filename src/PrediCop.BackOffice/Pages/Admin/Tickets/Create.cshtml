@@ -1,0 +1,177 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Tickets.CreateModel
+@using PrediCop.Core.Enums
+@{
+    ViewData["Title"] = "Nouveau procès-verbal";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Admin/Tickets/Index">Verbalisation</a></li>
+            @if (Model.MissionId.HasValue && !string.IsNullOrEmpty(Model.MissionReference))
+            {
+                <li class="breadcrumb-item">
+                    <a asp-page="/Missions/Details" asp-route-id="@Model.MissionId">@Model.MissionReference</a>
+                </li>
+            }
+            <li class="breadcrumb-item active">Nouveau PV</li>
+        </ol>
+    </nav>
+    <a asp-page="/Admin/Tickets/Index" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Retour
+    </a>
+</div>
+
+@if (Model.MissionId.HasValue)
+{
+    <div class="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
+        <i class="fa-solid fa-link"></i>
+        <span>
+            Ce PV sera lié à la mission
+            <a asp-page="/Missions/Details" asp-route-id="@Model.MissionId" class="alert-link fw-semibold">
+                @(Model.MissionReference ?? Model.MissionId.ToString())
+            </a>.
+        </span>
+    </div>
+}
+
+<div class="row g-3 justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-ticket me-2 text-warning"></i>Informations du procès-verbal
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    @if (Model.MissionId.HasValue)
+                    {
+                        <input type="hidden" name="MissionId" value="@Model.MissionId" />
+                    }
+
+                    @Html.AntiForgeryToken()
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Agent verbalisateur</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Agent <span class="text-danger">*</span></label>
+                            <select asp-for="Input.IssuedById" class="form-select">
+                                <option value="">-- Sélectionner un agent --</option>
+                                @foreach (var agent in Model.Agents)
+                                {
+                                    <option value="@agent.Id">@agent.FullName (@agent.BadgeNumber)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.IssuedById" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Infraction</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label asp-for="Input.IssuedAtAddress" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <input asp-for="Input.IssuedAtAddress" class="form-control"
+                                       placeholder="Adresse exacte où l'infraction a été constatée" />
+                            </div>
+                            <span asp-validation-for="Input.IssuedAtAddress" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.InfractionType" class="form-label fw-semibold"></label>
+                            <select asp-for="Input.InfractionType" class="form-select">
+                                @foreach (var val in Enum.GetValues<InfractionType>())
+                                {
+                                    <option value="@val">@PrediCop.BackOffice.Pages.Admin.Tickets.IndexModel.GetInfractionLabel(val)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Input.ArticleCode" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.ArticleCode" class="form-control"
+                                   placeholder="Ex : R417-9, L325-1…" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Input.FineAmount" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <input asp-for="Input.FineAmount" class="form-control" type="number"
+                                       step="0.01" min="0.01" max="9999.99" />
+                                <span class="input-group-text">€</span>
+                            </div>
+                            <span asp-validation-for="Input.FineAmount" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Véhicule verbalisé</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label asp-for="Input.PlateNumber" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.PlateNumber" class="form-control text-uppercase font-monospace"
+                                   placeholder="AA-000-BB" maxlength="20" />
+                            <span asp-validation-for="Input.PlateNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Input.VehicleMake" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.VehicleMake" class="form-control" placeholder="Ex : Renault" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Input.VehicleModel" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.VehicleModel" class="form-control" placeholder="Ex : Clio" />
+                        </div>
+                        <div class="col-md-2">
+                            <label asp-for="Input.VehicleColor" class="form-label fw-semibold"></label>
+                            <input asp-for="Input.VehicleColor" class="form-control" placeholder="Ex : Blanc" />
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted fw-semibold mb-3 small text-uppercase">Notes</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label asp-for="Input.Notes" class="form-label fw-semibold"></label>
+                            <textarea asp-for="Input.Notes" class="form-control" rows="3"
+                                      placeholder="Observations, circonstances particulières…"
+                                      data-text-assistant></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        @if (Model.MissionId.HasValue)
+                        {
+                            <a asp-page="/Missions/Details" asp-route-id="@Model.MissionId"
+                               class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-times me-2"></i>Annuler
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="/Admin/Tickets/Index" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-times me-2"></i>Annuler
+                            </a>
+                        }
+                        <button type="submit" class="btn btn-warning fw-semibold">
+                            <i class="fa-solid fa-ticket me-2"></i>Émettre le PV
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Auto-majuscule sur le champ plaque
+        const plateInput = document.querySelector('input[name="Input.PlateNumber"]');
+        if (plateInput) {
+            plateInput.addEventListener('input', function () {
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.toUpperCase();
+                this.setSelectionRange(start, end);
+            });
+        }
+    </script>
+}

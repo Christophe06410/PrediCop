@@ -17,7 +17,8 @@ namespace PrediCop.Api.Controllers;
 public class VehiclesController(
     AppDbContext db,
     IGpsService gpsService,
-    IHubContext<PoliceHub> hubContext) : ControllerBase
+    IHubContext<PoliceHub> hubContext,
+    IEmailService emailService) : ControllerBase
 {
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
 
@@ -180,6 +181,58 @@ public class VehiclesController(
         return NoContent();
     }
 
+    [HttpGet("crew-sheet")]
+    public async Task<ActionResult<List<CrewSheetEntryResponse>>> GetCrewSheet(CancellationToken ct)
+    {
+        var vehicles = await db.PatrolVehicles
+            .Include(v => v.Officers.Where(o => o.IsActive))
+                .ThenInclude(o => o.User)
+            .Include(v => v.Missions.Where(m =>
+                m.Mission.Status == MissionStatus.Accepted ||
+                m.Mission.Status == MissionStatus.InProgress))
+                .ThenInclude(a => a.Mission)
+            .Where(v => v.TenantId == TenantId && v.Status != VehicleStatus.Offline)
+            .OrderBy(v => v.CallSign)
+            .ToListAsync(ct);
+
+        var result = vehicles.Select(v =>
+        {
+            var activeAssignment = v.Missions
+                .Where(a => a.Mission.Status == MissionStatus.Accepted ||
+                            a.Mission.Status == MissionStatus.InProgress)
+                .OrderByDescending(a => a.Mission.AcceptedAt)
+                .FirstOrDefault();
+
+            return new CrewSheetEntryResponse
+            {
+                VehicleId = v.Id,
+                CallSign = v.CallSign,
+                LicensePlate = v.LicensePlate,
+                Status = v.Status.ToString(),
+                LastLatitude = v.LastLatitude,
+                LastLongitude = v.LastLongitude,
+                Officers = v.Officers
+                    .Where(o => o.IsActive)
+                    .Select(o => new CrewMemberInfo
+                    {
+                        UserId = o.UserId,
+                        FullName = o.User.FullName,
+                        BadgeNumber = o.User.BadgeNumber
+                    }).ToList(),
+                CurrentMission = activeAssignment is null ? null : new ActiveMissionInfo
+                {
+                    MissionId = activeAssignment.MissionId,
+                    Reference = activeAssignment.Mission.Reference,
+                    Priority = activeAssignment.Mission.Priority.ToString(),
+                    TargetAddress = activeAssignment.Mission.TargetAddress,
+                    AcceptedAt = activeAssignment.Mission.AcceptedAt
+                }
+            };
+        }).ToList();
+
+        return Ok(result);
+    }
+
     [HttpGet("nearby")]
     public async Task<ActionResult<List<NearbyVehicleResponse>>> GetNearby(
         [FromQuery] double lat,
@@ -204,6 +257,48 @@ public class VehiclesController(
         }).ToList();
 
         return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/sos")]
+    public async Task<ActionResult<VehicleSosResponse>> TriggerSos(Guid id, CancellationToken ct)
+    {
+        var vehicle = await db.PatrolVehicles
+            .FirstOrDefaultAsync(v => v.Id == id && v.TenantId == TenantId, ct);
+
+        if (vehicle is null)
+            return Problem(title: "Véhicule non trouvé", statusCode: 404);
+
+        var triggeredAt = DateTime.UtcNow;
+
+        // Notifier les opérateurs via SignalR
+        var sosPayload = new VehicleSosResponse
+        {
+            VehicleId   = vehicle.Id,
+            CallSign    = vehicle.CallSign,
+            Latitude    = vehicle.LastLatitude,
+            Longitude   = vehicle.LastLongitude,
+            TriggeredAt = triggeredAt
+        };
+
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("VehicleSOSAlert", sosPayload, ct);
+
+        // Envoyer un email aux managers du tenant
+        var subject = $"🚨 ALERTE SOS — Véhicule {vehicle.CallSign}";
+        var body = $"""
+            <h2 style="color:red">🚨 ALERTE SOS</h2>
+            <p>Le véhicule <strong>{vehicle.CallSign}</strong> a déclenché une alerte SOS.</p>
+            <p><strong>Heure :</strong> {triggeredAt.ToLocalTime():dd/MM/yyyy HH:mm:ss}</p>
+            {(vehicle.LastLatitude.HasValue && vehicle.LastLongitude.HasValue
+                ? $"<p><strong>Dernière position :</strong> {vehicle.LastLatitude:F5}, {vehicle.LastLongitude:F5}</p>"
+                : "<p><em>Position non disponible.</em></p>")}
+            <p>Contactez immédiatement le véhicule et envoyez des renforts.</p>
+            """;
+
+        await emailService.SendToManagersAsync(TenantId, subject, body, ct);
+
+        return Ok(sosPayload);
     }
 
     private static VehicleResponse MapToResponse(PatrolVehicle v) => new()

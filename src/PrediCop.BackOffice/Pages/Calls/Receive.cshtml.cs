@@ -69,7 +69,7 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
             if (missionResponse.IsSuccessStatusCode)
             {
                 TempData["SuccessMessage"] =
-                    $"Appel {created.Reference} enregistré et mission créée avec succès.";
+                    $"Main courante {created.Reference} enregistrée et mission créée avec succès.";
             }
             else
             {
@@ -77,7 +77,7 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
                 logger.LogWarning("Create mission failed {Status}: {Body}",
                     (int)missionResponse.StatusCode, body);
                 TempData["SuccessMessage"] =
-                    $"Appel {created.Reference} enregistré. La création de mission a échoué — lancez le dispatch manuellement.";
+                    $"Main courante {created.Reference} enregistrée. La création de mission a échoué — lancez le dispatch manuellement.";
             }
 
             return RedirectToPage("/Calls/Index");
@@ -92,9 +92,72 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
         }
     }
 
+    /// <summary>
+    /// Saves the current form as a Draft call via the API.
+    /// Does NOT create a mission and does NOT redirect away — the operator stays on this page
+    /// to continue filling in details or to handle the next incoming call.
+    /// The timer bar keeps running because ViewData["ActiveCall"] stays true.
+    /// </summary>
+    public async Task<IActionResult> OnPostSaveDraftAsync()
+    {
+        // Keep the active-call UI (timer bar) alive
+        ViewData["ActiveCall"] = true;
+        ViewData["CallStartTime"] = DateTime.Now;
+
+        // Minimal validation: we only require enough to persist a draft
+        // (full validation is done on CreateMission, so we clear required-field errors here)
+        ModelState.Clear();
+
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+
+            // Send the call body with status = Draft so the API stores it without creating a mission
+            var draftBody = new
+            {
+                Input.CallerName,
+                Input.CallerPhone,
+                Input.IncidentCategory,
+                Input.IncidentDescription,
+                Input.IncidentAddress,
+                Input.IncidentAddressComplement,
+                Input.IncidentLatitude,
+                Input.IncidentLongitude,
+                Input.ThirdParties,
+                Input.InternalNotes,
+                Status = "Draft"
+            };
+
+            var callResponse = await client.PostAsJsonAsync("/api/calls", draftBody);
+
+            if (!callResponse.IsSuccessStatusCode)
+            {
+                var body = await callResponse.Content.ReadAsStringAsync();
+                logger.LogWarning("Save draft failed {Status}: {Body}", (int)callResponse.StatusCode, body);
+                TempData["DraftErrorMessage"] =
+                    $"Impossible de sauvegarder le brouillon ({(int)callResponse.StatusCode}). Vérifiez que l'API est démarrée.";
+                await LoadTodayCallsAsync();
+                return Page();
+            }
+
+            var created = await callResponse.Content.ReadFromJsonAsync<CallDto>();
+            TempData["DraftSuccessMessage"] =
+                $"Brouillon sauvegardé — Réf. {created?.Reference ?? "?"} — vous pouvez continuer la saisie ou commencer un nouvel appel.";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur lors de la sauvegarde du brouillon");
+            TempData["DraftErrorMessage"] =
+                "Impossible de joindre le serveur. Vérifiez que l'API est démarrée.";
+        }
+
+        await LoadTodayCallsAsync();
+        return Page();
+    }
+
     public IActionResult OnPostCloseAsync()
     {
-        TempData["InfoMessage"] = "Appel fermé sans suite.";
+        TempData["InfoMessage"] = "Main courante fermée sans suite.";
         return RedirectToPage("/Calls/Index");
     }
 

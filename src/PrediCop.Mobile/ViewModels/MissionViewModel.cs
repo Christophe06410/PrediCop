@@ -31,6 +31,61 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
     [ObservableProperty] private string activeMissionAddress = "";
     [ObservableProperty] private string activeMissionBriefing = "";
 
+    // Priorité mission active
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveMissionPriorityColor))]
+    [NotifyPropertyChangedFor(nameof(ActiveMissionPriorityEmoji))]
+    [NotifyPropertyChangedFor(nameof(ActiveMissionHasPriorityBanner))]
+    [NotifyPropertyChangedFor(nameof(ActiveMissionSosBannerColor))]
+    [NotifyPropertyChangedFor(nameof(ActiveMissionSosBannerText))]
+    private string activeMissionPriority = "Routine";
+
+    public Color ActiveMissionPriorityColor => ActiveMissionPriority switch
+    {
+        "SOS"      => Colors.Red,
+        "Critique" => Color.FromArgb("#dc2626"),
+        "Urgent"   => Color.FromArgb("#f59e0b"),
+        _          => Colors.Gray
+    };
+    public string ActiveMissionPriorityEmoji => ActiveMissionPriority switch
+    {
+        "SOS"      => "🚨",
+        "Critique" => "⚠️",
+        "Urgent"   => "❗",
+        _          => ""
+    };
+    public bool HasActiveMissionPriorityLabel => ActiveMissionPriority is not "Routine" and not "";
+    public bool ActiveMissionHasPriorityBanner => ActiveMissionPriority is "SOS" or "Critique" or "Urgent";
+    public Color ActiveMissionSosBannerColor   => ActiveMissionPriority is "SOS" or "Critique" ? Colors.Red : Color.FromArgb("#d97706");
+    public string ActiveMissionSosBannerText   => ActiveMissionPriority switch
+    {
+        "SOS"      => "🚨 MISSION SOS",
+        "Critique" => "⚠️ MISSION CRITIQUE",
+        "Urgent"   => "❗ MISSION URGENTE",
+        _          => ""
+    };
+
+    // Priorité mission proposée
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProposalPriorityColor))]
+    [NotifyPropertyChangedFor(nameof(ProposalPriorityEmoji))]
+    private string proposalPriority = "Routine";
+    public Color ProposalPriorityColor => ProposalPriority switch
+    {
+        "SOS"      => Colors.Red,
+        "Critique" => Color.FromArgb("#dc2626"),
+        "Urgent"   => Color.FromArgb("#f59e0b"),
+        _          => Colors.Gray
+    };
+    public string ProposalPriorityEmoji => ProposalPriority switch
+    {
+        "SOS"      => "🚨",
+        "Critique" => "⚠️",
+        "Urgent"   => "❗",
+        _          => ""
+    };
+    public bool HasProposalPriorityLabel => ProposalPriority is not "Routine" and not "";
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasActiveDistance))]
     private string activeMissionDistance = "";
@@ -82,7 +137,8 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
                     SetMissionProposal(new MissionInfo(
                         proposed.Mission.Id, proposed.Assignment.Id, proposed.Mission.Reference,
                         proposed.Mission.TargetAddress, proposed.Mission.BriefingText, proposed.Mission.BriefingText,
-                        0, proposed.Mission.TargetLatitude, proposed.Mission.TargetLongitude));
+                        0, proposed.Mission.TargetLatitude, proposed.Mission.TargetLongitude,
+                        proposed.Mission.Priority));
                 }
                 else
                 {
@@ -90,7 +146,8 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
                     SetActiveMission(new MissionInfo(
                         m.Id, null, m.Reference,
                         m.TargetAddress, "", m.BriefingText,
-                        0, m.TargetLatitude, m.TargetLongitude));
+                        0, m.TargetLatitude, m.TargetLongitude,
+                        m.Priority));
                 }
             }
             else
@@ -108,6 +165,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         public string BriefingText { get; set; } = "";
         public double TargetLatitude { get; set; }
         public double TargetLongitude { get; set; }
+        public string Priority { get; set; } = "Routine";
         public List<ApiAssignmentDto> Assignments { get; set; } = [];
     }
 
@@ -126,6 +184,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         ProposalAddress = mission.Address;
         ProposalDescription = mission.Description;
         ProposalDistance = $"Distance estimée: {mission.DistanceKm:F1} km";
+        ProposalPriority = mission.Priority;
         ShowMissionProposal = true;
         ShowActiveMission = false;
         ShowNoMission = false;
@@ -140,6 +199,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         ActiveMissionAddress = mission.Address;
         ActiveMissionBriefing = mission.Briefing;
         ActiveMissionDistance = "";
+        ActiveMissionPriority = mission.Priority;
         ShowActiveMission = true;
         ShowMissionProposal = false;
         ShowNoMission = false;
@@ -148,11 +208,16 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
 
     private async Task ComputeActiveDistanceAsync(double lat, double lng)
     {
+        if (lat == 0 && lng == 0) return;
         try
         {
             var loc = await Geolocation.Default.GetLastKnownLocationAsync();
-            if (loc == null) return;
-            ActiveMissionDistance = $"Distance : {Haversine(loc.Latitude, loc.Longitude, lat, lng):F1} km";
+            if (loc is null || (loc.Latitude == 0 && loc.Longitude == 0)) return;
+            var km = Haversine(loc.Latitude, loc.Longitude, lat, lng);
+            if (km < 0.05)
+                ActiveMissionDistance = "Distance : < 50 m";
+            else
+                ActiveMissionDistance = $"Distance : {km:F1} km";
         }
         catch { }
     }

@@ -1,0 +1,336 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Logistics.IndexModel
+@using PrediCop.Core.Enums
+@{
+    ViewData["Title"] = "Logistique & Équipements";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-box-open me-2 text-primary"></i>Logistique &amp; Équipements
+    </h4>
+</div>
+
+@if (Model.ExpiringCount > 0)
+{
+    <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation fa-lg"></i>
+        <div>
+            <strong>Attention !</strong> @Model.ExpiringCount équipement(s) expirent dans moins de 60 jours.
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-1"></i>@ok
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Onglets -->
+<ul class="nav nav-tabs mb-3" id="logisticsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "catalog" ? "active" : "")"
+                id="catalog-tab" data-bs-toggle="tab" data-bs-target="#catalog"
+                type="button" role="tab">
+            <i class="fa-solid fa-list me-1"></i>Catalogue
+            <span class="badge bg-secondary ms-1">@Model.Catalog.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "issuances" ? "active" : "")"
+                id="issuances-tab" data-bs-toggle="tab" data-bs-target="#issuances"
+                type="button" role="tab">
+            <i class="fa-solid fa-hand-holding me-1"></i>Dotations
+            <span class="badge bg-secondary ms-1">@Model.Issuances.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "alerts" ? "active" : "")"
+                id="alerts-tab" data-bs-toggle="tab" data-bs-target="#alerts"
+                type="button" role="tab">
+            <i class="fa-solid fa-bell me-1"></i>Alertes
+            @if (Model.Alerts.Count > 0)
+            {
+                <span class="badge bg-danger ms-1">@Model.Alerts.Count</span>
+            }
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="logisticsTabContent">
+
+    <!-- ===== CATALOGUE ===== -->
+    <div class="tab-pane fade @(Model.ActiveTab == "catalog" ? "show active" : "")"
+         id="catalog" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                @if (Model.Catalog.Count == 0)
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fa-solid fa-box-open fa-3x mb-3 opacity-25"></i>
+                        <p class="mb-1 fw-semibold">Aucun équipement dans le catalogue</p>
+                        <p class="small">Ajoutez des équipements pour commencer à gérer les dotations.</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Référence</th>
+                                <th>Nom</th>
+                                <th>Catégorie</th>
+                                <th>Unité</th>
+                                <th class="text-center">Durée de vie</th>
+                                <th class="text-center">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Catalog)
+                            {
+                                <tr>
+                                    <td class="text-muted small font-monospace">@(item.ReferenceCode ?? "—")</td>
+                                    <td class="fw-semibold">@item.Name</td>
+                                    <td>
+                                        <span class="badge @Model.GetCategoryBadgeClass(item.Category)">
+                                            @Model.GetCategoryLabel(item.Category)
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small">@item.Unit</td>
+                                    <td class="text-center small">
+                                        @if (item.DefaultLifespanMonths.HasValue)
+                                        {
+                                            <span>@item.DefaultLifespanMonths mois</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Sans expiration</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (item.IsActive)
+                                        {
+                                            <span class="badge bg-success">Actif</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactif</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DOTATIONS ===== -->
+    <div class="tab-pane fade @(Model.ActiveTab == "issuances" ? "show active" : "")"
+         id="issuances" role="tabpanel">
+
+        <!-- Filtres dotations -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2">
+                <form method="get" class="row g-2 align-items-end">
+                    <input type="hidden" name="ActiveTab" value="issuances" />
+                    <div class="col-md-5">
+                        <label class="form-label small mb-1">Agent</label>
+                        <select name="AgentFilter" class="form-select form-select-sm">
+                            <option value="">-- Tous les agents --</option>
+                            @foreach (var agent in Model.Agents)
+                            {
+                                <option value="@agent.Id" selected="@(Model.AgentFilter == agent.Id)">
+                                    @agent.FullName (@agent.BadgeNumber)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="ExpiredOnly" id="expiredOnly"
+                                   value="true" @(Model.ExpiredOnly ? "checked" : "") />
+                            <label class="form-check-label small" for="expiredOnly">Expirées seulement</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="fa-solid fa-filter me-1"></i>Filtrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                @if (Model.Issuances.Count == 0)
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fa-solid fa-hand-holding fa-3x mb-3 opacity-25"></i>
+                        <p class="mb-1 fw-semibold">Aucune dotation trouvée</p>
+                        <p class="small">Aucune dotation en cours pour les critères sélectionnés.</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Agent</th>
+                                <th>Badge</th>
+                                <th>Équipement</th>
+                                <th class="text-center">Qté</th>
+                                <th>Taille</th>
+                                <th class="text-center">Remis le</th>
+                                <th class="text-center">Expire le</th>
+                                <th class="text-center">Statut</th>
+                                <th class="text-end" style="width:100px">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var iss in Model.Issuances)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@iss.AgentFullName</td>
+                                    <td><span class="badge bg-secondary">@iss.AgentBadgeNumber</span></td>
+                                    <td>
+                                        <div>@iss.EquipmentName</div>
+                                        <small class="text-muted">
+                                            <span class="badge @Model.GetCategoryBadgeClass(iss.EquipmentCategory) badge-sm">
+                                                @Model.GetCategoryLabel(iss.EquipmentCategory)
+                                            </span>
+                                        </small>
+                                    </td>
+                                    <td class="text-center">@iss.Quantity @iss.Unit</td>
+                                    <td class="text-muted small">@(iss.Size ?? "—")</td>
+                                    <td class="text-center small">@iss.IssuedAt.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center small">
+                                        @if (iss.ExpiresAt.HasValue)
+                                        {
+                                            <span class="@(iss.IsExpired ? "text-danger fw-semibold" : iss.ExpiresWithin60Days ? "text-warning fw-semibold" : "")">
+                                                @iss.ExpiresAt.Value.ToString("dd/MM/yyyy")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (iss.IsExpired)
+                                        {
+                                            <span class="badge bg-danger">Expirée</span>
+                                        }
+                                        else if (iss.ExpiresWithin60Days)
+                                        {
+                                            <span class="badge bg-warning text-dark">Expire bientôt</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">En cours</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (!iss.IsReturned)
+                                        {
+                                            <form asp-page-handler="Return" asp-route-id="@iss.Id"
+                                                  method="post" class="d-inline"
+                                                  onsubmit="return confirm('Marquer cet équipement comme rendu ?')">
+                                                <button type="submit" class="btn btn-sm btn-outline-success"
+                                                        title="Marquer comme rendu">
+                                                    <i class="fa-solid fa-rotate-left"></i> Rendu
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ALERTES ===== -->
+    <div class="tab-pane fade @(Model.ActiveTab == "alerts" ? "show active" : "")"
+         id="alerts" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                @if (Model.Alerts.Count == 0)
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fa-solid fa-bell fa-3x mb-3 opacity-25"></i>
+                        <p class="mb-1 fw-semibold">Aucune alerte</p>
+                        <p class="small">Tous les équipements sont à jour.</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Agent</th>
+                                <th>Équipement</th>
+                                <th class="text-center">Expire le</th>
+                                <th class="text-center">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var alert in Model.Alerts)
+                            {
+                                <tr class="@(alert.IsExpired ? "table-danger" : "table-warning")">
+                                    <td class="fw-semibold">@alert.AgentFullName</td>
+                                    <td>@alert.EquipmentName</td>
+                                    <td class="text-center small fw-semibold">
+                                        @alert.ExpiresAt.ToString("dd/MM/yyyy")
+                                    </td>
+                                    <td class="text-center">
+                                        @if (alert.IsExpired)
+                                        {
+                                            <span class="badge bg-danger">
+                                                <i class="fa-solid fa-circle-xmark me-1"></i>Expirée
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i>Expire bientôt
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        // Activer l'onglet correspondant à ActiveTab au chargement
+        const activeTab = '@Model.ActiveTab';
+        const tabEl = document.getElementById(activeTab + '-tab');
+        if (tabEl) {
+            const tab = new bootstrap.Tab(tabEl);
+            tab.show();
+        }
+    </script>
+}

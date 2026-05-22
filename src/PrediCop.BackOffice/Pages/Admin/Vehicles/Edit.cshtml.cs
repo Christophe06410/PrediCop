@@ -25,13 +25,20 @@ public class EditModel : PageModel
 
     public static readonly List<string> VehicleStatuses = new() { "Offline", "Available", "Busy", "OnMission" };
 
+    /// <summary>Liste des zones de patrouille disponibles pour le select.</summary>
+    public List<GeoZoneDto> GeoZones { get; set; } = [];
+
     public async Task<IActionResult> OnGetAsync(Guid? id)
     {
+        var client = _httpClientFactory.CreateClient("PrediCopApi");
+
+        // Charger la liste des zones en parallèle avec le véhicule
+        var zonesTask = LoadGeoZonesAsync(client);
+
         if (id.HasValue && id.Value != Guid.Empty)
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("PrediCopApi");
                 var vehicle = await client.GetFromJsonAsync<VehicleDto>($"/api/vehicles/{id}");
                 if (vehicle != null)
                 {
@@ -40,7 +47,9 @@ public class EditModel : PageModel
                         Id = vehicle.Id,
                         CallSign = vehicle.CallSign,
                         LicensePlate = vehicle.LicensePlate,
-                        Status = vehicle.Status
+                        Status = vehicle.Status,
+                        BeaconUuid = vehicle.BeaconUuid,
+                        AssignedGeoZoneId = vehicle.AssignedGeoZoneId
                     };
                 }
                 else
@@ -55,24 +64,52 @@ public class EditModel : PageModel
             }
         }
 
+        GeoZones = await zonesTask;
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid)
+        {
+            var client = _httpClientFactory.CreateClient("PrediCopApi");
+            GeoZones = await LoadGeoZonesAsync(client);
+            return Page();
+        }
 
         try
         {
             var client = _httpClientFactory.CreateClient("PrediCopApi");
             if (IsEdit)
             {
+                // Mise à jour des informations générales du véhicule
                 await client.PutAsJsonAsync($"/api/vehicles/{Input.Id}", Input);
+
+                // Mise à jour de la zone assignée (endpoint dédié)
+                await client.PutAsJsonAsync($"/api/vehicles/{Input.Id}/geozone", new
+                {
+                    GeoZoneId = Input.AssignedGeoZoneId
+                });
+
                 TempData["SuccessMessage"] = $"Véhicule {Input.CallSign} mis à jour avec succès.";
             }
             else
             {
-                await client.PostAsJsonAsync("/api/vehicles", Input);
+                var response = await client.PostAsJsonAsync("/api/vehicles", Input);
+
+                // Si création réussie et une zone est sélectionnée, assigner immédiatement
+                if (response.IsSuccessStatusCode && Input.AssignedGeoZoneId.HasValue)
+                {
+                    var created = await response.Content.ReadFromJsonAsync<VehicleDto>();
+                    if (created != null)
+                    {
+                        await client.PutAsJsonAsync($"/api/vehicles/{created.Id}/geozone", new
+                        {
+                            GeoZoneId = Input.AssignedGeoZoneId
+                        });
+                    }
+                }
+
                 TempData["SuccessMessage"] = $"Véhicule {Input.CallSign} créé avec succès.";
             }
         }
@@ -83,5 +120,19 @@ public class EditModel : PageModel
         }
 
         return RedirectToPage("/Admin/Vehicles/Index");
+    }
+
+    private async Task<List<GeoZoneDto>> LoadGeoZonesAsync(HttpClient client)
+    {
+        try
+        {
+            var zones = await client.GetFromJsonAsync<List<GeoZoneDto>>("/api/geozones");
+            return zones ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Impossible de charger la liste des zones de patrouille.");
+            return [];
+        }
     }
 }

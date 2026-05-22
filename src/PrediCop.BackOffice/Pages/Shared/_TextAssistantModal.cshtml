@@ -1,0 +1,28 @@
+<div class="modal fade" id="ta-improve-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2 text-primary"></i>Propositions d'amélioration
+                    <span class="badge bg-primary ms-2" id="ta-suggestions-count">0</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" id="ta-accept-all" class="btn btn-sm btn-outline-success">
+                        <i class="fa-solid fa-check-double me-1"></i>Tout accepter
+                    </button>
+                    <button type="button" id="ta-ignore-all" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-xmark me-1"></i>Tout ignorer
+                    </button>
+                </div>
+                <div id="ta-suggestions-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" id="ta-apply-btn" class="btn btn-primary btn-sm" disabled>Appliquer les modifications</button>
+            </div>
+        </div>
+    </div>
+</div>

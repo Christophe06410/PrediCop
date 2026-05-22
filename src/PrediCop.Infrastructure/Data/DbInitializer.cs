@@ -11,7 +11,16 @@ public static class DbInitializer
         // --- Tenant + Admin (first run only) ---
         if (!await context.Tenants.AnyAsync())
         {
-            var tenant = new Tenant { Name = "PrediCop", Slug = "predicop", IsActive = true };
+            var tenant = new Tenant
+            {
+                Name = "PrediCop",
+                Slug = "predicop",
+                IsActive = true,
+                SubscriptionStatus = SubscriptionStatus.Active,
+                SubscriptionPlan = SubscriptionPlan.Premium,
+                VehicleLimit = 9999,
+                UserLimit = 9999,
+            };
             context.Tenants.Add(tenant);
             await context.SaveChangesAsync();
 
@@ -30,6 +39,17 @@ public static class DbInitializer
         }
 
         var tenantId = (await context.Tenants.FirstAsync()).Id;
+
+        // Upgrade existing test tenant to unlimited active subscription
+        var existingTenant = await context.Tenants.FirstAsync();
+        if (existingTenant.SubscriptionStatus == SubscriptionStatus.None)
+        {
+            existingTenant.SubscriptionStatus = SubscriptionStatus.Active;
+            existingTenant.SubscriptionPlan = SubscriptionPlan.Premium;
+            existingTenant.VehicleLimit = 9999;
+            existingTenant.UserLimit = 9999;
+            await context.SaveChangesAsync();
+        }
 
         // --- Officer + vehicle (idempotent) ---
         if (!await context.Users.AnyAsync(u => u.TenantId == tenantId && u.Role == UserRole.Officer))

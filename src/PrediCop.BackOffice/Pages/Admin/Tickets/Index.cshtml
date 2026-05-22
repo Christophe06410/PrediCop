@@ -1,0 +1,422 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.Tickets.IndexModel
+@using PrediCop.Core.Enums
+@using System.Globalization
+@{
+    ViewData["Title"] = "Verbalisation électronique";
+    var culture = new CultureInfo("fr-FR");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-ticket me-2 text-primary"></i>Verbalisation électronique
+    </h4>
+    <div class="d-flex gap-2">
+        <a asp-page="/Admin/Tickets/Create" class="btn btn-sm btn-warning fw-semibold">
+            <i class="fa-solid fa-plus me-1"></i>Nouveau PV
+        </a>
+        <a href="/Admin/Tickets/Stats" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-chart-bar me-1"></i>Statistiques détaillées
+        </a>
+        <a href="/api/tickets/export?format=csv&dateFrom=@Model.DateFrom&dateTo=@Model.DateTo@(Model.AgentFilter.HasValue ? "&agentId=" + Model.AgentFilter : "")@(!string.IsNullOrWhiteSpace(Model.StatusFilter) ? "&status=" + Model.StatusFilter : "")"
+           class="btn btn-sm btn-outline-success" target="_blank">
+            <i class="fa-solid fa-file-csv me-1"></i>Exporter CSV
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show py-2">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show py-2">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- KPIs -->
+@if (Model.Stats is not null)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">PV émis</div>
+                        <div class="kpi-value text-primary">@Model.Stats.TotalIssued</div>
+                    </div>
+                    <i class="fa-solid fa-ticket kpi-icon text-primary"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Montant total amendes</div>
+                        <div class="kpi-value text-success">@Model.Stats.TotalFineAmount.ToString("C0", culture)</div>
+                    </div>
+                    <i class="fa-solid fa-euro-sign kpi-icon text-success"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">En litige</div>
+                        <div class="kpi-value text-warning">@Model.Stats.TotalContested</div>
+                    </div>
+                    <i class="fa-solid fa-scale-balanced kpi-icon text-warning"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card border-0 shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small">Annulés</div>
+                        <div class="kpi-value text-secondary">@Model.Stats.TotalCancelled</div>
+                    </div>
+                    <i class="fa-solid fa-ban kpi-icon text-secondary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-2">
+                <label class="form-label small mb-1">Du</label>
+                <input type="date" name="DateFrom" value="@Model.DateFrom" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <label class="form-label small mb-1">Au</label>
+                <input type="date" name="DateTo" value="@Model.DateTo" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label class="form-label small mb-1">Agent</label>
+                <select name="AgentFilter" class="form-select form-select-sm">
+                    <option value="">Tous les agents</option>
+                    @foreach (var agent in Model.Agents)
+                    {
+                        <option value="@agent.Id" selected="@(Model.AgentFilter == agent.Id)">
+                            @agent.FullName (@agent.BadgeNumber)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <label class="form-label small mb-1">Statut</label>
+                <select name="StatusFilter" class="form-select form-select-sm">
+                    <option value="">Tous</option>
+                    <option value="Issued"    selected="@(Model.StatusFilter == "Issued")"   >Émis</option>
+                    <option value="Paid"      selected="@(Model.StatusFilter == "Paid")"     >Payé</option>
+                    <option value="Contested" selected="@(Model.StatusFilter == "Contested")">Contesté</option>
+                    <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Annulé</option>
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <label class="form-label small mb-1">Plaque</label>
+                <input type="text" name="PlateSearch" value="@Model.PlateSearch"
+                       class="form-control form-control-sm" placeholder="AA-000-BB" />
+            </div>
+            <div class="col-sm-6 col-md-1 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <a href="/Admin/Tickets/Index" class="btn btn-outline-secondary btn-sm" title="Réinitialiser">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tableau des PV -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fa-solid fa-list me-2"></i>Procès-verbaux
+            <span class="badge bg-secondary ms-2">@Model.TotalCount</span>
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Tickets.Count == 0)
+        {
+            <div class="text-center text-muted py-5">
+                <i class="fa-solid fa-ticket fa-2x mb-2 d-block opacity-25"></i>
+                Aucun PV pour les critères sélectionnés.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>N° PV</th>
+                            <th>Date</th>
+                            <th>Agent</th>
+                            <th>Adresse</th>
+                            <th>Plaque</th>
+                            <th>Infraction</th>
+                            <th class="text-end">Montant</th>
+                            <th>Statut</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ticket in Model.Tickets)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge bg-dark font-monospace">@ticket.TicketNumber</span>
+                                </td>
+                                <td class="text-nowrap small">
+                                    @ticket.IssuedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="small">
+                                    <div>@ticket.IssuedByFullName</div>
+                                    <div class="text-muted" style="font-size:.75rem">@ticket.IssuedByBadgeNumber</div>
+                                </td>
+                                <td class="small" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                    title="@ticket.IssuedAtAddress">
+                                    @ticket.IssuedAtAddress
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border font-monospace">@ticket.PlateNumber</span>
+                                    @if (!string.IsNullOrWhiteSpace(ticket.VehicleMake))
+                                    {
+                                        <div class="text-muted" style="font-size:.7rem">
+                                            @ticket.VehicleMake @ticket.VehicleModel
+                                        </div>
+                                    }
+                                </td>
+                                <td class="small">@IndexModel.GetInfractionLabel(ticket.InfractionType)</td>
+                                <td class="text-end fw-semibold text-nowrap">
+                                    @ticket.FineAmount.ToString("C0", culture)
+                                </td>
+                                <td>
+                                    <span class="badge @IndexModel.GetStatusBadgeClass(ticket.Status)">
+                                        @IndexModel.GetStatusLabel(ticket.Status)
+                                    </span>
+                                    @if (ticket.ExportedToAntai)
+                                    {
+                                        <span class="badge bg-success ms-1 small"
+                                              title="Exporté vers l'ANTAI le @(ticket.ExportedAt.HasValue ? ticket.ExportedAt.Value.ToLocalTime().ToString("dd/MM/yyyy") : "—")">
+                                            ANTAI
+                                        </span>
+                                    }
+                                </td>
+                                        <td class="text-center">
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        @if (ticket.MissionId.HasValue)
+                                        {
+                                            <a asp-page="/Missions/Details" asp-route-id="@ticket.MissionId"
+                                               class="btn btn-sm btn-outline-info"
+                                               title="Voir la mission associée @ticket.MissionReference">
+                                                <i class="fa-solid fa-car-side"></i>
+                                            </a>
+                                        }
+                                        @if (ticket.Status == TicketStatus.Issued)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-success"
+                                                    data-bs-toggle="modal" data-bs-target="#payModal"
+                                                    data-ticket-id="@ticket.Id"
+                                                    data-ticket-number="@ticket.TicketNumber"
+                                                    title="Marquer comme payé">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                                    data-bs-toggle="modal" data-bs-target="#contestModal"
+                                                    data-ticket-id="@ticket.Id"
+                                                    data-ticket-number="@ticket.TicketNumber"
+                                                    title="Marquer comme contesté">
+                                                <i class="fa-solid fa-scale-balanced"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="modal" data-bs-target="#cancelModal"
+                                                    data-ticket-id="@ticket.Id"
+                                                    data-ticket-number="@ticket.TicketNumber"
+                                                    title="Annuler ce PV">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        }
+                                        <a href="/Admin/Tickets/Pdf?id=@ticket.Id" target="_blank"
+                                           class="btn btn-sm btn-outline-secondary" title="Télécharger PDF">
+                                            <i class="fa-solid fa-file-pdf"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Répartition par type d'infraction -->
+@if (Model.Stats?.ByInfractionType is { Count: > 0 })
+{
+    <div class="card shadow-sm mt-3">
+        <div class="card-header">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fa-solid fa-chart-pie me-2"></i>Répartition par type d'infraction
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Type d'infraction</th>
+                            <th class="text-end">Nb de PV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kv in Model.Stats.ByInfractionType.OrderByDescending(x => x.Value))
+                        {
+                            if (Enum.TryParse<InfractionType>(kv.Key, out var infType))
+                            {
+                                <tr>
+                                    <td>@IndexModel.GetInfractionLabel(infType)</td>
+                                    <td class="text-end fw-semibold">@kv.Value</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal paiement -->
+<div class="modal fade" id="payModal" tabindex="-1" aria-labelledby="payModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Pay">
+                <input type="hidden" name="id" id="payTicketId" />
+                <div class="modal-header">
+                    <h5 class="modal-title text-success" id="payModalLabel">
+                        <i class="fa-solid fa-circle-check me-2"></i>Confirmer le paiement
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">
+                        Confirmer le paiement du PV <strong id="payTicketNumber"></strong> ?
+                    </p>
+                    <p class="text-muted small mt-2 mb-0">
+                        Le statut passera à <span class="badge bg-success">Payé</span>. Cette action est définitive.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa-solid fa-circle-check me-1"></i>Confirmer le paiement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal contestation -->
+<div class="modal fade" id="contestModal" tabindex="-1" aria-labelledby="contestModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Contest">
+                <input type="hidden" name="id" id="contestTicketId" />
+                <div class="modal-header">
+                    <h5 class="modal-title text-warning" id="contestModalLabel">
+                        <i class="fa-solid fa-scale-balanced me-2"></i>Marquer comme contesté
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">
+                        PV <strong id="contestTicketNumber"></strong> — motif de la contestation :
+                    </p>
+                    <div class="mb-3">
+                        <textarea name="notes" class="form-control" rows="3"
+                                  placeholder="Référence du recours, remarques…"
+                                  data-text-assistant></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="submit" class="btn btn-warning text-dark">
+                        <i class="fa-solid fa-scale-balanced me-1"></i>Confirmer la contestation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal annulation -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Cancel">
+                <input type="hidden" name="id" id="cancelTicketId" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelModalLabel">
+                        <i class="fa-solid fa-ban me-2 text-danger"></i>Annuler le PV
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">
+                        Vous allez annuler le PV <strong id="cancelTicketNumber"></strong>.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label" for="cancelReason">Motif d'annulation <span class="text-danger">*</span></label>
+                        <textarea id="cancelReason" name="reason" class="form-control" rows="3"
+                                  placeholder="Indiquez le motif d'annulation..." required
+                                  data-text-assistant></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fa-solid fa-ban me-1"></i>Confirmer l'annulation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Remplir les données des modals dynamiquement
+        function wireModal(modalId, idFieldId, numberFieldId, clearFields) {
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            el.addEventListener('show.bs.modal', function (event) {
+                const btn = event.relatedTarget;
+                document.getElementById(idFieldId).value = btn.dataset.ticketId;
+                if (numberFieldId) document.getElementById(numberFieldId).textContent = btn.dataset.ticketNumber;
+                if (clearFields) clearFields();
+            });
+        }
+        wireModal('payModal',     'payTicketId',     'payTicketNumber',     null);
+        wireModal('contestModal', 'contestTicketId', 'contestTicketNumber', null);
+        wireModal('cancelModal',  'cancelTicketId',  'cancelTicketNumber',
+            () => document.getElementById('cancelReason').value = '');
+    </script>
+}

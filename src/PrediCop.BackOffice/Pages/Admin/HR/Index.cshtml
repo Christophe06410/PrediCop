@@ -1,0 +1,410 @@
+@page
+@model PrediCop.BackOffice.Pages.Admin.HR.IndexModel
+@using PrediCop.Core.Enums
+@{
+    ViewData["Title"] = "Gestion RH — Plannings & Congés";
+
+    // Week navigation
+    var weekStartDate = DateOnly.TryParse(Model.WeekStart, out var ws) ? ws : DateOnly.FromDateTime(DateTime.Now);
+    var prevWeek = weekStartDate.AddDays(-7).ToString("yyyy-MM-dd");
+    var nextWeek = weekStartDate.AddDays(7).ToString("yyyy-MM-dd");
+    var weekDays = Enumerable.Range(0, 7).Select(i => weekStartDate.AddDays(i)).ToList();
+    var dayNames = new[] { "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim" };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-users-gear me-2 text-primary"></i>Gestion RH — Plannings &amp; Congés
+    </h4>
+</div>
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i>@successMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMsg)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>@errorMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (Model.PendingLeavesCount > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="fa-solid fa-clock me-2 fs-5"></i>
+        <span>
+            <strong>@Model.PendingLeavesCount demande(s) de congé en attente d'approbation.</strong>
+            <a href="#" class="alert-link ms-1"
+               onclick="document.getElementById('tab-conges').click(); return false;">
+                Voir les demandes
+            </a>
+        </span>
+    </div>
+}
+
+<!-- Onglets -->
+<ul class="nav nav-tabs mb-3" id="hrTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "planning" ? "active" : "")"
+                id="tab-planning"
+                data-bs-toggle="tab"
+                data-bs-target="#pane-planning"
+                type="button" role="tab">
+            <i class="fa-solid fa-calendar-days me-1"></i>Planning
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(Model.ActiveTab == "conges" ? "active" : "")"
+                id="tab-conges"
+                data-bs-toggle="tab"
+                data-bs-target="#pane-conges"
+                type="button" role="tab">
+            <i class="fa-solid fa-umbrella-beach me-1"></i>Congés
+            @if (Model.PendingLeavesCount > 0)
+            {
+                <span class="badge bg-warning text-dark ms-1">@Model.PendingLeavesCount</span>
+            }
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <!-- ===== ONGLET PLANNING ===== -->
+    <div class="tab-pane fade @(Model.ActiveTab == "planning" ? "show active" : "")"
+         id="pane-planning" role="tabpanel">
+
+        <!-- Filtres planning -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-2 align-items-end">
+                    <input type="hidden" name="ActiveTab" value="planning" />
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Agent</label>
+                        <select name="AgentFilter" class="form-select form-select-sm">
+                            <option value="">— Tous les agents —</option>
+                            @foreach (var agent in Model.Agents)
+                            {
+                                <option value="@agent.Id"
+                                        selected="@(Model.AgentFilter == agent.Id ? "selected" : null)">
+                                    @agent.FullName (@agent.BadgeNumber)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <input type="hidden" name="WeekStart" value="@Model.WeekStart" />
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Navigation semaine -->
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <a asp-page="/Admin/HR/Index"
+               asp-route-WeekStart="@prevWeek"
+               asp-route-ActiveTab="planning"
+               asp-route-AgentFilter="@Model.AgentFilter"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-chevron-left"></i> Sem. préc.
+            </a>
+            <span class="fw-semibold">
+                Semaine du @weekStartDate.ToString("dd/MM/yyyy") au @weekStartDate.AddDays(6).ToString("dd/MM/yyyy")
+            </span>
+            <a asp-page="/Admin/HR/Index"
+               asp-route-WeekStart="@nextWeek"
+               asp-route-ActiveTab="planning"
+               asp-route-AgentFilter="@Model.AgentFilter"
+               class="btn btn-outline-secondary btn-sm">
+                Sem. suiv. <i class="fa-solid fa-chevron-right"></i>
+            </a>
+        </div>
+
+        <!-- Tableau planning -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="min-width:160px">Agent</th>
+                                @for (int d = 0; d < 7; d++)
+                                {
+                                    var day = weekDays[d];
+                                    var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+                                    <th class="text-center @(isToday ? "table-warning" : "")" style="min-width:110px">
+                                        @dayNames[d]<br />
+                                        <small>@day.ToString("dd/MM")</small>
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                // Group schedules by agent
+                                var agentIds = Model.Schedules.Select(s => s.AgentId).Distinct().ToList();
+
+                                // Also include agents from filter if no schedules
+                                if (!agentIds.Any() && Model.Agents.Any())
+                                {
+                                    agentIds = Model.Agents.Select(a => a.Id).Take(10).ToList();
+                                }
+
+                                if (!agentIds.Any())
+                                {
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            <i class="fa-solid fa-calendar-xmark fa-2x mb-2 d-block"></i>
+                                            Aucun planning pour cette semaine.
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    foreach (var agentId in agentIds)
+                                    {
+                                        var agentSchedules = Model.Schedules.Where(s => s.AgentId == agentId).ToList();
+                                        var agentName = agentSchedules.FirstOrDefault()?.AgentFullName
+                                            ?? Model.Agents.FirstOrDefault(a => a.Id == agentId)?.FullName
+                                            ?? "Agent inconnu";
+                                        var agentBadge = agentSchedules.FirstOrDefault()?.AgentBadgeNumber
+                                            ?? Model.Agents.FirstOrDefault(a => a.Id == agentId)?.BadgeNumber
+                                            ?? "";
+
+                                        <tr>
+                                            <td class="fw-semibold small">
+                                                <i class="fa-solid fa-user-shield me-1 text-secondary"></i>
+                                                @agentName
+                                                <br />
+                                                <span class="badge bg-secondary fw-normal">@agentBadge</span>
+                                            </td>
+                                            @foreach (var day in weekDays)
+                                            {
+                                                var shift = agentSchedules.FirstOrDefault(s => s.Date == day);
+                                                var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+                                                <td class="text-center @(isToday ? "table-warning" : "")">
+                                                    @if (shift is not null)
+                                                    {
+                                                        <span class="badge bg-primary text-wrap">
+                                                            @shift.ShiftStart.ToString("HH:mm")–@shift.ShiftEnd.ToString("HH:mm")
+                                                            @if (!string.IsNullOrEmpty(shift.VehicleCallSign))
+                                                            {
+                                                                <br /><small>@shift.VehicleCallSign</small>
+                                                            }
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted small">—</span>
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ONGLET CONGES ===== -->
+    <div class="tab-pane fade @(Model.ActiveTab == "conges" ? "show active" : "")"
+         id="pane-conges" role="tabpanel">
+
+        <!-- Filtres congés -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-2 align-items-end">
+                    <input type="hidden" name="ActiveTab" value="conges" />
+                    <input type="hidden" name="WeekStart" value="@Model.WeekStart" />
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Agent</label>
+                        <select name="AgentFilter" class="form-select form-select-sm">
+                            <option value="">— Tous les agents —</option>
+                            @foreach (var agent in Model.Agents)
+                            {
+                                <option value="@agent.Id"
+                                        selected="@(Model.AgentFilter == agent.Id ? "selected" : null)">
+                                    @agent.FullName (@agent.BadgeNumber)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-auto d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrer
+                        </button>
+                        <a asp-page="/Admin/HR/Index"
+                           asp-route-ActiveTab="conges"
+                           class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-xmark me-1"></i>Réinitialiser
+                        </a>
+                        <button type="button" class="btn btn-success btn-sm" disabled>
+                            <i class="fa-solid fa-plus me-1"></i>Nouvelle demande
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tableau congés -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 table-sm">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Agent</th>
+                                <th>Type</th>
+                                <th>Du</th>
+                                <th>Au</th>
+                                <th>Statut</th>
+                                <th>Demandé le</th>
+                                <th>Notes</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var leave in Model.Leaves)
+                            {
+                                <tr>
+                                    <td>
+                                        <i class="fa-solid fa-user-shield me-1 text-secondary"></i>
+                                        <span class="fw-semibold">@leave.AgentFullName</span>
+                                        <br />
+                                        <small class="text-muted">@leave.AgentBadgeNumber</small>
+                                    </td>
+                                    <td>@Model.GetLeaveTypeLabel(leave.Type)</td>
+                                    <td class="text-nowrap">@leave.StartDate.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-nowrap">@leave.EndDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        <span class="badge @Model.GetLeaveStatusBadgeClass(leave.Status)">
+                                            @(leave.Status switch {
+                                                LeaveStatus.Pending => "En attente",
+                                                LeaveStatus.Approved => "Approuvé",
+                                                LeaveStatus.Rejected => "Refusé",
+                                                _ => leave.Status.ToString()
+                                            })
+                                        </span>
+                                        @if (leave.Status == LeaveStatus.Rejected && !string.IsNullOrEmpty(leave.RejectionReason))
+                                        {
+                                            <br />
+                                            <small class="text-danger">@leave.RejectionReason</small>
+                                        }
+                                    </td>
+                                    <td class="text-nowrap small text-muted">
+                                        @leave.RequestedAt.ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                    <td class="small text-muted">@leave.Notes</td>
+                                    <td class="text-center text-nowrap">
+                                        @if (leave.Status == LeaveStatus.Pending)
+                                        {
+                                            <!-- Approuver -->
+                                            <form method="post"
+                                                  asp-page-handler="ApproveLeave"
+                                                  asp-route-id="@leave.Id"
+                                                  class="d-inline"
+                                                  onsubmit="return confirm('Approuver le congé de @leave.AgentFullName ?')">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-success btn-sm"
+                                                        title="Approuver">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </button>
+                                            </form>
+
+                                            <!-- Refuser -->
+                                            <button type="button"
+                                                    class="btn btn-danger btn-sm"
+                                                    title="Refuser"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#rejectModal"
+                                                    data-leave-id="@leave.Id"
+                                                    data-agent-name="@leave.AgentFullName">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.Leaves.Any())
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                        Aucune demande de congé trouvée.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal refus congé -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="RejectLeave" id="rejectForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="rejectLeaveId" value="" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">
+                        <i class="fa-solid fa-circle-xmark me-2 text-danger"></i>Refuser la demande de congé
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Agent : <strong id="rejectAgentName"></strong></p>
+                    <div class="mb-3">
+                        <label for="rejectionReason" class="form-label fw-semibold">
+                            Motif du refus <span class="text-danger">*</span>
+                        </label>
+                        <textarea id="rejectionReason"
+                                  name="rejectionReason"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Indiquez la raison du refus..."
+                                  required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="fa-solid fa-xmark me-1"></i>Confirmer le refus
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Alimenter la modal de refus avec les données de la ligne
+        document.getElementById('rejectModal').addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('rejectLeaveId').value = btn.getAttribute('data-leave-id');
+            document.getElementById('rejectAgentName').textContent = btn.getAttribute('data-agent-name');
+            document.getElementById('rejectionReason').value = '';
+        });
+    </script>
+}
