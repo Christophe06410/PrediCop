@@ -14,6 +14,9 @@ public class VehicleDto
     public List<string> OfficerNames { get; set; } = [];
     public string? BeaconUuid { get; set; }
     public Guid? AssignedGeoZoneId { get; set; }
+    public string? Indicatif { get; set; }
+    public string? PatrolType { get; set; }
+    public DateTime? SessionStartedAt { get; set; }
 }
 
 public class EditVehicleDto

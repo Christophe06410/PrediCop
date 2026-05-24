@@ -14,7 +14,7 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
 
     public bool IsEdit => Input.Id != Guid.Empty;
 
-    public static readonly List<string> Roles = ["Operator", "Officer", "Manager", "Admin"];
+    public static readonly List<string> Roles = ["Operator", "Officer", "PatrolLeader", "PatrolAgent", "Verbalisateur", "Manager", "Admin"];
 
     public async Task<IActionResult> OnGetAsync(Guid? id)
     {

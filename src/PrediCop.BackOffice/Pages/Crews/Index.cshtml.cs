@@ -58,6 +58,7 @@ public class CrewMemberDto
     public Guid UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string BadgeNumber { get; set; } = string.Empty;
+    public bool IsLeader { get; set; }
 }
 
 public class ActiveMissionDto

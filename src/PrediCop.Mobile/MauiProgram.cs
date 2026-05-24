@@ -20,17 +20,25 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-#if WINDOWS
+#if DEBUG
+  #if WINDOWS
         var apiBaseUrl = "https://localhost:7229";
-#else
+  #else
         var apiBaseUrl = "https://192.168.0.92:7229";
-#endif
-
+  #endif
         var httpHandler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback =
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
+#else
+        var apiBaseUrl = "https://predicop-gvb7fjbhhwe2h8bj.westeurope-01.azurewebsites.net";
+        var httpHandler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+#endif
 
         builder.Services.AddSingleton(sp =>
         {
@@ -64,6 +72,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<LoginViewModel>();
         builder.Services.AddTransient<MissionViewModel>();
         builder.Services.AddTransient<PatrolViewModel>();
+        builder.Services.AddTransient<PatrolActivationViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
         builder.Services.AddTransient<TicketingViewModel>();
 
@@ -71,6 +80,7 @@ public static class MauiProgram
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<MissionPage>();
         builder.Services.AddTransient<PatrolPage>();
+        builder.Services.AddTransient<PatrolActivationPage>();
         builder.Services.AddTransient<MapPage>();
         builder.Services.AddTransient<ProfilePage>();
         builder.Services.AddTransient<TicketingPage>();
@@ -97,7 +107,7 @@ public static class MauiProgram
 
         // Initialise la base SQLite locale et démarre la sync automatique au retour du réseau
         var localDb = app.Services.GetRequiredService<LocalDbService>();
-        Task.Run(async () => await localDb.InitAsync()).GetAwaiter().GetResult();
+        _ = localDb.InitAsync();
 
         var syncService = app.Services.GetRequiredService<SyncService>();
         syncService.StartAutoSync();

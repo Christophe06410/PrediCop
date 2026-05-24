@@ -64,7 +64,8 @@ public class VehiclesController(
             CallSign = request.CallSign,
             LicensePlate = request.LicensePlate,
             Status = status,
-            BeaconUuid = request.BeaconUuid
+            BeaconUuid = request.BeaconUuid,
+            Capacity = request.Capacity
         };
 
         db.PatrolVehicles.Add(vehicle);
@@ -98,6 +99,7 @@ public class VehiclesController(
         if (request.BeaconUuid is not null) vehicle.BeaconUuid = request.BeaconUuid;
         if (request.Status is not null && Enum.TryParse<VehicleStatus>(request.Status, out var status))
             vehicle.Status = status;
+        if (request.Capacity.HasValue) vehicle.Capacity = request.Capacity.Value;
 
         await db.SaveChangesAsync(ct);
         return Ok(MapToResponse(vehicle));
@@ -315,6 +317,19 @@ public class VehiclesController(
             .Select(o => o.User.FullName)
             .ToList(),
         BeaconUuid = v.BeaconUuid,
-        AssignedGeoZoneId = v.AssignedGeoZoneId
+        AssignedGeoZoneId = v.AssignedGeoZoneId,
+        Capacity = v.Capacity,
+        Indicatif = v.Indicatif,
+        PatrolType = v.PatrolType,
+        SessionStartedAt = v.SessionStartedAt,
+        Crew = v.Officers
+            .Where(o => o.IsActive)
+            .Select(o => new CrewMemberInfo
+            {
+                UserId = o.UserId,
+                FullName = o.User.FullName,
+                BadgeNumber = o.User.BadgeNumber,
+                IsLeader = o.IsLeader
+            }).ToList()
     };
 }

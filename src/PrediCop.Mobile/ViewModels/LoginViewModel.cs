@@ -59,16 +59,27 @@ public partial class LoginViewModel(
         if (Shell.Current is AppShell shell)
             shell.BuildTabs(auth.CurrentUser.Role, features.Current.ModuleVerbalisationEnabled);
 
-        // GPS + SignalR uniquement pour les agents de patrouille
-        bool isOfficer = string.Equals(auth.CurrentUser.Role, "Officer",
-            StringComparison.OrdinalIgnoreCase);
+        var role = auth.CurrentUser.Role;
+        bool isOfficer = string.Equals(role, "Officer", StringComparison.OrdinalIgnoreCase);
+        bool isPatrolLeader = string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
+        bool isPatrolAgent = string.Equals(role, "PatrolAgent", StringComparison.OrdinalIgnoreCase);
 
-        if (isOfficer && auth.VehicleId.HasValue && features.Current.GpsTrackingEnabled)
+        if (features.Current.GpsTrackingEnabled)
         {
-            if (!signalR.IsConnected)
-                try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
-            if (!gps.IsTracking)
-                try { await gps.StartAsync(auth.VehicleId.Value); } catch { }
+            if (isOfficer && auth.VehicleId.HasValue)
+            {
+                // Officer classique : GPS lié au véhicule
+                if (!signalR.IsConnected)
+                    try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
+                if (!gps.IsTracking)
+                    try { await gps.StartAsync(auth.VehicleId.Value); } catch { }
+            }
+            else if (isPatrolLeader || isPatrolAgent)
+            {
+                // Chef et agents : GPS individuel immédiatement (même avant activation du véhicule)
+                if (!gps.IsTracking)
+                    try { await gps.StartAgentTrackingAsync(); } catch { }
+            }
         }
     }
 

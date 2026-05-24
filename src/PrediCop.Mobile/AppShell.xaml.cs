@@ -12,7 +12,7 @@ public partial class AppShell : Shell
 
     /// <summary>
     /// Appelé après login (et à la reprise de session) pour afficher les bons onglets.
-    /// Les onglets patrouille/missions/carte sont réservés aux Officers.
+    /// Les onglets patrouille/missions/carte sont réservés aux Officers, PatrolLeader, PatrolAgent.
     /// L'onglet Verbalisation n'est visible que si le module est activé par le tenant.
     /// </summary>
     public void BuildTabs(string role, bool verbalisationEnabled)
@@ -20,19 +20,30 @@ public partial class AppShell : Shell
         bool isVerbalisateur = string.Equals(role, "Verbalisateur",
             StringComparison.OrdinalIgnoreCase);
 
-        TabMissions.IsVisible = !isVerbalisateur;
-        TabPatrol.IsVisible   = !isVerbalisateur;
-        TabMap.IsVisible      = !isVerbalisateur;
+        bool isPatrolRole = string.Equals(role, "Officer", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(role, "PatrolAgent", StringComparison.OrdinalIgnoreCase);
+
+        TabMissions.IsVisible = isPatrolRole;
+        TabPatrol.IsVisible   = isPatrolRole;
+        TabMap.IsVisible      = isPatrolRole;
         TabTickets.IsVisible  = verbalisationEnabled;
         // TabProfile toujours visible
     }
+
+    private bool _initialized;
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        var auth     = Handler?.MauiContext?.Services.GetService<AuthService>();
-        var loginVm  = Handler?.MauiContext?.Services.GetService<LoginViewModel>();
+        // Only run once per Shell lifetime — BuildTabs() changes tab visibility which can
+        // re-trigger OnAppearing, causing double navigation and double message registrations.
+        if (_initialized) return;
+        _initialized = true;
+
+        var auth    = Handler?.MauiContext?.Services.GetService<AuthService>();
+        var loginVm = Handler?.MauiContext?.Services.GetService<LoginViewModel>();
 
         if (auth?.IsLoggedIn == true)
         {
@@ -47,8 +58,12 @@ public partial class AppShell : Shell
     }
 
     /// <summary>Retourne la route de démarrage selon le rôle.</summary>
-    public static string GetFirstRoute(string role) =>
-        string.Equals(role, "Verbalisateur", StringComparison.OrdinalIgnoreCase)
-            ? "//main/tickets"
-            : "//main/missions";
+    public static string GetFirstRoute(string role)
+    {
+        if (string.Equals(role, "Verbalisateur", StringComparison.OrdinalIgnoreCase))
+            return "//main/tickets";
+        if (string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase))
+            return "//patrol-activation"; // Page d'activation avant les onglets principaux
+        return "//main/missions";
+    }
 }

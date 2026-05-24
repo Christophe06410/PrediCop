@@ -9,4 +9,7 @@ public class VehicleOfficer : BaseEntity
     public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UnassignedAt { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>True si cet agent est le chef de bord de la patrouille.</summary>
+    public bool IsLeader { get; set; } = false;
 }

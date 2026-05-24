@@ -2,6 +2,36 @@
 
 namespace PrediCop.Core.DTOs;
 
+// ---- Patrol activation / deactivation ----
+
+public class PatrolActivateRequest
+{
+    public string Indicatif { get; set; } = string.Empty;
+    public PatrolType PatrolType { get; set; }
+    public List<Guid> AgentIds { get; set; } = [];
+}
+
+// ---- Individual agent GPS ----
+
+public class AgentPositionUpdate
+{
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+}
+
+public class AgentPositionDto
+{
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string BadgeNumber { get; set; } = string.Empty;
+    public bool IsLeader { get; set; }
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    /// <summary>Indicatif de la patrouille à laquelle l'agent appartient (null si hors patrouille).</summary>
+    public string? PatrolIndicatif { get; set; }
+}
+
 public class UpdateVehicleStatusRequest
 {
     public VehicleStatus Status { get; set; }
@@ -13,6 +43,7 @@ public class CreateVehicleRequest
     public string LicensePlate { get; set; } = string.Empty;
     public string Status { get; set; } = "Offline";
     public string? BeaconUuid { get; set; }
+    public int Capacity { get; set; } = 2;
 }
 
 public class UpdateVehicleRequest
@@ -21,6 +52,7 @@ public class UpdateVehicleRequest
     public string? LicensePlate { get; set; }
     public string? Status { get; set; }
     public string? BeaconUuid { get; set; }
+    public int? Capacity { get; set; }
 }
 
 public class VehiclePositionUpdate
@@ -43,6 +75,13 @@ public class VehicleResponse
     public List<string> OfficerNames { get; set; } = [];
     public string? BeaconUuid { get; set; }
     public Guid? AssignedGeoZoneId { get; set; }
+    public int Capacity { get; set; } = 2;
+
+    // Session de patrouille
+    public string? Indicatif { get; set; }
+    public PatrolType? PatrolType { get; set; }
+    public DateTime? SessionStartedAt { get; set; }
+    public List<CrewMemberInfo> Crew { get; set; } = [];
 }
 
 public class NearbyVehicleResponse
@@ -86,6 +125,7 @@ public class CrewMemberInfo
     public Guid UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string BadgeNumber { get; set; } = string.Empty;
+    public bool IsLeader { get; set; }
 }
 
 public class ActiveMissionInfo

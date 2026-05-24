@@ -2,6 +2,7 @@
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:PrediCop.Mobile"
+             xmlns:conv="clr-namespace:PrediCop.Mobile.Converters"
              x:Class="PrediCop.Mobile.App">
     <Application.Resources>
         <ResourceDictionary>
@@ -9,6 +10,8 @@
                 <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <conv:InvertBoolConverter x:Key="InvertBoolConverter" />
+            <conv:IntToBoolConverter x:Key="BoolFromIntConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

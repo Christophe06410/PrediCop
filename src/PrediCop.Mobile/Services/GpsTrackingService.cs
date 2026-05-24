@@ -5,24 +5,35 @@ public class GpsTrackingService : IDisposable
     private readonly ApiService _api;
     private CancellationTokenSource? _cts;
     private Guid _vehicleId;
+    private bool _agentMode; // true = tracking individuel uniquement (PatrolAgent / PatrolLeader sans véhicule)
 
     public event EventHandler<Location>? PositionChanged;
     public bool IsTracking => _cts != null && !_cts.IsCancellationRequested;
 
-    public GpsTrackingService(ApiService api)
-    {
-        _api = api;
-    }
+    public GpsTrackingService(ApiService api) => _api = api;
 
+    /// <summary>Démarre le tracking GPS lié à un véhicule (Officer / PatrolLeader avec véhicule actif).</summary>
     public async Task StartAsync(Guid vehicleId)
     {
         if (IsTracking) return;
-
         _vehicleId = vehicleId;
+        _agentMode = false;
+        await StartTrackingAsync();
+    }
 
+    /// <summary>Démarre le tracking GPS individuel (PatrolAgent ou PatrolLeader avant activation).</summary>
+    public async Task StartAgentTrackingAsync()
+    {
+        if (IsTracking) return;
+        _vehicleId = Guid.Empty;
+        _agentMode = true;
+        await StartTrackingAsync();
+    }
+
+    private async Task StartTrackingAsync()
+    {
         var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted) return;
-
         _cts = new CancellationTokenSource();
         _ = PollLocationAsync(_cts.Token);
     }
@@ -56,9 +67,17 @@ public class GpsTrackingService : IDisposable
     private async Task OnLocationChangedAsync(Location location)
     {
         PositionChanged?.Invoke(this, location);
-        if (_vehicleId != Guid.Empty)
+        try
         {
-            try
+            // Toujours envoyer la position individuelle (pour les dots sur la carte)
+            await _api.PostAsync("api/patrol/my-position", new
+            {
+                latitude = location.Latitude,
+                longitude = location.Longitude
+            });
+
+            // En mode véhicule, mettre aussi à jour la position du véhicule (icône patrouille)
+            if (!_agentMode && _vehicleId != Guid.Empty)
             {
                 await _api.PostAsync($"api/vehicles/{_vehicleId}/position", new
                 {
@@ -66,8 +85,8 @@ public class GpsTrackingService : IDisposable
                     longitude = location.Longitude
                 });
             }
-            catch { /* connection errors are non-fatal */ }
         }
+        catch { /* connection errors are non-fatal */ }
     }
 
     public void Dispose() => Stop();

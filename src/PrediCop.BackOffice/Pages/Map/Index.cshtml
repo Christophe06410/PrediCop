@@ -16,7 +16,7 @@
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-map-location-dot me-2 text-danger"></i>Carte temps réel
     </h4>
-    <div id="map-status-bar" class="d-flex align-items-center gap-3 text-muted">
+    <div id="map-status-bar" class="d-flex align-items-center gap-3 text-muted flex-wrap">
         <span>
             <span class="badge" style="background:#22c55e;width:12px;height:12px;border-radius:50%;display:inline-block;"></span>
             Disponible
@@ -28,6 +28,15 @@
         <span>
             <span class="badge" style="background:#6b7280;width:12px;height:12px;border-radius:50%;display:inline-block;"></span>
             Indisponible
+        </span>
+        <span class="ms-2">|</span>
+        <span>
+            <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid white;vertical-align:middle;"></span>
+            Agent
+        </span>
+        <span>
+            <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#1e3a8a;border:2px solid white;vertical-align:middle;"></span>
+            Chef
         </span>
         <span class="ms-2">|</span>
         <span>
@@ -109,19 +118,38 @@
 
     // --- Couche rues (statique, chargée une fois) ---
     var streets = @Html.Raw(Model.StreetsJson);
+
+    // Calcule la couleur de risque d'une rue
+    function streetColor(score) {
+        return score > 70 ? '#ef4444' :
+               score > 40 ? '#f59e0b' :
+               score > 20 ? '#eab308' : '#22c55e';
+    }
+
+    // Construit le contenu popup d'une rue
+    function streetPopup(s) {
+        var score = s.currentRiskScore || 0;
+        return '<b>' + s.name + '</b>' +
+               (s.district ? '<br><small class="text-muted">' + s.district + '</small>' : '') +
+               '<br>Score risque&nbsp;: <b>' + score + '</b>';
+    }
+
+    // Map nom-rue (minuscules) → polyline Leaflet, pour pouvoir les remplacer après
+    var streetPolylines = {};
+
     streets.forEach(function (s) {
         var score = s.currentRiskScore || 0;
-        var color = score > 70 ? '#ef4444' :
-                    score > 40 ? '#f59e0b' :
-                    score > 20 ? '#eab308' : '#22c55e';
-        L.polyline(
+        var color = streetColor(score);
+        var pl = L.polyline(
             [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
             { color: color, weight: 6, opacity: 0.85 }
-        ).bindPopup(
-            '<b>' + s.name + '</b>' +
-            (s.district ? '<br><small class="text-muted">' + s.district + '</small>' : '') +
-            '<br>Score risque&nbsp;: <b>' + score + '</b>'
-        ).addTo(map);
+        ).bindPopup(streetPopup(s)).addTo(map);
+
+        // Stocke sous le nom normalisé (plusieurs rues peuvent avoir le même nom ;
+        // on garde un tableau pour toutes les gérer)
+        var key = (s.name || '').toLowerCase().trim();
+        if (!streetPolylines[key]) streetPolylines[key] = [];
+        streetPolylines[key].push({ polyline: pl, street: s });
     });
 
     // Centrer sur les rues si disponibles
@@ -132,15 +160,108 @@
             [Math.min.apply(null, lats), Math.min.apply(null, lngs)],
             [Math.max.apply(null, lats), Math.max.apply(null, lngs)]
         ], { padding: [30, 30] });
+
+        // --- Enrichissement OSM : remplace les lignes droites par la vraie géométrie ---
+        (function fetchOsmGeometry() {
+            var south = Math.min.apply(null, lats) - 0.01;
+            var north = Math.max.apply(null, lats) + 0.01;
+            var west  = Math.min.apply(null, lngs) - 0.01;
+            var east  = Math.max.apply(null, lngs) + 0.01;
+
+            var query =
+                '[out:json][timeout:25];\n' +
+                'way["highway"][~"name"~".*"](' +
+                south + ',' + west + ',' + north + ',' + east +
+                ');\n' +
+                'out geom;';
+
+            fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query)
+            })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Overpass HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !data.elements) return;
+
+                // Groupe les ways OSM par nom (minuscules)
+                var osmByName = {};
+                data.elements.forEach(function (way) {
+                    if (way.type !== 'way' || !way.tags || !way.tags.name || !way.geometry) return;
+                    var key = way.tags.name.toLowerCase().trim();
+                    if (!osmByName[key]) osmByName[key] = [];
+                    osmByName[key].push(way);
+                });
+
+                // Pour chaque rue de notre BD qui a un résultat OSM, remplace la polyline
+                Object.keys(streetPolylines).forEach(function (key) {
+                    if (!osmByName[key]) return; // pas de correspondance → on garde la ligne droite
+
+                    var osmWays = osmByName[key];
+
+                    streetPolylines[key].forEach(function (entry) {
+                        var s     = entry.street;
+                        var score = s.currentRiskScore || 0;
+                        var color = streetColor(score);
+
+                        // Supprime l'ancienne ligne droite
+                        map.removeLayer(entry.polyline);
+
+                        // Ajoute une polyline par way OSM correspondant au nom
+                        // (une rue peut avoir plusieurs segments OSM)
+                        osmWays.forEach(function (way) {
+                            var coords = way.geometry.map(function (pt) {
+                                return [pt.lat, pt.lon];
+                            });
+                            L.polyline(coords, { color: color, weight: 6, opacity: 0.85 })
+                             .bindPopup(streetPopup(s))
+                             .addTo(map);
+                        });
+                    });
+                });
+            })
+            .catch(function (err) {
+                // Échec silencieux : les lignes droites restent affichées
+                console.warn('OSM Overpass geometry fetch failed:', err);
+            });
+        })();
     }
 
     // --- Couche véhicules (mise à jour dynamique) ---
     var vehicleLayer = L.layerGroup().addTo(map);
+    var agentLayer   = L.layerGroup().addTo(map);
     var _rerouteVehicleId = null;
 
-    function vehicleIcon(status) {
+    // Retourne l'emoji/SVG correspondant au type de patrouille pour le marqueur
+    function patrolTypeEmoji(patrolType) {
+        switch (patrolType) {
+            case 'Motorcycle': return '🏍️';
+            case 'Bicycle':    return '🚲';
+            case 'Pedestrian': return '👮';
+            default:           return '🚔'; // Car
+        }
+    }
+
+    function vehicleIcon(status, patrolType) {
         var color = status === 'Available' ? 'green' :
                     status === 'OnMission' ? 'orange' : 'grey';
+
+        if (patrolType && patrolType !== 'Car') {
+            // Icône personnalisée avec emoji + couleur de statut
+            var emoji = patrolTypeEmoji(patrolType);
+            var bg = status === 'Available' ? '#22c55e' :
+                     status === 'OnMission' ? '#f59e0b' : '#6b7280';
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">' +
+                      '<circle cx="18" cy="18" r="17" fill="' + bg + '" stroke="white" stroke-width="2"/>' +
+                      '<text x="18" y="23" text-anchor="middle" font-size="16">' + emoji + '</text>' +
+                      '</svg>';
+            var url = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+            return L.icon({ iconUrl: url, iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20] });
+        }
+
         return L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-' + color + '.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -148,10 +269,26 @@
         });
     }
 
+    function agentDotIcon(isLeader) {
+        var color = isLeader ? '#1e3a8a' : '#22c55e';
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
+                  '<circle cx="8" cy="8" r="7" fill="' + color + '" stroke="white" stroke-width="2"/>' +
+                  '</svg>';
+        var url = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        return L.icon({ iconUrl: url, iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10] });
+    }
+
     function statusLabel(status) {
         return status === 'Available'   ? 'Disponible'    :
                status === 'OnMission'   ? 'En mission'    :
                status === 'Unavailable' ? 'Indisponible'  : status;
+    }
+
+    function patrolTypeLabel(t) {
+        return t === 'Car'         ? 'Voiture'    :
+               t === 'Motorcycle'  ? 'Moto'       :
+               t === 'Bicycle'     ? 'Vélo'       :
+               t === 'Pedestrian'  ? 'Pédestre'   : (t || '');
     }
 
     function missionStatusLabel(s) {
@@ -167,12 +304,31 @@
         vehicleLayer.clearLayers();
         vehicles.forEach(function (v) {
             if (!v.lastLatitude || !v.lastLongitude) return;
-            var officers = v.officerNames && v.officerNames.length
-                ? v.officerNames.join(', ')
-                : '<em>Aucun agent</em>';
+
+            // Composition de l'équipage
+            var crewHtml = '';
+            if (v.crew && v.crew.length) {
+                crewHtml = '<hr style="margin:6px 0"><small>';
+                v.crew.forEach(function (m) {
+                    crewHtml += (m.isLeader
+                        ? '<span style="color:#1e3a8a">⭐ ' + m.fullName + ' (Chef)</span>'
+                        : '<span style="color:#22c55e">👮 ' + m.fullName + '</span>') + '<br>';
+                });
+                crewHtml += '</small>';
+            } else {
+                var officers = v.officerNames && v.officerNames.length
+                    ? v.officerNames.join(', ')
+                    : '<em>Aucun agent</em>';
+                crewHtml = '<hr style="margin:6px 0"><small><i class="fa-solid fa-user me-1"></i>' + officers + '</small>';
+            }
+
             var lastSeen = v.lastPositionUpdate
                 ? new Date(v.lastPositionUpdate).toLocaleTimeString('fr-FR')
                 : '—';
+
+            var displayName = v.indicatif
+                ? v.indicatif + ' <small class="text-muted">(' + v.callSign + ')</small>'
+                : v.callSign;
 
             // Mission section
             var missionHtml = '';
@@ -193,23 +349,28 @@
             if (v.status === 'Available' || v.status === 'OnMission') {
                 rerouteBtn =
                     '<br><button class="btn btn-sm btn-outline-primary mt-2 w-100 btn-reroute" ' +
-                    'style="font-size:.75em" data-vehicle-id="' + v.id + '" data-call-sign="' + v.callSign + '">' +
+                    'style="font-size:.75em" data-vehicle-id="' + v.id + '" data-call-sign="' + (v.indicatif || v.callSign) + '">' +
                     '<i class="fa-solid fa-route me-1"></i>Changer de mission</button>';
             }
 
+            var patrolBadge = v.patrolType
+                ? '<span class="badge" style="background:#3b82f6;font-size:.7em">' + patrolTypeLabel(v.patrolType) + '</span> '
+                : '';
+
             var popup =
-                '<div style="min-width:190px">' +
-                '<strong style="font-size:1.05em">' + v.callSign + '</strong>' +
-                '<br><span class="badge" style="background:' +
+                '<div style="min-width:200px">' +
+                '<strong style="font-size:1.05em">' + displayName + '</strong>' +
+                '<br>' + patrolBadge +
+                '<span class="badge" style="background:' +
                     (v.status === 'Available' ? '#22c55e' : v.status === 'OnMission' ? '#f59e0b' : '#6b7280') +
                 '">' + statusLabel(v.status) + '</span>' +
-                '<br><small><i class="fa-solid fa-user me-1"></i>' + officers + '</small>' +
+                crewHtml +
                 '<br><small class="text-muted">Vu à ' + lastSeen + '</small>' +
                 missionHtml +
                 rerouteBtn +
                 '</div>';
 
-            L.marker([v.lastLatitude, v.lastLongitude], { icon: vehicleIcon(v.status) })
+            L.marker([v.lastLatitude, v.lastLongitude], { icon: vehicleIcon(v.status, v.patrolType) })
                 .bindPopup(popup)
                 .addTo(vehicleLayer);
         });
@@ -224,6 +385,30 @@
                 '<i class="fa-solid fa-route me-2 text-primary"></i>Changer de mission — ' + callSign;
             openRerouteModal();
         }, { once: false });
+    }
+
+    function renderAgents(agents) {
+        agentLayer.clearLayers();
+        agents.forEach(function (a) {
+            var since = new Date(a.updatedAt).toLocaleTimeString('fr-FR');
+            var label = a.isLeader
+                ? '<span style="color:#1e3a8a">⭐ Chef</span>'
+                : '<span style="color:#22c55e">👮 Agent</span>';
+            var patrol = a.patrolIndicatif
+                ? '<br><small><i class="fa-solid fa-radio me-1"></i>' + a.patrolIndicatif + '</small>'
+                : '';
+            var popup =
+                '<div style="min-width:160px">' +
+                label + '<br>' +
+                '<strong>' + a.fullName + '</strong>' +
+                '<br><small class="text-muted">' + a.badgeNumber + '</small>' +
+                patrol +
+                '<br><small class="text-muted">Vu à ' + since + '</small>' +
+                '</div>';
+            L.marker([a.latitude, a.longitude], { icon: agentDotIcon(a.isLeader) })
+                .bindPopup(popup)
+                .addTo(agentLayer);
+        });
     }
 
     function openRerouteModal() {
@@ -316,11 +501,17 @@
     renderVehicles(@Html.Raw(Model.VehiclesJson));
 
     // --- Polling toutes les 15 secondes ---
-    function refreshVehicles() {
-        fetch('?handler=VehiclesJson', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    function refreshAll() {
+        var p1 = fetch('?handler=VehiclesJson', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
-            .then(function (data) {
-                renderVehicles(data);
+            .then(function (data) { renderVehicles(data); });
+
+        var p2 = fetch('?handler=AgentPositions', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderAgents(data); });
+
+        Promise.all([p1, p2])
+            .then(function () {
                 document.getElementById('last-refresh').innerHTML =
                     '<i class="fa-solid fa-rotate me-1 text-success"></i>Actualisé à ' +
                     new Date().toLocaleTimeString('fr-FR');
@@ -331,7 +522,13 @@
             });
     }
 
-    setInterval(refreshVehicles, 15000);
+    // Charge les agents au démarrage
+    fetch('?handler=AgentPositions', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderAgents(data); })
+        .catch(function () {});
+
+    setInterval(refreshAll, 15000);
 })();
 </script>
 }

@@ -93,4 +93,42 @@ public class IndexTests
         Assert.Empty(model.Crews);
         Assert.NotNull(model.ErrorMessage);
     }
+
+    [Fact]
+    public async Task OnGetAsync_CrewWithLeader_IsLeaderFlagPreserved()
+    {
+        var (handler, factory) = MockHttpHelper.Create();
+
+        var crews = new List<CrewSheetEntryDto>
+        {
+            new()
+            {
+                VehicleId = Guid.NewGuid(),
+                CallSign = "VP-01",
+                LicensePlate = "AB-123-CD",
+                Status = "Available",
+                Officers = new List<CrewMemberDto>
+                {
+                    new() { UserId = Guid.NewGuid(), FullName = "Chef Durand", BadgeNumber = "PM-001", IsLeader = true },
+                    new() { UserId = Guid.NewGuid(), FullName = "Agent Martin", BadgeNumber = "PM-002", IsLeader = false },
+                },
+                CurrentMission = null
+            }
+        };
+
+        handler.When("https://api.test/api/vehicles/crew-sheet")
+               .Respond("application/json", JsonSerializer.Serialize(crews));
+
+        var model = new IndexModel(factory, MockHttpHelper.NullLogger<IndexModel>());
+        var result = await model.OnGetAsync();
+
+        Assert.IsType<PageResult>(result);
+        Assert.Single(model.Crews);
+        var leader = model.Crews[0].Officers.FirstOrDefault(o => o.IsLeader);
+        var agent  = model.Crews[0].Officers.FirstOrDefault(o => !o.IsLeader);
+        Assert.NotNull(leader);
+        Assert.NotNull(agent);
+        Assert.Equal("Chef Durand", leader!.FullName);
+        Assert.Equal("Agent Martin", agent!.FullName);
+    }
 }

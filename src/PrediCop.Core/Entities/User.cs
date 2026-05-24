@@ -20,5 +20,10 @@ public class User : TenantEntity
 
     public string FullName => $"{FirstName} {LastName}";
 
+    // Géolocalisation individuelle (pour agents et chefs de patrouille)
+    public double? LastLatitude { get; set; }
+    public double? LastLongitude { get; set; }
+    public DateTime? LastPositionUpdate { get; set; }
+
     public ICollection<VehicleOfficer> VehicleAssignments { get; set; } = [];
 }

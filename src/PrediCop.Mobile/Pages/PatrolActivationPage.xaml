@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:PrediCop.Mobile.ViewModels"
+             x:Class="PrediCop.Mobile.Pages.PatrolActivationPage"
+             BackgroundColor="#1a2035"
+             Shell.NavBarIsVisible="False"
+             Title="Prise de service">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+
+            <Label Text="Prise de service" FontSize="22" FontAttributes="Bold"
+                   TextColor="White" HorizontalTextAlignment="Center" />
+            <Label Text="Chef de patrouille" FontSize="13" TextColor="#aab0c0"
+                   HorizontalTextAlignment="Center" Margin="0,0,0,8"/>
+
+            <!-- Chargement -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                               Color="White" />
+
+            <!-- Sélection du véhicule -->
+            <Label Text="Véhicule" TextColor="#aab0c0" FontSize="13" />
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+                <Picker Title="Sélectionnez un véhicule"
+                        TitleColor="#6b7a99"
+                        TextColor="White"
+                        BackgroundColor="Transparent"
+                        ItemsSource="{Binding Vehicles}"
+                        ItemDisplayBinding="{Binding DisplayName}"
+                        SelectedItem="{Binding SelectedVehicle}"
+                        Margin="16,4"/>
+            </Frame>
+
+            <!-- Indicatif radio -->
+            <Label Text="Indicatif radio (ex : Sierra 1)" TextColor="#aab0c0" FontSize="13" />
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+                <Entry Text="{Binding Indicatif}"
+                       Placeholder="Indicatif radio" PlaceholderColor="#6b7a99"
+                       TextColor="White" BackgroundColor="Transparent"
+                       Margin="16,4" />
+            </Frame>
+
+            <!-- Type de patrouille -->
+            <Label Text="Type de patrouille" TextColor="#aab0c0" FontSize="13" />
+            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+                <Picker Title="Type de patrouille"
+                        TitleColor="#6b7a99"
+                        TextColor="White"
+                        BackgroundColor="Transparent"
+                        ItemsSource="{Binding PatrolTypes}"
+                        ItemDisplayBinding="{Binding DisplayName}"
+                        SelectedItem="{Binding SelectedPatrolType}"
+                        Margin="16,4"/>
+            </Frame>
+
+            <!-- Agents -->
+            <Label Text="Agents de la patrouille" TextColor="#aab0c0" FontSize="13" />
+            <Label Text="(appuyez pour ajouter / retirer)" TextColor="#6b7a99" FontSize="11" Margin="0,-10,0,0"/>
+
+            <CollectionView ItemsSource="{Binding AvailableAgents}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="0,4" ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="{Binding FullName}" TextColor="White" FontSize="14" />
+                                <Label Text="{Binding BadgeNumber}" TextColor="#aab0c0" FontSize="11" />
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1"
+                                    Text="+"
+                                    BackgroundColor="#2563eb"
+                                    TextColor="White"
+                                    CornerRadius="8"
+                                    WidthRequest="40" HeightRequest="36"
+                                    FontAttributes="Bold"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PatrolActivationViewModel}}, Path=ToggleAgentCommand}"
+                                    CommandParameter="{Binding .}" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Agents sélectionnés -->
+            <Label Text="{Binding SelectedAgents.Count, StringFormat='Agents ajoutés : {0}'}"
+                   TextColor="#22c55e" FontSize="13"
+                   IsVisible="{Binding SelectedAgents.Count, Converter={StaticResource BoolFromIntConverter}}" />
+
+            <!-- Erreur -->
+            <Label Text="{Binding ErrorMessage}" TextColor="#ff4444"
+                   HorizontalTextAlignment="Center"
+                   IsVisible="{Binding HasError}" />
+
+            <!-- Bouton Activer -->
+            <Button Text="Activer la patrouille"
+                    BackgroundColor="#22c55e" TextColor="White"
+                    CornerRadius="12" HeightRequest="52"
+                    FontAttributes="Bold" FontSize="16"
+                    Command="{Binding ActivatePatrolCommand}"
+                    IsEnabled="{Binding IsActivating, Converter={StaticResource InvertBoolConverter}}" />
+
+            <ActivityIndicator IsRunning="{Binding IsActivating}" IsVisible="{Binding IsActivating}"
+                               Color="White" />
+
+            <!-- Passer sans activer -->
+            <Button Text="Passer (déjà en service)"
+                    BackgroundColor="Transparent"
+                    TextColor="#6b7a99"
+                    BorderColor="Transparent"
+                    FontSize="13"
+                    Command="{Binding SkipActivationCommand}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

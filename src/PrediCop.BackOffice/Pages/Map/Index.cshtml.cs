@@ -46,6 +46,22 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         }
     }
 
+    // Appelé par le JS toutes les 15 s pour les positions GPS individuelles des agents
+    public async Task<IActionResult> OnGetAgentPositionsAsync()
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var agents = await client.GetFromJsonAsync<List<AgentPositionItem>>("/api/patrol/live-agents", JsonOpts);
+            return new JsonResult(agents ?? [], SerializeOpts);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Impossible de charger les positions agents");
+            return new JsonResult(Array.Empty<object>());
+        }
+    }
+
     // Appelé par le JS quand l'opérateur clique "Changer de mission"
     public async Task<IActionResult> OnGetPendingMissionsAsync()
     {
@@ -212,12 +228,35 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         public double? LastLongitude { get; set; }
         public DateTime? LastPositionUpdate { get; set; }
         public List<string> OfficerNames { get; set; } = [];
+        public string? Indicatif { get; set; }
+        public string? PatrolType { get; set; }
+        public List<CrewMemberItem> Crew { get; set; } = [];
 
         // Current mission info (populated by joining with active missions)
         public Guid? CurrentMissionId { get; set; }
         public string? CurrentMissionRef { get; set; }
         public string? CurrentMissionAddress { get; set; }
         public string? CurrentMissionStatus { get; set; }
+    }
+
+    public class CrewMemberItem
+    {
+        public Guid UserId { get; set; }
+        public string FullName { get; set; } = "";
+        public string BadgeNumber { get; set; } = "";
+        public bool IsLeader { get; set; }
+    }
+
+    public class AgentPositionItem
+    {
+        public Guid UserId { get; set; }
+        public string FullName { get; set; } = "";
+        public string BadgeNumber { get; set; } = "";
+        public bool IsLeader { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string? PatrolIndicatif { get; set; }
     }
 
     public class GeoZoneItem

@@ -22,6 +22,12 @@
                   Shell.NavBarIsVisible="False"
                   Shell.TabBarIsVisible="False" />
 
+    <!-- Activation de patrouille (chef de patrouille uniquement) -->
+    <ShellContent Route="patrol-activation"
+                  ContentTemplate="{DataTemplate pages:PatrolActivationPage}"
+                  Shell.NavBarIsVisible="False"
+                  Shell.TabBarIsVisible="False" />
+
     <!-- Application principale -->
     <TabBar x:Name="MainTabBar" Route="main">
 
