@@ -1,54 +1,69 @@
 @model PrediCop.Core.DTOs.TenantFeatureFlagsResponse?
 
-@{
-    var any = Model is { } m &&
-              (m.ModuleRhEnabled || m.ModuleFleetEnabled ||
-               m.ModuleLogisticsEnabled || m.ModuleFourriereEnabled ||
-               m.ModuleVerbalisationEnabled);
+@* ── Groupe 1 : RH ── *@
+<li class="dropdown-header text-uppercase small px-3 pt-2 pb-1 text-muted">RH</li>
+<li><a class="dropdown-item" asp-page="/Admin/Users/Index"><i class="fa-solid fa-users me-2"></i>Utilisateurs</a></li>
+@if (Model?.ModulePlanningEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Planning/Index">
+            <i class="fa-solid fa-calendar-days me-2"></i>Planning &amp; Congés
+        </a>
+    </li>
+    <li>
+        <a class="dropdown-item" asp-page="/Planning/MesCongés">
+            <i class="fa-solid fa-umbrella-beach me-2"></i>Mes congés
+        </a>
+    </li>
 }
 
-@if (any)
-{
-    <li><hr class="dropdown-divider" /></li>
+<li><hr class="dropdown-divider" /></li>
 
-    @if (Model!.ModuleRhEnabled)
-    {
-        <li>
-            <a class="dropdown-item" asp-page="/Admin/HR/Index">
-                <i class="fa-solid fa-users-gear me-2"></i>RH — Plannings &amp; Congés
-            </a>
-        </li>
-    }
-    @if (Model!.ModuleFleetEnabled)
-    {
-        <li>
-            <a class="dropdown-item" asp-page="/Admin/Fleet/Index">
-                <i class="fa-solid fa-car-on me-2"></i>Gestion de flotte
-            </a>
-        </li>
-    }
-    @if (Model!.ModuleLogisticsEnabled)
-    {
-        <li>
-            <a class="dropdown-item" asp-page="/Admin/Logistics/Index">
-                <i class="fa-solid fa-box-open me-2"></i>Logistique &amp; Équipements
-            </a>
-        </li>
-    }
-    @if (Model!.ModuleFourriereEnabled)
-    {
-        <li>
-            <a class="dropdown-item" asp-page="/Admin/Fourriere/Index">
-                <i class="fa-solid fa-warehouse me-2"></i>Fourrière
-            </a>
-        </li>
-    }
-    @if (Model!.ModuleVerbalisationEnabled)
-    {
-        <li>
-            <a class="dropdown-item" asp-page="/Admin/Tickets/Index">
-                <i class="fa-solid fa-ticket me-2"></i>Verbalisation
-            </a>
-        </li>
-    }
+@* ── Groupe 2 : Flotte ── *@
+<li class="dropdown-header text-uppercase small px-3 pt-2 pb-1 text-muted">Flotte</li>
+<li><a class="dropdown-item" asp-page="/Admin/Vehicles/Index"><i class="fa-solid fa-car me-2"></i>Véhicules</a></li>
+@if (Model?.ModuleLogisticsEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Logistics/Index">
+            <i class="fa-solid fa-box-open me-2"></i>Logistique &amp; Équipements
+        </a>
+    </li>
+}
+
+<li><hr class="dropdown-divider" /></li>
+
+@* ── Groupe 3 : Terrain ── *@
+<li class="dropdown-header text-uppercase small px-3 pt-2 pb-1 text-muted">Terrain</li>
+@if (Model?.ModuleFourriereEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Fourriere/Index">
+            <i class="fa-solid fa-warehouse me-2"></i>Fourrière
+        </a>
+    </li>
+}
+@if (Model?.ModuleVerbalisationEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Tickets/Index">
+            <i class="fa-solid fa-ticket me-2"></i>Verbalisation
+        </a>
+    </li>
+}
+
+<li><hr class="dropdown-divider" /></li>
+
+@* ── Reste : Opérationnel ── *@
+<li><a class="dropdown-item" asp-page="/Admin/Streets/Index"><i class="fa-solid fa-map-location-dot me-2"></i>Rues &amp; scores de risque</a></li>
+<li><a class="dropdown-item" asp-page="/Admin/GeoZones/Index"><i class="fa-solid fa-draw-polygon me-2"></i>Zones de patrouille</a></li>
+<li><a class="dropdown-item" asp-page="/Admin/RiskEvents/Index"><i class="fa-solid fa-triangle-exclamation me-2"></i>Événements de risque</a></li>
+<li><a class="dropdown-item" asp-page="/Admin/Qualifications/Index"><i class="fa-solid fa-id-card me-2"></i>Habilitations agents</a></li>
+@if (Model?.ModuleFleetEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Fleet/Index">
+            <i class="fa-solid fa-car-on me-2"></i>Gestion de flotte
+        </a>
+    </li>
 }

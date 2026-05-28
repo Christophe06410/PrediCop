@@ -69,6 +69,9 @@ public class CallsController(
             .Include(c => c.Missions)
                 .ThenInclude(m => m.Assignments)
                 .ThenInclude(a => a.Vehicle)
+            .Include(c => c.Missions)
+                .ThenInclude(m => m.TrackingDocuments)
+                .ThenInclude(d => d.Entries)
             .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);
 
         if (call is null)
@@ -84,11 +87,11 @@ public class CallsController(
         {
             TenantId = TenantId,
             Reference = $"APP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
-            CallerName = request.CallerName,
-            CallerPhone = request.CallerPhone,
-            IncidentDescription = request.IncidentDescription,
-            IncidentCategory = request.IncidentCategory,
-            IncidentAddress = request.IncidentAddress,
+            CallerName = request.CallerName ?? string.Empty,
+            CallerPhone = request.CallerPhone ?? string.Empty,
+            IncidentDescription = request.IncidentDescription ?? string.Empty,
+            IncidentCategory = request.IncidentCategory ?? string.Empty,
+            IncidentAddress = request.IncidentAddress ?? string.Empty,
             IncidentAddressComplement = request.IncidentAddressComplement,
             IncidentLatitude = request.IncidentLatitude,
             IncidentLongitude = request.IncidentLongitude,
@@ -96,7 +99,7 @@ public class CallsController(
             Notes = request.Notes,
             InternalNotes = request.InternalNotes,
             OperatorId = UserId,
-            Status = CallStatus.Open,
+            Status = request.Status ?? CallStatus.Open,
             Priority = request.Priority,
         };
 
@@ -250,6 +253,8 @@ public class CallsController(
         TargetLatitude = m.TargetLatitude,
         TargetLongitude = m.TargetLongitude,
         BriefingText = m.BriefingText,
+        LocationDetail = m.LocationDetail,
+        NarrativeReport = m.NarrativeReport,
         AcceptedAt = m.AcceptedAt,
         CompletedAt = m.CompletedAt,
         CompletionReport = m.CompletionReport,
@@ -267,6 +272,16 @@ public class CallsController(
             RespondedAt = a.RespondedAt,
             RefusalReason = a.RefusalReason,
             DistanceAtProposal = a.DistanceAtProposal
+        }).ToList(),
+        TrackingDocuments = m.TrackingDocuments.Select(d => new TrackingDocumentSummary
+        {
+            Id = d.Id,
+            Reference = d.Reference,
+            Type = d.Type.ToString(),
+            Status = d.Status.ToString(),
+            Title = d.Title,
+            CreatedAt = d.CreatedAt,
+            EntryCount = d.Entries?.Count ?? 0
         }).ToList()
     };
 }

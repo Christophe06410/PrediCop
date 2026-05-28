@@ -25,8 +25,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
 
         var activeMissions = await db.Missions
             .CountAsync(m => m.TenantId == TenantId
-                && (m.Status == MissionStatus.Pending || m.Status == MissionStatus.Proposed
-                    || m.Status == MissionStatus.Accepted || m.Status == MissionStatus.InProgress), ct);
+                && (m.Status == MissionStatus.Pending || m.Status == MissionStatus.InProgress), ct);
 
         var availableVehicles = await db.PatrolVehicles
             .CountAsync(v => v.TenantId == TenantId && v.Status == VehicleStatus.Available, ct);
@@ -54,6 +53,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
             .GroupBy(a => new { a.VehicleId, a.Vehicle.CallSign })
             .Select(g => new
             {
+                VehicleId     = g.Key.VehicleId,
                 g.Key.CallSign,
                 AcceptedCount = g.Count(a => a.Status == MissionStatus.Accepted || a.Status == MissionStatus.Completed),
                 RefusedCount  = g.Count(a => a.Status == MissionStatus.Refused),
@@ -83,6 +83,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
                 Status = m.Status.ToString(),
                 m.TargetAddress,
                 AssignedVehicleCallSign = acceptedAssignment?.Vehicle?.CallSign,
+                AssignedVehicleId = acceptedAssignment?.VehicleId,
                 m.CreatedAt,
                 m.CompletedAt
             };
@@ -115,8 +116,6 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var activeMissions = await db.Missions
             .CountAsync(m => m.TenantId == TenantId
                 && (m.Status == MissionStatus.Pending
-                    || m.Status == MissionStatus.Proposed
-                    || m.Status == MissionStatus.Accepted
                     || m.Status == MissionStatus.InProgress), ct);
 
         var completedToday = await db.Missions

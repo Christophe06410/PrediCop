@@ -1,5 +1,7 @@
+@model string
 @{
-    var status = ViewData["Status"] as string ?? "Unknown";
+    // Accepte aussi ViewData["Status"] pour retro-compat avec les anciens appels
+    var status = Model ?? ViewData["Status"] as string ?? "Unknown";
     var (cssClass, label, icon) = status switch
     {
         // Mission statuses

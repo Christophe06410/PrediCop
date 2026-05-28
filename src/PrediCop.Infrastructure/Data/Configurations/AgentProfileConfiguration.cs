@@ -10,9 +10,6 @@ public class AgentProfileConfiguration : IEntityTypeConfiguration<AgentProfile>
     {
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.BloodType)
-            .HasMaxLength(10);
-
         builder.Property(p => p.EmergencyContact1Name)
             .HasMaxLength(200);
 

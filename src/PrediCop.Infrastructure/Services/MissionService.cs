@@ -75,7 +75,7 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
 
         context.MissionAssignments.Add(assignment);
 
-        mission.Status = MissionStatus.Proposed;
+        // La mission reste Pending jusqu'à acceptation
 
         await context.SaveChangesAsync(ct);
 
@@ -118,7 +118,7 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
         if (accepted)
         {
             assignment.Status = MissionStatus.Accepted;
-            assignment.Mission.Status = MissionStatus.Accepted;
+            assignment.Mission.Status = MissionStatus.InProgress;
             assignment.Mission.AcceptedAt = DateTime.UtcNow;
 
             var vehicle = await context.PatrolVehicles.FindAsync([assignment.VehicleId], ct);
@@ -151,12 +151,15 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
         mission.CompletedAt = DateTime.UtcNow;
         mission.CompletionReport = report;
 
-        var activeAssignment = mission.Assignments
-            .FirstOrDefault(a => a.Status == MissionStatus.Accepted);
+        var activeVehicleIds = mission.Assignments
+            .Where(a => a.Status == MissionStatus.Accepted || a.Status == MissionStatus.InProgress)
+            .Select(a => a.VehicleId)
+            .Distinct()
+            .ToList();
 
-        if (activeAssignment is not null)
+        foreach (var vehicleId in activeVehicleIds)
         {
-            var vehicle = await context.PatrolVehicles.FindAsync([activeAssignment.VehicleId], ct);
+            var vehicle = await context.PatrolVehicles.FindAsync([vehicleId], ct);
             if (vehicle is not null)
                 vehicle.Status = VehicleStatus.Available;
         }
@@ -167,5 +170,73 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
 
         await context.SaveChangesAsync(ct);
         return mission;
+    }
+
+    public async Task<MissionAssignment> AddCrewToMissionAsync(Guid missionId, Guid vehicleId, Guid tenantId, CancellationToken ct = default)
+    {
+        var mission = await context.Missions
+            .Include(m => m.Assignments)
+            .FirstOrDefaultAsync(m => m.Id == missionId && m.TenantId == tenantId, ct)
+            ?? throw new InvalidOperationException($"Mission {missionId} not found.");
+
+        if (mission.Status != MissionStatus.InProgress && mission.Status != MissionStatus.Pending)
+            throw new InvalidOperationException("Un équipage ne peut être ajouté qu'à une mission en attente ou en cours.");
+
+        var vehicle = await context.PatrolVehicles
+            .Include(v => v.Officers).ThenInclude(o => o.User)
+            .FirstOrDefaultAsync(v => v.Id == vehicleId && v.TenantId == tenantId, ct)
+            ?? throw new InvalidOperationException($"Vehicle {vehicleId} not found.");
+
+        if (vehicle.Status == VehicleStatus.OnMission)
+            throw new InvalidOperationException("Ce véhicule est déjà en mission.");
+
+        var alreadyAssigned = mission.Assignments
+            .Any(a => a.VehicleId == vehicleId
+                && (a.Status == MissionStatus.Proposed || a.Status == MissionStatus.Accepted));
+        if (alreadyAssigned)
+            throw new InvalidOperationException("Ce véhicule est déjà assigné à cette mission.");
+
+        var order = mission.Assignments.Any()
+            ? mission.Assignments.Max(a => a.ProposalOrder) + 1
+            : 1;
+
+        var assignment = new MissionAssignment
+        {
+            MissionId = missionId,
+            VehicleId = vehicleId,
+            ProposalOrder = order,
+            Status = MissionStatus.Proposed,
+            ProposedAt = DateTime.UtcNow,
+            DistanceAtProposal = 0
+        };
+
+        context.MissionAssignments.Add(assignment);
+        vehicle.Status = VehicleStatus.OnMission;
+        await context.SaveChangesAsync(ct);
+
+        // Push notification à l'équipage ajouté
+        var deviceTokens = vehicle.Officers
+            .Where(o => o.IsActive && !string.IsNullOrWhiteSpace(o.User?.DeviceToken))
+            .Select(o => o.User!.DeviceToken!)
+            .ToList();
+
+        if (deviceTokens.Count > 0)
+        {
+            await pushService.SendToDevicesAsync(
+                deviceTokens,
+                title: mission.Priority >= CallPriority.Critique
+                    ? $"🚨 {mission.Priority.ToString().ToUpper()} — Renfort mission {mission.Reference}"
+                    : $"Renfort mission {mission.Reference}",
+                body: $"Vous êtes ajouté en renfort — {mission.TargetAddress}",
+                data: new Dictionary<string, string>
+                {
+                    { "missionId", mission.Id.ToString() },
+                    { "type", "mission_proposed" },
+                    { "priority", ((int)mission.Priority).ToString() }
+                },
+                ct: ct);
+        }
+
+        return assignment;
     }
 }

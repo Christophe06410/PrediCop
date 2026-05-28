@@ -77,6 +77,24 @@ public partial class MissionDetailViewModel : ObservableObject
     public bool HasAssignments => Assignments.Count > 0;
 
     [ObservableProperty] private bool isOffline;
+    [ObservableProperty] private bool showEditReport;
+
+    // Données de l'appel source (main courante)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCallDetails))]
+    private string callerName = "";
+    [ObservableProperty] private string callerPhone = "";
+    [ObservableProperty] private string incidentCategory = "";
+    [ObservableProperty] private string incidentAddressComplement = "";
+    [ObservableProperty] private string callNotes = "";
+    [ObservableProperty] private string thirdParties = "";
+
+    public bool HasCallDetails => !string.IsNullOrEmpty(CallerName)
+        || !string.IsNullOrEmpty(CallerPhone)
+        || !string.IsNullOrEmpty(IncidentCategory)
+        || !string.IsNullOrEmpty(IncidentAddressComplement)
+        || !string.IsNullOrEmpty(CallNotes)
+        || !string.IsNullOrEmpty(ThirdParties);
 
     public Guid MissionId { get; set; }
     public Guid? AssignmentId { get; set; }

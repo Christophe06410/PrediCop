@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.MissionHistoryPage"
+             Title="Mes missions"
+             BackgroundColor="#1a2035">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Barre de filtrage date -->
+        <Grid Grid.Row="0" BackgroundColor="#243050" Padding="16,10" ColumnDefinitions="*,Auto">
+            <Label Grid.Column="0" x:Name="DateLabel"
+                   TextColor="#aab0c0" VerticalOptions="Center" FontSize="14"/>
+            <HorizontalStackLayout Grid.Column="1" Spacing="8">
+                <Button Text="◀" BackgroundColor="Transparent" TextColor="#60a5fa"
+                        FontSize="18" Padding="4" Clicked="OnPrevDay"/>
+                <Button Text="▶" BackgroundColor="Transparent" TextColor="#60a5fa"
+                        FontSize="18" Padding="4" Clicked="OnNextDay"/>
+            </HorizontalStackLayout>
+        </Grid>
+
+        <RefreshView Grid.Row="1" x:Name="RefreshView" Refreshing="OnRefreshing">
+            <CollectionView x:Name="MissionsCollection"
+                            SelectionMode="Single"
+                            SelectionChanged="OnMissionSelected">
+
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
+                                         Spacing="8" Padding="32">
+                        <Label Text="Aucune mission terminée ce jour"
+                               TextColor="#6b7a99" FontSize="16"
+                               HorizontalTextAlignment="Center"/>
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BackgroundColor="#1e2d4a" CornerRadius="10"
+                               Padding="14,10" Margin="12,5" HasShadow="False">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding Reference}"
+                                       TextColor="White" FontAttributes="Bold" FontSize="15"/>
+                                <Label Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding PriorityLabel}"
+                                       TextColor="{Binding PriorityColor}"
+                                       FontAttributes="Bold" FontSize="13"
+                                       VerticalOptions="Center"/>
+                                <Label Grid.Row="1" Grid.ColumnSpan="2"
+                                       Text="{Binding Address}"
+                                       TextColor="#93c5fd" FontSize="13" LineBreakMode="TailTruncation"/>
+                                <Label Grid.Row="2" Grid.ColumnSpan="2"
+                                       Text="{Binding TimeLabel}"
+                                       TextColor="#6b7a99" FontSize="12"/>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <!-- Indicateur de chargement -->
+        <ActivityIndicator Grid.Row="1" x:Name="LoadingIndicator"
+                           IsRunning="False" IsVisible="False"
+                           Color="#60a5fa" HorizontalOptions="Center" VerticalOptions="Center"/>
+    </Grid>
+</ContentPage>

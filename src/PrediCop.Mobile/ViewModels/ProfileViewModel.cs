@@ -14,6 +14,12 @@ public partial class ProfileViewModel(
     [ObservableProperty] private string badge = "";
     [ObservableProperty] private string currentVehicle = "Aucun véhicule sélectionné";
     [ObservableProperty] private bool isLoadingVehicles;
+    [ObservableProperty] private bool alertSoundEnabled = AppPreferences.AlertSoundEnabled;
+
+    partial void OnAlertSoundEnabledChanged(bool value)
+    {
+        AppPreferences.AlertSoundEnabled = value;
+    }
 
     public List<VehicleItem> AvailableVehicles { get; private set; } = [];
 

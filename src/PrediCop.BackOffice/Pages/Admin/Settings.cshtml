@@ -80,12 +80,12 @@
                         <div class="col-sm-6 col-md-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch"
-                                       id="moduleRh" name="ModuleRhEnabled" value="true"
-                                       @(Model.Features?.ModuleRhEnabled == true ? "checked" : "") />
-                                <label class="form-check-label" for="moduleRh">
-                                    <span class="fw-semibold">Module RH</span>
+                                       id="modulePlanning" name="ModulePlanningEnabled" value="true"
+                                       @(Model.Features?.ModulePlanningEnabled == true ? "checked" : "") />
+                                <label class="form-check-label" for="modulePlanning">
+                                    <span class="fw-semibold">Module Planning</span>
                                     <span class="badge bg-secondary ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
-                                          title="Analyse d'Impact sur la Protection des Données. Recommandée avant l'activation de ce module car il traite des données RH et potentiellement des données de santé (Art. 35 RGPD).">AIPD recommandée</span>
+                                          title="Analyse d'Impact sur la Protection des Données. Recommandée avant l'activation de ce module car il traite des données de planning et potentiellement des données de santé (Art. 35 RGPD).">AIPD recommandée</span>
                                     <div class="text-muted small">Congés, plannings, profils agents</div>
                                 </label>
                             </div>
@@ -162,19 +162,6 @@
                 </p>
                 <form method="post" asp-page-handler="SensitiveFields">
                     <div class="row g-3 mb-4">
-                        <div class="col-sm-6 col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch"
-                                       id="bloodType" name="AgentBloodTypeEnabled" value="true"
-                                       @(Model.Features?.AgentBloodTypeEnabled == true ? "checked" : "") />
-                                <label class="form-check-label" for="bloodType">
-                                    <span class="fw-semibold">Groupe sanguin des agents</span>
-                                    <span class="badge bg-danger ms-1 small" data-bs-toggle="tooltip" data-bs-placement="top"
-                                          title="Donnée de santé soumise à l'Art. 9 RGPD. Requiert : consentement écrit de chaque agent, AIPD dédiée, et un hébergeur certifié HDS. Désactivé par défaut.">Art. 9 RGPD</span>
-                                    <div class="text-muted small">Donnée de santé — consentement explicite requis</div>
-                                </label>
-                            </div>
-                        </div>
                         <div class="col-sm-6 col-md-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch"

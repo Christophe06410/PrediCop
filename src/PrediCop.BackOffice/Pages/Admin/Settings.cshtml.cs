@@ -24,27 +24,33 @@ public class SettingsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
+        var client = _httpClientFactory.CreateClient("PrediCopApi");
+
         try
         {
-            var client = _httpClientFactory.CreateClient("PrediCopApi");
-
-            var settingsTask = client.GetFromJsonAsync<TenantSettingsDto>("/api/tenants/settings");
-            var featuresTask = client.GetFromJsonAsync<TenantFeatureFlagsResponse>("/api/tenant/features");
-
-            await Task.WhenAll(settingsTask, featuresTask);
-
-            var settings = settingsTask.Result;
+            var settings = await client.GetFromJsonAsync<TenantSettingsDto>("/api/tenants/settings");
             if (settings is not null)
             {
                 GeofencingEnabled = settings.GeofencingEnabled;
                 DpoEmail = settings.DpoEmail;
             }
-
-            Features = featuresTask.Result;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Impossible de charger les paramètres du tenant.");
+        }
+
+        try
+        {
+            Features = await client.GetFromJsonAsync<TenantFeatureFlagsResponse>("/api/tenant/features");
+            _logger.LogInformation("Feature flags chargés : Planning={Planning} Fourriere={Fourriere} Fleet={Fleet} Logistics={Logistics} Verbalisation={Verbalisation}",
+                Features?.ModulePlanningEnabled, Features?.ModuleFourriereEnabled,
+                Features?.ModuleFleetEnabled, Features?.ModuleLogisticsEnabled,
+                Features?.ModuleVerbalisationEnabled);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Impossible de charger les feature flags.");
         }
 
         return Page();
@@ -95,7 +101,7 @@ public class SettingsModel : PageModel
     }
 
     public async Task<IActionResult> OnPostModulesAsync(
-        bool ModuleRhEnabled,
+        bool ModulePlanningEnabled,
         bool ModuleFourriereEnabled,
         bool ModuleFleetEnabled,
         bool ModuleLogisticsEnabled,
@@ -105,13 +111,18 @@ public class SettingsModel : PageModel
         {
             var client = _httpClientFactory.CreateClient("PrediCopApi");
             var request = new UpdateModuleFlagsRequest(
-                ModuleRhEnabled,
+                ModulePlanningEnabled,
                 ModuleFourriereEnabled,
                 ModuleFleetEnabled,
                 ModuleLogisticsEnabled,
                 ModuleVerbalisationEnabled);
 
+            _logger.LogInformation("PATCH modules → Planning={Planning} Fourriere={Fourriere} Fleet={Fleet} Logistics={Logistics} Verbalisation={Verbalisation}",
+                ModulePlanningEnabled, ModuleFourriereEnabled, ModuleFleetEnabled, ModuleLogisticsEnabled, ModuleVerbalisationEnabled);
+
             var response = await client.PatchAsJsonAsync("/api/tenant/features/modules", request);
+
+            _logger.LogInformation("PATCH modules ← HTTP {StatusCode}", (int)response.StatusCode);
 
             if (response.IsSuccessStatusCode)
                 TempData["SuccessMessage"] = "Les modules ont été mis à jour.";
@@ -128,7 +139,6 @@ public class SettingsModel : PageModel
     }
 
     public async Task<IActionResult> OnPostSensitiveFieldsAsync(
-        bool AgentBloodTypeEnabled,
         bool AgentEmergencyContactEnabled,
         bool GpsTrackingEnabled,
         bool GeofencingEnabled,
@@ -140,7 +150,6 @@ public class SettingsModel : PageModel
         {
             var client = _httpClientFactory.CreateClient("PrediCopApi");
             var request = new UpdateSensitiveFieldFlagsRequest(
-                AgentBloodTypeEnabled,
                 AgentEmergencyContactEnabled,
                 GpsTrackingEnabled,
                 GeofencingEnabled,

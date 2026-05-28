@@ -21,10 +21,12 @@ public class MissionDto
     public DateTime? CompletedAt { get; set; }
     public string? CompletionReport { get; set; }
     public string? AssignedVehicleCallSign { get; set; }
+    public Guid? AssignedVehicleId { get; set; }
     public List<MissionAssignmentDto> Assignments { get; set; } = [];
     public List<MissionIntervenantDto> Intervenants { get; set; } = [];
     public List<MissionMediaDto> Media { get; set; } = [];
     public List<SiblingMissionDto> SiblingMissions { get; set; } = [];
+    public List<TrackingDocumentSummaryDto> TrackingDocuments { get; set; } = [];
 }
 
 public class SiblingMissionDto
@@ -87,4 +89,15 @@ public class MissionAssignmentDto
     public DateTime? RespondedAt { get; set; }
     public string? RefusalReason { get; set; }
     public double DistanceAtProposal { get; set; }
+}
+
+public class TrackingDocumentSummaryDto
+{
+    public Guid Id { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public int EntryCount { get; set; }
 }

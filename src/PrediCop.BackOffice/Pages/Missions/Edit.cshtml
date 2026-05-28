@@ -37,8 +37,7 @@
                     <i class="fa-solid fa-car-side me-2 text-success"></i>Modifier @Model.Mission?.Reference
                 </h6>
                 <div class="d-flex align-items-center gap-2">
-                    @{ ViewData["Status"] = Model.Mission?.Status; }
-                    @await Html.PartialAsync("_StatusBadge")
+                    @await Html.PartialAsync("_StatusBadge", (object)(Model.Mission?.Status ?? ""))
                     @if (!string.IsNullOrEmpty(Model.Mission?.AssignedVehicleCallSign))
                     {
                         <span class="badge bg-dark">@Model.Mission.AssignedVehicleCallSign</span>

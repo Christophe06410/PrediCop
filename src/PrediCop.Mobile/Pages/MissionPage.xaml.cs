@@ -9,19 +9,17 @@ public partial class MissionPage : ContentPage
 {
     public MissionViewModel ViewModel { get; }
     private readonly ApiService _api;
-    private readonly SignalRService _signalR;
     private readonly LocalDbService _localDb;
     private readonly IConnectivityService _connectivity;
     private readonly SyncService _syncService;
 
-    public MissionPage(MissionViewModel vm, ApiService api, SignalRService signalR,
+    public MissionPage(MissionViewModel vm, ApiService api,
         LocalDbService localDb, IConnectivityService connectivity, SyncService syncService)
     {
         InitializeComponent();
         ViewModel = vm;
         BindingContext = vm;
         _api = api;
-        _signalR = signalR;
         _localDb = localDb;
         _connectivity = connectivity;
         _syncService = syncService;
@@ -30,22 +28,20 @@ public partial class MissionPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        // Le VM est singleton et écoute déjà SignalR en continu — on rafraîchit juste
+        // l'état visible quand la page (re)devient visible.
         ViewModel.LoadCurrentMissionCommand.Execute(null);
+
+        WeakReferenceMessenger.Default.Unregister<AlertMessage>(this);
         WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
-            await DisplayAlert(m.Title, m.Text, "OK"));
-        _signalR.MissionProposed += OnMissionProposed;
+            await MainThread.InvokeOnMainThreadAsync(() => DisplayAlert(m.Title, m.Text, "OK")));
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         WeakReferenceMessenger.Default.UnregisterAll(this);
-        _signalR.MissionProposed -= OnMissionProposed;
     }
-
-    private void OnMissionProposed(object? sender, MissionProposedArgs e) =>
-        MainThread.BeginInvokeOnMainThread(() =>
-            ViewModel.LoadCurrentMissionCommand.Execute(null));
 
     public void ShowMissionProposal(MissionInfo mission) =>
         ViewModel.SetMissionProposal(mission);
@@ -54,6 +50,11 @@ public partial class MissionPage : ContentPage
     {
         if (ViewModel.CurrentMissionId is not { } missionId) return;
         await Navigation.PushAsync(new MissionDetailPage(missionId, _api, _localDb, _connectivity, _syncService));
+    }
+
+    private async void OnViewHistoryClicked(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new MissionHistoryPage(_api, _localDb, _connectivity, _syncService));
     }
 
     private static readonly (string Label, string Code, bool NeedsText)[] RefusalOptions =

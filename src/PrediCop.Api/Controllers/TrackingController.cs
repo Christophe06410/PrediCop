@@ -65,7 +65,7 @@ public class TrackingController(AppDbContext db, IEmailService emailService) : C
         if (mission is null)
             return Problem(title: "Mission introuvable", statusCode: 404);
 
-        if (mission.Status == MissionStatus.Pending || mission.Status == MissionStatus.Proposed)
+        if (mission.Status == MissionStatus.Pending)
             return Problem(title: "La mission doit être au moins en cours pour créer un document de suivi", statusCode: 400);
 
         var prefix = req.Type == DocumentType.Plainte ? "PL" : "MC";

@@ -10,8 +10,21 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="icon" type="image/png" href="~/favicon.png" />
     <style>
+        html, body { margin: 0; padding: 0; }
         body { background-color: #f0f2f5; }
         .navbar-brand img { height: 32px; }
+        /* Navbar — icon above, label below */
+        .nav-icon-link {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 0.25rem 0.5rem !important;
+            line-height: 1;
+        }
+        .nav-icon-link > i { font-size: 1rem; margin-bottom: 2px; }
+        .nav-text { font-size: 0.6rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.04em; opacity: .85; }
+        .nav-icon-link.dropdown-toggle::after { display: none; }
         .sidebar { min-height: calc(100vh - 56px); background: #1a2035; }
         .sidebar .nav-link { color: #a0aec0; padding: .5rem 1rem; border-radius: .375rem; margin: 2px 8px; }
         .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: #2d3a5a; }
@@ -46,33 +59,39 @@
             <div class="collapse navbar-collapse" id="navbarMain">
                 <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Home/Index">
-                            <i class="fa-solid fa-house me-1"></i>Accueil
+                        <a class="nav-link nav-icon-link" asp-page="/Home/Index">
+                            <i class="fa-solid fa-house"></i>
+                            <span class="nav-text">Accueil</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Calls/Receive">
-                            <i class="fa-solid fa-phone me-1"></i>Réception appel
+                        <a class="nav-link nav-icon-link" asp-page="/Calls/Receive">
+                            <i class="fa-solid fa-phone"></i>
+                            <span class="nav-text">Réception</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Calls/Index">
-                            <i class="fa-solid fa-list me-1"></i>Mains courantes
+                        <a class="nav-link nav-icon-link" asp-page="/Calls/Index">
+                            <i class="fa-solid fa-list"></i>
+                            <span class="nav-text">Main courante</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Missions/Index">
-                            <i class="fa-solid fa-car-side me-1"></i>Missions
+                        <a class="nav-link nav-icon-link" asp-page="/Missions/Index">
+                            <i class="fa-solid fa-car-side"></i>
+                            <span class="nav-text">Missions</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Crews/Index">
-                            <i class="fa-solid fa-users me-1"></i>Équipages
+                        <a class="nav-link nav-icon-link" asp-page="/Crews/Index">
+                            <i class="fa-solid fa-users"></i>
+                            <span class="nav-text">Équipages</span>
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-file-contract me-1"></i>Vacations
+                        <a class="nav-link nav-icon-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-file-contract"></i>
+                            <span class="nav-text">Vacations</span>
                         </a>
                         <ul class="dropdown-menu">
                             <li>
@@ -88,26 +107,23 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Map/Index">
-                            <i class="fa-solid fa-map-location-dot me-1"></i>Carte
+                        <a class="nav-link nav-icon-link" asp-page="/Map/Index">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            <span class="nav-text">Carte</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" asp-page="/Dashboard/Index">
-                            <i class="fa-solid fa-gauge me-1"></i>Dashboard
+                        <a class="nav-link nav-icon-link" asp-page="/Dashboard/Index">
+                            <i class="fa-solid fa-gauge"></i>
+                            <span class="nav-text">Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-gear me-1"></i>Administration
+                        <a class="nav-link nav-icon-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-gear"></i>
+                            <span class="nav-text">Admin</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" asp-page="/Admin/Vehicles/Index"><i class="fa-solid fa-car me-2"></i>Véhicules</a></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/Users/Index"><i class="fa-solid fa-users me-2"></i>Utilisateurs</a></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/Streets/Index"><i class="fa-solid fa-map-location-dot me-2"></i>Rues &amp; scores de risque</a></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/GeoZones/Index"><i class="fa-solid fa-draw-polygon me-2"></i>Zones de patrouille</a></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/RiskEvents/Index"><i class="fa-solid fa-triangle-exclamation me-2"></i>Événements de risque</a></li>
-                            <li><a class="dropdown-item" asp-page="/Admin/Qualifications/Index"><i class="fa-solid fa-id-card me-2"></i>Habilitations agents</a></li>
                             @await Component.InvokeAsync("OptionalModulesMenu")
                             <li><hr class="dropdown-divider" /></li>
                             <li><a class="dropdown-item" asp-page="/Admin/Subscription/Index"><i class="fa-solid fa-credit-card me-2"></i>Mon abonnement</a></li>
@@ -120,11 +136,11 @@
                             }
                         </ul>
                     </li>
-                    <li class="nav-item ms-2">
+                    <li class="nav-item ms-2 flex-shrink-0">
                         <form asp-page="/Search/Index" method="get" class="d-flex">
                             <div class="input-group input-group-sm">
                                 <input type="text" name="Q" class="form-control form-control-sm bg-dark border-secondary text-white"
-                                       placeholder="Rechercher..." style="width:180px;"
+                                       placeholder="Rechercher..." style="width:150px;"
                                        value="@(ViewContext.HttpContext.Request.Query["Q"].ToString())" />
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">
                                     <i class="fa-solid fa-magnifying-glass text-white"></i>

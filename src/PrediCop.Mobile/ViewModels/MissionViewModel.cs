@@ -6,15 +6,54 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class MissionViewModel(ApiService api, MediaUploadService mediaUpload) : ObservableObject
+public partial class MissionViewModel : ObservableObject
 {
+    private readonly ApiService _api;
+    private readonly MediaUploadService _mediaUpload;
+    private readonly AuthService _auth;
+    private readonly IAlertSoundService _alertSound;
     private Guid? _currentMissionId;
     private Guid? _currentAssignmentId;
+
+    public MissionViewModel(ApiService api, MediaUploadService mediaUpload, AuthService auth,
+        SignalRService signalR, IAlertSoundService alertSound)
+    {
+        _api = api;
+        _mediaUpload = mediaUpload;
+        _auth = auth;
+        _alertSound = alertSound;
+
+        // Singleton : on s'abonne une seule fois, le VM survit aux changements d'onglet.
+        signalR.MissionProposed += OnSignalRMissionProposed;
+        signalR.MissionStatusChanged += OnSignalRMissionStatusChanged;
+    }
+
+    private void OnSignalRMissionProposed(object? sender, MissionProposedArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            await LoadCurrentMissionAsync();
+            if (AppPreferences.AlertSoundEnabled)
+            {
+                try { _alertSound.PlayAlert(); } catch { }
+                try { Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(600)); } catch { }
+            }
+            // Naviguer automatiquement vers l'onglet Missions pour que l'utilisateur
+            // voie immédiatement la proposition, où qu'il soit dans l'app.
+            try { await Shell.Current.GoToAsync("//main/missions"); } catch { }
+        });
+    }
+
+    private void OnSignalRMissionStatusChanged(object? sender, string e)
+    {
+        MainThread.BeginInvokeOnMainThread(async () => await LoadCurrentMissionAsync());
+    }
 
     // Status bar
     [ObservableProperty] private bool isAvailable = true;
     [ObservableProperty] private string statusText = "DISPONIBLE";
     [ObservableProperty] private Color statusColor = Color.FromArgb("#22c55e");
+    [ObservableProperty] private string vehicleLabel = "Véhicule: --";
 
     // Frame visibility
     [ObservableProperty] private bool showMissionProposal;
@@ -119,12 +158,20 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         StatusColor = value ? Color.FromArgb("#22c55e") : Color.FromArgb("#f59e0b");
     }
 
+    public void RefreshVehicleLabel()
+    {
+        VehicleLabel = _auth.VehicleCallSign is not null
+            ? $"VL : {_auth.VehicleCallSign}"
+            : "Véhicule: --";
+    }
+
     [RelayCommand]
     public async Task LoadCurrentMissionAsync()
     {
+        RefreshVehicleLabel();
         try
         {
-            var missions = await api.GetAsync<List<ApiMissionDto>>("api/missions/active");
+            var missions = await _api.GetAsync<List<ApiMissionDto>>("api/missions/active");
             if (missions?.Count > 0)
             {
                 // Prioritize any mission that is actively proposed to this vehicle
@@ -246,7 +293,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         if (_currentMissionId == null || _currentAssignmentId == null) return;
         try
         {
-            await api.PostAsync(
+            await _api.PostAsync(
                 $"api/missions/{_currentMissionId}/assignments/{_currentAssignmentId}/accept", null);
             await LoadCurrentMissionAsync();
         }
@@ -262,7 +309,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         if (_currentMissionId == null || _currentAssignmentId == null) return;
         try
         {
-            await api.PostAsync(
+            await _api.PostAsync(
                 $"api/missions/{_currentMissionId}/assignments/{_currentAssignmentId}/refuse",
                 new { reasonCode, reason });
             SetNoMission();
@@ -279,7 +326,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         if (_currentMissionId == null) return;
         try
         {
-            await api.PostAsync($"api/missions/{_currentMissionId}/complete", new { report });
+            await _api.PostAsync($"api/missions/{_currentMissionId}/complete", new { report });
             SetNoMission();
         }
         catch
@@ -302,7 +349,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
                 UploadProgress = p;
                 UploadStatus = $"Envoi: {p:P0}";
             });
-            var ok = await mediaUpload.PickAndUploadAsync(_currentMissionId.Value, progress: progress);
+            var ok = await _mediaUpload.PickAndUploadAsync(_currentMissionId.Value, progress: progress);
             UploadStatus = ok ? "Vidéo envoyée ✓" : "";
         }
         catch (InvalidOperationException ex) { UploadStatus = ex.Message; }
@@ -317,7 +364,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         PhotoStatus = "Prise de photo...";
         try
         {
-            var ok = await mediaUpload.CaptureAndUploadPhotoAsync(_currentMissionId.Value);
+            var ok = await _mediaUpload.CaptureAndUploadPhotoAsync(_currentMissionId.Value);
             PhotoStatus = ok ? "Photo envoyée ✓" : "";
         }
         catch (InvalidOperationException ex) { PhotoStatus = ex.Message; }
@@ -332,7 +379,7 @@ public partial class MissionViewModel(ApiService api, MediaUploadService mediaUp
         try
         {
             var progress = new Progress<double>(p => PhotoStatus = $"Envoi: {p:P0}");
-            var ok = await mediaUpload.PickAndUploadPhotoAsync(
+            var ok = await _mediaUpload.PickAndUploadPhotoAsync(
                 _currentMissionId.Value, progress: progress);
             PhotoStatus = ok ? "Photo envoyée ✓" : "";
         }

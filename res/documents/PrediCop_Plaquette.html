@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrediCop — Plaquette Commerciale</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --navy:  #1a2035;
+    --blue:  #2563eb;
+    --blue2: #3b82f6;
+    --light: #f0f4ff;
+    --gray:  #64748b;
+    --text:  #1e293b;
+    --white: #ffffff;
+    --green: #16a34a;
+    --amber: #d97706;
+    --red:   #dc2626;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 10pt;
+    color: var(--text);
+    background: #f8fafc;
+    line-height: 1.6;
+  }
+
+  /* ── PAGE DE GARDE ── */
+  .cover {
+    background: linear-gradient(135deg, var(--navy) 0%, #0f172a 60%, #1e3a5f 100%);
+    color: var(--white);
+    padding: 80px 60px 60px;
+    min-height: 340px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+  .cover::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 320px; height: 320px;
+    background: rgba(37,99,235,0.15);
+    border-radius: 50%;
+  }
+  .cover::after {
+    content: '';
+    position: absolute; bottom: -60px; left: 30%;
+    width: 200px; height: 200px;
+    background: rgba(59,130,246,0.08);
+    border-radius: 50%;
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(37,99,235,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #93c5fd;
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+  }
+  .cover h1 {
+    font-size: 48pt;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .cover h1 span { color: var(--blue2); }
+  .cover-subtitle {
+    font-size: 15pt;
+    font-weight: 300;
+    opacity: .85;
+    margin-bottom: 20px;
+  }
+  .cover-tagline {
+    font-size: 10.5pt;
+    opacity: .7;
+    max-width: 580px;
+    line-height: 1.7;
+    margin-bottom: 36px;
+  }
+  .cover-contact {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    font-size: 9.5pt;
+    opacity: .8;
+  }
+  .cover-contact a { color: #93c5fd; text-decoration: none; }
+
+  /* ── CONTENU ── */
+  .content { max-width: 900px; margin: 0 auto; padding: 40px 40px 60px; }
+
+  .intro-box {
+    background: var(--light);
+    border-left: 4px solid var(--blue);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 36px;
+    font-size: 10pt;
+    line-height: 1.7;
+    color: var(--gray);
+  }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom: 40px; page-break-inside: avoid; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--light);
+  }
+  .section-header .icon {
+    font-size: 22px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--light);
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .section-header h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .section-header .badge-opt {
+    font-size: 8pt;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .feature-card {
+    background: var(--white);
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .feature-card h3 {
+    font-size: 9.5pt;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--navy);
+  }
+  .feature-card p {
+    font-size: 9pt;
+    color: var(--gray);
+    line-height: 1.65;
+  }
+
+  /* ── TABLE ARCHITECTURE ── */
+  .arch-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 9.5pt;
+  }
+  .arch-table th {
+    background: var(--navy);
+    color: var(--white);
+    padding: 10px 16px;
+    text-align: left;
+    font-weight: 600;
+  }
+  .arch-table td {
+    padding: 9px 16px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .arch-table tr:nth-child(even) td { background: #f8fafc; }
+  .arch-table tr:last-child td { border-bottom: none; }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    background: var(--navy);
+    color: rgba(255,255,255,.7);
+    text-align: center;
+    padding: 24px;
+    font-size: 9.5pt;
+    margin-top: 40px;
+  }
+  .page-footer a { color: #93c5fd; text-decoration: none; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: white; font-size: 9pt; }
+    .cover { page-break-after: always; }
+    .section { page-break-inside: avoid; }
+    .content { padding: 20px 30px 40px; max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-badge">🚔 Solution SaaS · Police Municipale</div>
+  <h1>Predi<span>Cop</span></h1>
+  <div class="cover-subtitle">Plateforme de gestion opérationnelle<br>pour la Police Municipale</div>
+  <div class="cover-tagline">
+    Centralisez le dispatch, le suivi terrain, les documents officiels et le pilotage stratégique
+    de votre service dans une solution unique, sécurisée et conforme RGPD.
+  </div>
+  <div class="cover-contact">
+    <div><a href="mailto:contact@predicop.fr">contact@predicop.fr</a></div>
+    <div><a href="https://www.predicop.fr">www.predicop.fr</a></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ CONTENT -->
+<div class="content">
+
+  <div class="intro-box">
+    PrediCop est une solution SaaS multi-tenant qui connecte en temps réel les opérateurs BackOffice,
+    les patrouilles terrain et l'encadrement. Chaque commune dispose de son propre espace de données
+    isolé, de sa configuration et de ses droits d'accès — aucune donnée n'est partagée entre communes.
+  </div>
+
+  <!-- ── 1. APPELS & DISPATCH ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📞</span>
+      <h2>Réception &amp; Dispatch des Missions</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📋 Gestion des appels entrants</h3>
+        <p>Saisissez rapidement identité de l'appelant, adresse de l'incident, catégorie, tiers impliqués et notes internes. Chaque appel est horodaté, référencé et traçable de la réception jusqu'à la clôture.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🚀 Création de mission en un clic</h3>
+        <p>Depuis un appel, créez une mission en un clic. Le système sélectionne automatiquement le véhicule disponible le plus proche grâce au dispatch intelligent basé sur la position GPS en temps réel.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📡 Notifications push instantanées</h3>
+        <p>Les agents reçoivent la proposition directement sur leur mobile (Android &amp; iOS) via Firebase Cloud Messaging — même application fermée.</p>
+      </div>
+      <div class="feature-card">
+        <h3>⚡ Alertes manager automatiques</h3>
+        <p>Si une mission reste sans véhicule accepteur plus de 15 minutes, les managers reçoivent automatiquement une alerte email.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. MOBILE ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📱</span>
+      <h2>Application Mobile Agents (Android &amp; iOS)</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>🗂 Interface terrain dédiée</h3>
+        <p>Consultez les missions, mettez à jour les statuts, ajoutez des notes de suivi et prenez des photos et vidéos directement depuis le terrain.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📶 Mode hors-ligne</h3>
+        <p>En zone à faible couverture réseau, l'application conserve l'accès à la mission active. Les entrées saisies hors ligne sont synchronisées automatiquement au retour du réseau.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📍 Suivi GPS temps réel</h3>
+        <p>La position des véhicules est transmise en continu et visible sur la carte BackOffice, permettant un dispatch précis et un suivi de la sécurité des agents.</p>
+      </div>
+      <div class="feature-card">
+        <h3>✍️ Rapport de fin de vacation</h3>
+        <p>Générez en un clic le rapport de vacation complet : heures, missions, km parcourus, documents produits. Signature électronique et export PDF intégrés.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. CARTE & RISQUES ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🗺️</span>
+      <h2>Carte Temps Réel &amp; Analyse des Risques</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>🔴 Indice de risque prédictif</h3>
+        <p>Chaque rue dispose d'un score calculé chaque nuit (historique 2 ans, densité urbaine, décroissance temporelle). Un passage de patrouille fait immédiatement baisser le score.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔷 Zones de patrouille géographiques</h3>
+        <p>Définissez des secteurs sur la carte (polygones), assignez-les à des véhicules et importez les rues du secteur via l'API OpenStreetMap.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔔 Géofencing par véhicule</h3>
+        <p>Alertes automatiques (SignalR + email) lorsqu'un véhicule sort de sa zone assignée. Activation configurable commune par commune.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📅 Événements de risque planifiés</h3>
+        <p>Anticipez marchés, fêtes, manifestations en créant des événements qui augmentent automatiquement le score de risque des rues concernées.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. DOCUMENTS ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📄</span>
+      <h2>Documents Officiels &amp; Main Courante</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📝 Création de documents officiels</h3>
+        <p>Rédigez procès-verbaux, mains courantes et rapports d'intervention avec entrées horodatées et pièces jointes (photos, vidéos).</p>
+      </div>
+      <div class="feature-card">
+        <h3>🖨 Export PDF normalisé</h3>
+        <p>Chaque document s'exporte en PDF au format officiel, prêt à être imprimé ou transmis au parquet ou au juge.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📬 Transmission automatique</h3>
+        <p>Au passage en statut "Transmis au Parquet / Juge", les managers reçoivent un email de notification avec les détails du document.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔍 Recherche globale</h3>
+        <p>Retrouvez instantanément appels, missions, documents et entrées de suivi par mots-clés depuis une barre de recherche unique.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. DASHBOARD ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📊</span>
+      <h2>Dashboard Manager &amp; Statistiques</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📈 Tableau de bord en temps réel</h3>
+        <p>KPIs en direct : appels du jour, missions actives, véhicules disponibles. Graphique horaire de distribution des missions sur la journée.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🏆 Top véhicules &amp; performance</h3>
+        <p>Classement des véhicules par missions acceptées et taux d'acceptation. Identifiez vos patrouilles les plus actives.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📥 Export statistiques mensuelles</h3>
+        <p>Export en un clic au format Excel (4 onglets : Missions, Véhicules, Appels, Documents) ou CSV pour vos rapports d'activité.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔐 Authentification 2FA</h3>
+        <p>Comptes Admin et Manager protégés par TOTP (Google Authenticator, Authy…) avec codes de récupération.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. SÉCURITÉ / ADMIN ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🛡</span>
+      <h2>Sécurité &amp; Administration</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📜 Journal d'audit complet</h3>
+        <p>Chaque action (création, modification, suppression) est enregistrée avec l'identité de l'auteur, l'horodatage et les valeurs avant/après. Obligatoire RGPD.</p>
+      </div>
+      <div class="feature-card">
+        <h3>👥 Gestion multi-rôles</h3>
+        <p>Quatre niveaux d'accès : Administrateur, Manager, Opérateur, Agent terrain — droits finement contrôlés sur chaque fonctionnalité.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🪪 Habilitations &amp; qualifications</h3>
+        <p>Suivez APJA, port d'arme, permis, secourisme, habilitation préfectorale avec alertes avant expiration. Aucun agent ne part en service avec une autorisation périmée.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔑 Multi-tenant isolé</h3>
+        <p>Chaque commune dispose de son propre espace de données entièrement isolé — aucun partage de données entre collectivités.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. RH ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">👔</span>
+      <h2>Module RH — Plannings &amp; Congés <span class="badge-opt">Optionnel</span></h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📅 Planning des vacations</h3>
+        <p>Planifiez les créneaux horaires de chaque agent semaine par semaine, avec affectation à un véhicule. Vue hebdomadaire intuitive.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🏖 Gestion des congés</h3>
+        <p>Demandes et approbations de congés (CP, RTT, maladie, récupération, formation) directement dans la plateforme. Alertes automatiques pour les demandes en attente.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🩸 Profil d'urgence de l'agent</h3>
+        <p>Groupe sanguin, deux contacts d'urgence avec lien de parenté — accessibles aux managers uniquement pour intervention en cas d'accident.</p>
+      </div>
+      <div class="feature-card">
+        <h3>✅ Workflow d'approbation</h3>
+        <p>Les managers approuvent ou refusent les demandes de congé en un clic avec motif. L'agent est notifié instantanément.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 8. FOURRIÈRE ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🚗</span>
+      <h2>Module Fourrière <span class="badge-opt">Optionnel</span></h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>🪝 Enregistrement des enlèvements</h3>
+        <p>Immatriculation, marque, modèle, motif (stationnement gênant, épave, abandon, sans assurance…), adresse d'origine, lieu de stockage, position GPS et état constaté.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔄 Cycle de vie complet</h3>
+        <p>En fourrière → Restitué → Détruit. La restitution enregistre l'identité du propriétaire et son numéro de pièce d'identité. Historique auditable.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📊 Tableau de bord fourrière</h3>
+        <p>Indicateurs en temps réel : véhicules en stock, restitués et détruits. Filtres par motif, agent verbalisateur et plaque d'immatriculation.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📸 Photos de constat</h3>
+        <p>Annexez des photos de l'état du véhicule à l'enlèvement directement depuis le mobile de l'agent verbalisateur.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 9. FLOTTE ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🔧</span>
+      <h2>Gestion de la Flotte <span class="badge-opt">Optionnel</span></h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📓 Carnet de bord numérique</h3>
+        <p>Kilométrage, carburant ajouté et destination enregistrés à chaque prise/fin de service. Kilométrage total par véhicule et par mois calculé automatiquement.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔩 Maintenance planifiée</h3>
+        <p>Planifiez révisions, contrôles techniques, réparations et pneumatiques. Alertes 30 jours avant chaque échéance. Archivage du coût et du prestataire.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🚨 Alertes flotte</h3>
+        <p>Vue centralisée des véhicules avec maintenance en retard ou imminente, trajectoires du mois et kilométrage parcouru.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔎 Historique complet</h3>
+        <p>Chaque intervention de maintenance est archivée avec date réelle, kilométrage au moment du service, coût et notes techniques.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 10. LOGISTIQUE ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📦</span>
+      <h2>Module Logistique &amp; Équipements <span class="badge-opt">Optionnel</span></h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📚 Catalogue de dotations</h3>
+        <p>Gilets, tenues, chaussures, armement, matériel informatique… avec durée de vie standard et unité de mesure. Codes références internes.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📋 Remises &amp; retours</h3>
+        <p>Enregistrez chaque remise d'équipement (quantité, taille, numéro de série) avec calcul automatique de la date d'expiration. Bouton "Rendu" pour clôturer.</p>
+      </div>
+      <div class="feature-card">
+        <h3>👕 Fiche tailles uniforme</h3>
+        <p>Veste, pantalon, chemise, chaussures, couvre-chef — une fiche par agent pour des commandes sans erreur et des stocks adaptés.</p>
+      </div>
+      <div class="feature-card">
+        <h3>⏰ Alertes de renouvellement</h3>
+        <p>Alertes automatiques 60 jours avant l'expiration d'un équipement pour anticiper les renouvellements et éviter les ruptures.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 11. VERBALISATION ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🎫</span>
+      <h2>Verbalisation Électronique <span class="badge-opt">Optionnel</span></h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📝 PV électroniques sur mobile</h3>
+        <p>Verbalisez depuis le terminal embarqué : immatriculation, type d'infraction, article du code, montant. Chaque PV est horodaté, géolocalisé et signé électroniquement.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🔢 Numérotation automatique</h3>
+        <p>Numéro séquentiel unique par commune et par année (PV-2026-00001). Garantit traçabilité et absence de doublons.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📈 Statistiques de verbalisation</h3>
+        <p>Dashboard dédié : PV par type d'infraction, par agent, par jour de semaine, montants totaux. Identifiez les infractions récurrentes et les zones à risque.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📤 Export ANTAI</h3>
+        <p>Export CSV/Excel structuré pour transmission à l'Agence Nationale de Traitement Automatisé des Infractions — compatible avec les exigences réglementaires.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 12. RGPD ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🔒</span>
+      <h2>Conformité RGPD</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📑 Politique de confidentialité publique</h3>
+        <p>Page dédiée exposant tous les traitements de données personnelles : base légale, durées de conservation, mentions géofencing conformes aux recommandations CNIL.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📬 Formulaire de demande RGPD</h3>
+        <p>Toute personne soumet ses droits (accès, suppression, rectification, portabilité, opposition). La demande est automatiquement transmise au DPO de la commune.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📂 Suivi des demandes</h3>
+        <p>Tableau de bord dédié pour suivre et traiter les demandes RGPD reçues, avec historique et notes de traitement.</p>
+      </div>
+      <div class="feature-card">
+        <h3>✉️ Email DPO configurable</h3>
+        <p>Chaque commune configure son propre email DPO. Les demandes RGPD et alertes de conformité sont routées vers le bon interlocuteur.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 13. ARCHITECTURE ── -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">⚙️</span>
+      <h2>Architecture &amp; Déploiement</h2>
+    </div>
+    <table class="arch-table">
+      <thead>
+        <tr><th>Composant</th><th>Technologie</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Back-office web</td><td>ASP.NET Core 10 Razor Pages + Bootstrap 5</td></tr>
+        <tr><td>API REST + temps réel</td><td>ASP.NET Core 10 Web API + SignalR</td></tr>
+        <tr><td>Application mobile</td><td>.NET MAUI (Android &amp; iOS natif)</td></tr>
+        <tr><td>Base de données</td><td>SQL Server (cloud ou on-premise)</td></tr>
+        <tr><td>Cartographie</td><td>Leaflet.js + OpenStreetMap</td></tr>
+        <tr><td>Push notifications</td><td>Firebase Cloud Messaging (Android &amp; iOS)</td></tr>
+        <tr><td>Authentification</td><td>JWT + Cookie + 2FA TOTP</td></tr>
+        <tr><td>Export documents</td><td>PDF (QuestPDF) + Excel (ClosedXML)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:16px; font-size:9.5pt; color:var(--gray);">
+      <strong>Modèle SaaS multi-tenant</strong> : chaque commune dispose de son propre espace de données isolé,
+      de sa configuration et de ses droits d'accès — aucune donnée n'est partagée entre communes.
+    </p>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ FOOTER -->
+<div class="page-footer">
+  <p style="margin-bottom:6px;">
+    <strong>PrediCop</strong> — Modernisons ensemble la Police Municipale
+  </p>
+  <p>
+    <a href="mailto:contact@predicop.fr">contact@predicop.fr</a>
+    &nbsp;·&nbsp;
+    <a href="https://www.predicop.fr">www.predicop.fr</a>
+  </p>
+</div>
+
+</body>
+</html>

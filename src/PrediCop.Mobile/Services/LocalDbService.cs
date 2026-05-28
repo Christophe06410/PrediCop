@@ -7,18 +7,35 @@ public class LocalDbService
 {
     private const string DbFileName = "predicop.db";
 
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private bool _isInitialized;
     private SQLiteAsyncConnection? _db;
 
     public async Task InitAsync()
     {
-        if (_db is not null)
+        if (_isInitialized)
             return;
 
-        var dbPath = Path.Combine(FileSystem.AppDataDirectory, DbFileName);
-        _db = new SQLiteAsyncConnection(dbPath);
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_isInitialized)
+                return;
 
-        await _db.CreateTableAsync<CachedMission>();
-        await _db.CreateTableAsync<PendingTrackingEntry>();
+            SQLitePCL.Batteries_V2.Init();
+
+            var dbPath = Path.Combine(FileSystem.AppDataDirectory, DbFileName);
+            _db = new SQLiteAsyncConnection(dbPath);
+
+            await _db.CreateTableAsync<CachedMission>();
+            await _db.CreateTableAsync<PendingTrackingEntry>();
+
+            _isInitialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     private SQLiteAsyncConnection Db =>
@@ -26,25 +43,42 @@ public class LocalDbService
 
     // ── CachedMission ────────────────────────────────────────────────────────
 
-    public Task<CachedMission?> GetCachedMissionAsync(Guid missionId)
-        => Db.Table<CachedMission>().Where(m => m.Id == missionId).FirstOrDefaultAsync();
+    public async Task<CachedMission?> GetCachedMissionAsync(Guid missionId)
+    {
+        await InitAsync();
+        return await Db.Table<CachedMission>().Where(m => m.Id == missionId).FirstOrDefaultAsync();
+    }
 
-    public Task UpsertCachedMissionAsync(CachedMission mission)
-        => Db.InsertOrReplaceAsync(mission);
+    public async Task UpsertCachedMissionAsync(CachedMission mission)
+    {
+        await InitAsync();
+        await Db.InsertOrReplaceAsync(mission);
+    }
 
-    public Task ClearCachedMissionsAsync()
-        => Db.DeleteAllAsync<CachedMission>();
+    public async Task ClearCachedMissionsAsync()
+    {
+        await InitAsync();
+        await Db.DeleteAllAsync<CachedMission>();
+    }
 
     // ── PendingTrackingEntry ─────────────────────────────────────────────────
 
-    public Task AddPendingEntryAsync(PendingTrackingEntry entry)
-        => Db.InsertAsync(entry);
+    public async Task AddPendingEntryAsync(PendingTrackingEntry entry)
+    {
+        await InitAsync();
+        await Db.InsertAsync(entry);
+    }
 
-    public Task<List<PendingTrackingEntry>> GetUnsyncedEntriesAsync()
-        => Db.Table<PendingTrackingEntry>().Where(e => !e.IsSynced).ToListAsync();
+    public async Task<List<PendingTrackingEntry>> GetUnsyncedEntriesAsync()
+    {
+        await InitAsync();
+        return await Db.Table<PendingTrackingEntry>().Where(e => !e.IsSynced).ToListAsync();
+    }
 
     public async Task MarkEntrySyncedAsync(int localId)
     {
+        await InitAsync();
+
         var entry = await Db.Table<PendingTrackingEntry>()
                              .Where(e => e.LocalId == localId)
                              .FirstOrDefaultAsync();

@@ -18,7 +18,7 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
 
     private static readonly Dictionary<string, (string Label, int Price)> KnownModules = new()
     {
-        ["rh"]             = ("Module RH", 39),
+        ["planning"]       = ("Module Planning", 39),
         ["verbalisation"]  = ("Verbalisation électronique", 49),
         ["fourriere"]      = ("Module Fourrière", 29),
         ["fleet"]          = ("Gestion de flotte", 29),
@@ -112,7 +112,7 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
             ? []
             : modules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                      .Select(k => k.ToLowerInvariant())
-                     .Where(k => new[] { "rh", "verbalisation", "fourriere", "fleet", "logistics", "geofencing" }.Contains(k))
+                     .Where(k => new[] { "planning", "verbalisation", "fourriere", "fleet", "logistics", "geofencing" }.Contains(k))
                      .ToList();
 
     private record CheckoutResult(string? Url);

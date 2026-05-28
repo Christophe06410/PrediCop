@@ -121,7 +121,16 @@
                                 var rankIcon = rank switch { 1 => "text-warning", 2 => "text-secondary", 3 => "text-danger", _ => "text-muted" };
                                 <tr>
                                     <td><i class="fa-solid fa-medal @rankIcon"></i></td>
-                                    <td class="fw-semibold">@v.CallSign</td>
+                                    <td class="fw-semibold">
+                                        @if (v.VehicleId.HasValue)
+                                        {
+                                            <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@v.VehicleId" class="text-decoration-none fw-semibold">@v.CallSign</a>
+                                        }
+                                        else
+                                        {
+                                            @v.CallSign
+                                        }
+                                    </td>
                                     <td class="text-center text-success fw-bold">@v.AcceptedCount</td>
                                     <td class="text-center text-danger">@v.RefusedCount</td>
                                     <td class="text-center">
@@ -170,13 +179,23 @@
                     @foreach (var m in d.RecentMissions)
                     {
                         <tr>
-                            <td class="fw-semibold">@m.Reference</td>
+                            <td class="fw-semibold">
+                                <a asp-page="/Missions/Details" asp-route-id="@m.Id" class="text-decoration-none fw-semibold">@m.Reference</a>
+                            </td>
                             <td>
-                                @{ ViewData["Status"] = m.Status; }
-                                @await Html.PartialAsync("_StatusBadge")
+                                @await Html.PartialAsync("_StatusBadge", (object)m.Status)
                             </td>
                             <td>@m.TargetAddress</td>
-                            <td>@(m.AssignedVehicleCallSign ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign) && m.AssignedVehicleId.HasValue)
+                                {
+                                    <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@m.AssignedVehicleId" class="text-decoration-none">@m.AssignedVehicleCallSign</a>
+                                }
+                                else
+                                {
+                                    @(m.AssignedVehicleCallSign ?? "—")
+                                }
+                            </td>
                             <td>@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
                             <td>@(m.CompletedAt?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
                             <td>

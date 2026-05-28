@@ -161,17 +161,17 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0 align-middle">
+                <table class="table table-hover table-sm mb-0 align-middle" data-sortable>
                     <thead class="table-light">
                         <tr>
-                            <th>N° PV</th>
-                            <th>Date</th>
-                            <th>Agent</th>
-                            <th>Adresse</th>
-                            <th>Plaque</th>
-                            <th>Infraction</th>
-                            <th class="text-end">Montant</th>
-                            <th>Statut</th>
+                            <th data-col="0">N° PV</th>
+                            <th data-col="1">Date</th>
+                            <th data-col="2">Agent</th>
+                            <th data-col="3">Adresse</th>
+                            <th data-col="4">Plaque</th>
+                            <th data-col="5">Infraction</th>
+                            <th class="text-end" data-col="6">Montant</th>
+                            <th data-col="7">Statut</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -182,7 +182,7 @@
                                 <td>
                                     <span class="badge bg-dark font-monospace">@ticket.TicketNumber</span>
                                 </td>
-                                <td class="text-nowrap small">
+                                <td class="text-nowrap small" data-sort="@ticket.IssuedAt.ToString("yyyy-MM-ddTHH:mm:ss")">
                                     @ticket.IssuedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                 </td>
                                 <td class="small">
@@ -203,7 +203,7 @@
                                     }
                                 </td>
                                 <td class="small">@IndexModel.GetInfractionLabel(ticket.InfractionType)</td>
-                                <td class="text-end fw-semibold text-nowrap">
+                                <td class="text-end fw-semibold text-nowrap" data-sort="@ticket.FineAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)">
                                     @ticket.FineAmount.ToString("C0", culture)
                                 </td>
                                 <td>

@@ -83,17 +83,17 @@
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-sm align-middle mb-0">
+            <table class="table table-hover table-sm align-middle mb-0" data-sortable>
                 <thead class="table-dark">
                     <tr>
-                        <th>Référence</th>
-                        <th>Heure</th>
-                        <th>Appelant</th>
-                        <th>Téléphone</th>
-                        <th>Priorité</th>
-                        <th>Catégorie</th>
-                        <th>Adresse</th>
-                        <th>Statut</th>
+                        <th data-col="0">Référence</th>
+                        <th data-col="1">Heure</th>
+                        <th data-col="2">Appelant</th>
+                        <th data-col="3">Téléphone</th>
+                        <th data-col="4">Priorité</th>
+                        <th data-col="5">Catégorie</th>
+                        <th data-col="6">Adresse</th>
+                        <th data-col="7">Statut</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -101,8 +101,10 @@
                     @foreach (var call in Model.Calls)
                     {
                         <tr>
-                            <td class="fw-semibold text-primary">@call.Reference</td>
-                            <td class="text-nowrap">
+                            <td class="fw-semibold text-primary">
+                                <a asp-page="/Calls/Details" asp-route-id="@call.Id" class="text-decoration-none fw-semibold text-primary">@call.Reference</a>
+                            </td>
+                            <td class="text-nowrap" data-sort="@call.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss")">
                                 <span title="@call.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
                                     @call.ReceivedAt.ToLocalTime().ToString("dd/MM HH:mm")
                                 </span>
@@ -141,8 +143,16 @@
                                 @call.IncidentAddress
                             </td>
                             <td>
-                                @{ ViewData["Status"] = call.Status; }
-                                @await Html.PartialAsync("_StatusBadge")
+                                @if (call.Status == "MissionCreated" && call.Missions.Any())
+                                {
+                                    <a asp-page="/Missions/Details" asp-route-id="@call.Missions.First().Id" class="text-decoration-none" title="Voir la mission">
+                                        @await Html.PartialAsync("_StatusBadge", (object)call.Status)
+                                    </a>
+                                }
+                                else
+                                {
+                                    @await Html.PartialAsync("_StatusBadge", (object)call.Status)
+                                }
                             </td>
                             <td class="text-end">
                                 <div class="d-flex gap-1 justify-content-end">

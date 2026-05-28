@@ -13,7 +13,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0"
-                   Text="Véhicule: --" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
+                   Text="{Binding VehicleLabel}" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
             <Frame Grid.Column="1"
                    BackgroundColor="{Binding StatusColor}"
                    CornerRadius="20" Padding="12,6" HasShadow="False">
@@ -167,6 +167,12 @@
                                HorizontalTextAlignment="Center"/>
                     </VerticalStackLayout>
                 </Frame>
+
+                <!-- Accès historique -->
+                <Button Text="Voir les missions terminées"
+                        BackgroundColor="#1e2d4a" TextColor="#60a5fa"
+                        CornerRadius="10" FontSize="13"
+                        Clicked="OnViewHistoryClicked"/>
 
             </VerticalStackLayout>
         </ScrollView>

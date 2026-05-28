@@ -19,7 +19,8 @@
     <i class="fa-solid fa-bolt me-1"></i>Opérations
 </h6>
 <div class="row g-3 mb-4">
-    @Tile("/Calls/Index", "fa-phone-volume", "bg-primary", "Appels", "Réception et suivi des appels entrants")
+    @Tile("/Calls/Index", "fa-book-open", "bg-primary", "Mains courantes", "Consultation et suivi des appels enregistrés")
+    @Tile("/Calls/Receive", "fa-phone-volume", "bg-danger", "Réception appel", "Saisir un nouvel appel entrant")
     @Tile("/Missions/Index", "fa-car-side", "bg-indigo", "Missions", "Dispatch et suivi des interventions")
     @Tile("/Map/Index", "fa-map-location-dot", "bg-teal", "Carte temps réel", "Positions GPS et zones de patrouille")
     @Tile("/Missions/ShiftReports", "fa-clock-rotate-left", "bg-secondary", "Vacations", "Historique et rapports de vacation")
@@ -43,7 +44,7 @@
 @* ── Modules optionnels ──────────────────────────────────────────────────── *@
 @{
     var hasOptional = flags != null && (
-        flags.ModuleRhEnabled ||
+        flags.ModulePlanningEnabled ||
         flags.ModuleFourriereEnabled ||
         flags.ModuleFleetEnabled ||
         flags.ModuleLogisticsEnabled);
@@ -54,9 +55,9 @@
         <i class="fa-solid fa-puzzle-piece me-1"></i>Modules activés
     </h6>
     <div class="row g-3 mb-4">
-        @if (flags!.ModuleRhEnabled)
+        @if (flags!.ModulePlanningEnabled)
         {
-            @Tile("/Admin/HR/Index", "fa-users-gear", "bg-orange", "Ressources humaines", "Plannings, congés et profils agents")
+            @Tile("/Admin/Planning/Index", "fa-calendar-days", "bg-orange", "Planning", "Plannings, congés et profils agents")
         }
         @if (flags.ModuleFourriereEnabled)
         {

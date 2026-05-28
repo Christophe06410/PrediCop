@@ -58,6 +58,15 @@ public static class MauiProgram
         builder.Services.AddSingleton<GpsTrackingService>();
         builder.Services.AddSingleton(new SignalRService(apiBaseUrl));
 
+        // Son de notification système (mission proposée)
+#if ANDROID
+        builder.Services.AddSingleton<IAlertSoundService, Platforms.Android.AlertSoundService>();
+#elif IOS
+        builder.Services.AddSingleton<IAlertSoundService, Platforms.iOS.AlertSoundService>();
+#else
+        builder.Services.AddSingleton<IAlertSoundService, NoopAlertSoundService>();
+#endif
+
         // Offline mode
         builder.Services.AddSingleton<LocalDbService>();
         builder.Services.AddSingleton<IConnectivityService, ConnectivityService>();
@@ -70,7 +79,9 @@ public static class MauiProgram
 
         // ViewModels
         builder.Services.AddSingleton<LoginViewModel>();
-        builder.Services.AddTransient<MissionViewModel>();
+        // MissionViewModel doit rester vivant en permanence pour écouter SignalR
+        // même quand l'utilisateur est sur un autre onglet.
+        builder.Services.AddSingleton<MissionViewModel>();
         builder.Services.AddTransient<PatrolViewModel>();
         builder.Services.AddTransient<PatrolActivationViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();

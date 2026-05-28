@@ -19,6 +19,7 @@ public class UpdateMissionRequest
     public string? BriefingText { get; set; }
     public string? LocationDetail { get; set; }
     public string? NarrativeReport { get; set; }
+    public string? CompletionReport { get; set; }
     public DateTime? DispatchedAt { get; set; }
     public DateTime? ArrivedAt { get; set; }
 }
@@ -57,6 +58,11 @@ public class RefuseMissionRequest
     public string? Reason { get; set; }
 }
 
+public class AddCrewRequest
+{
+    public Guid VehicleId { get; set; }
+}
+
 public class MissionResponse
 {
     public Guid Id { get; set; }
@@ -83,6 +89,14 @@ public class MissionResponse
     public List<MediaAttachmentResponse> Media { get; set; } = [];
     /// <summary>Autres missions liées au même appel (non incluses dans les listings, uniquement dans GetMission).</summary>
     public List<SiblingMissionResponse> SiblingMissions { get; set; } = [];
+    public List<TrackingDocumentSummary> TrackingDocuments { get; set; } = [];
+    // Données de l'appel source (main courante)
+    public string? CallerName { get; set; }
+    public string? CallerPhone { get; set; }
+    public string? IncidentCategory { get; set; }
+    public string? IncidentAddressComplement { get; set; }
+    public string? CallNotes { get; set; }
+    public string? ThirdParties { get; set; }
 }
 
 /// <summary>Résumé d'une mission sœur (même appel) pour la page de détail.</summary>
@@ -120,4 +134,15 @@ public class MissionAssignmentResponse
     public RefusalReasonCode? RefusalReasonCode { get; set; }
     public string? RefusalReason { get; set; }
     public double DistanceAtProposal { get; set; }
+}
+
+public class TrackingDocumentSummary
+{
+    public Guid Id { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public int EntryCount { get; set; }
 }

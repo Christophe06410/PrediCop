@@ -65,6 +65,49 @@
                 </VerticalStackLayout>
             </Frame>
 
+            <!-- Données de l'appel (main courante) -->
+            <Frame IsVisible="{Binding HasCallDetails}"
+                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Données de l'appel" TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding CallerName, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Requérant" TextColor="#6b7a99" FontSize="13" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding CallerName}" TextColor="White" FontSize="13"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding CallerPhone, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Téléphone" TextColor="#6b7a99" FontSize="13" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding CallerPhone}" TextColor="#93c5fd" FontSize="13">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCallPhone"/>
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding IncidentCategory, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Nature" TextColor="#6b7a99" FontSize="13" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding IncidentCategory}" TextColor="White" FontSize="13"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding IncidentAddressComplement, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Accès / digicode" TextColor="#6b7a99" FontSize="13" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding IncidentAddressComplement}"
+                               TextColor="#fbbf24" FontAttributes="Bold" FontSize="13"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding ThirdParties, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Tiers" TextColor="#6b7a99" FontSize="13" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding ThirdParties}" TextColor="#aab0c0" FontSize="13"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="130,*" IsVisible="{Binding CallNotes, Converter={StaticResource NotEmptyConverter}}">
+                        <Label Grid.Column="0" Text="Notes opérateur" TextColor="#6b7a99" FontSize="13" VerticalOptions="Start"/>
+                        <Label Grid.Column="1" Text="{Binding CallNotes}" TextColor="#aab0c0" FontSize="13"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
             <!-- Adresse + location detail + briefing + GPS -->
             <Frame BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
                 <VerticalStackLayout Spacing="8">
@@ -174,6 +217,28 @@
                     <Label Text="Rapport de clôture" TextColor="#6b7a99" FontAttributes="Bold" FontSize="12"/>
                     <Label Text="{Binding CompletionReport}"
                            TextColor="#aab0c0" FontSize="14"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Modifier le rapport de clôture (mission terminée) -->
+            <Frame IsVisible="{Binding ShowEditReport}"
+                   BackgroundColor="#1e3a5f" CornerRadius="12" Padding="16" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Modifier le rapport de clôture"
+                           TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
+                    <Editor x:Name="EditReportEditor"
+                            Placeholder="Rapport de clôture..."
+                            PlaceholderColor="#4a5568"
+                            TextColor="White"
+                            BackgroundColor="#152a45"
+                            MinimumHeightRequest="100"
+                            AutoSize="TextChanges"/>
+                    <Button Text="💾 Enregistrer le rapport"
+                            BackgroundColor="#0f3460" TextColor="#34d399"
+                            CornerRadius="8" HeightRequest="46"
+                            FontAttributes="Bold" FontSize="14"
+                            HorizontalOptions="Fill"
+                            Clicked="OnSaveReport"/>
                 </VerticalStackLayout>
             </Frame>
 

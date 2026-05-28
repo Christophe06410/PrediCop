@@ -60,7 +60,7 @@ public class StripeController(
             SubscriptionPeriod = req.Period,
             VehicleLimit = vehicleLimit,
             UserLimit = userLimit,
-            ModuleRhEnabled            = selectedModules.Contains("rh"),
+            ModulePlanningEnabled      = selectedModules.Contains("planning"),
             ModuleVerbalisationEnabled = selectedModules.Contains("verbalisation"),
             ModuleFourriereEnabled     = selectedModules.Contains("fourriere"),
             ModuleFleetEnabled         = selectedModules.Contains("fleet"),
@@ -243,7 +243,7 @@ public class StripeController(
     private static HashSet<string> ParseModules(string? modules)
     {
         if (string.IsNullOrWhiteSpace(modules)) return [];
-        var valid = new HashSet<string> { "rh", "verbalisation", "fourriere", "fleet", "logistics", "geofencing" };
+        var valid = new HashSet<string> { "planning", "verbalisation", "fourriere", "fleet", "logistics", "geofencing" };
         return modules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                       .Select(m => m.ToLowerInvariant())
                       .Where(valid.Contains)

@@ -79,6 +79,10 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+startupLogger.LogInformation("=== BackOffice démarré — API cible : {ApiBaseUrl} — Env : {Env} ===",
+    apiBaseUrl, app.Environment.EnvironmentName);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

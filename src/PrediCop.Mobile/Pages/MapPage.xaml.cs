@@ -16,6 +16,14 @@ public partial class MapPage : ContentPage
     private string? _pendingName;
     private double _focusLat, _focusLng;
 
+    // Shared client — Overpass calls happen from C# so the WebView null-origin restriction
+    // doesn't apply. Static so we don't spin up a new socket pool on every map view.
+    private static readonly HttpClient _overpassHttp = new()
+    {
+        Timeout = TimeSpan.FromSeconds(30),
+        DefaultRequestHeaders = { { "User-Agent", "PrediCop/1.0" } }
+    };
+
     public MapPage(ApiService api)
     {
         InitializeComponent();
@@ -74,14 +82,12 @@ public partial class MapPage : ContentPage
         }
         catch
         {
-            // Assets missing — fall back to showing an error
             leafletJs = leafletCss = "";
         }
 
         string html;
         if (!string.IsNullOrEmpty(leafletJs))
         {
-            // Build HTML with StringBuilder to avoid $""" brace-escaping conflicts with JS
             var sb = new System.Text.StringBuilder();
             sb.Append("<!DOCTYPE html><html><head>");
             sb.Append("<meta charset='utf-8'/>");
@@ -135,22 +141,98 @@ public partial class MapPage : ContentPage
             var streets = await _api.GetAsync<List<StreetMapDto>>("api/streets");
             if (streets == null || streets.Count == 0) return;
 
-            var json = JsonSerializer.Serialize(streets, new JsonSerializerOptions
+            var streetJson = JsonSerializer.Serialize(streets, new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            await MapWebView.EvaluateJavaScriptAsync($"addStreets({json})");
+            // Draw straight-line placeholders immediately so the map is useful before Overpass returns
+            await MapWebView.EvaluateJavaScriptAsync($"addStreets({streetJson})");
 
             if (!_pendingLat.HasValue)
             {
                 var first = streets[0];
-                var lat = (first.StartLatitude + first.EndLatitude) / 2;
-                var lng = (first.StartLongitude + first.EndLongitude) / 2;
+                var lat = ((first.StartLatitude + first.EndLatitude) / 2).ToString("F6", CultureInfo.InvariantCulture);
+                var lng = ((first.StartLongitude + first.EndLongitude) / 2).ToString("F6", CultureInfo.InvariantCulture);
                 await MapWebView.EvaluateJavaScriptAsync($"setCenter({lat}, {lng}, 14)");
             }
+
+            // Fetch real OSM geometry in C# — WebView fetch() is blocked from HtmlWebViewSource
+            // because it has a null origin and Android WebView's CORS policy rejects it.
+            var overpassJson = await FetchOverpassGeometryAsync(streets);
+            if (overpassJson != null)
+            {
+                var geometryJson = BuildGeometryJson(overpassJson, streets);
+                if (geometryJson != "[]")
+                    await MapWebView.EvaluateJavaScriptAsync($"applyOsmGeometry({geometryJson})");
+            }
         }
-        catch { /* map still works without streets */ }
+        catch { /* map still usable with straight-line placeholders */ }
+    }
+
+    private static async Task<string?> FetchOverpassGeometryAsync(List<StreetMapDto> streets)
+    {
+        try
+        {
+            var minLat = streets.Min(s => Math.Min(s.StartLatitude,  s.EndLatitude));
+            var maxLat = streets.Max(s => Math.Max(s.StartLatitude,  s.EndLatitude));
+            var minLng = streets.Min(s => Math.Min(s.StartLongitude, s.EndLongitude));
+            var maxLng = streets.Max(s => Math.Max(s.StartLongitude, s.EndLongitude));
+
+            var s0 = (minLat - 0.01).ToString("F6", CultureInfo.InvariantCulture);
+            var n0 = (maxLat + 0.01).ToString("F6", CultureInfo.InvariantCulture);
+            var w0 = (minLng - 0.01).ToString("F6", CultureInfo.InvariantCulture);
+            var e0 = (maxLng + 0.01).ToString("F6", CultureInfo.InvariantCulture);
+
+            var query = $"[out:json][timeout:25];way[\"highway\"]({s0},{w0},{n0},{e0});out geom;";
+            var response = await _overpassHttp.PostAsync(
+                "https://overpass-api.de/api/interpreter",
+                new StringContent(query));
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
+        }
+        catch { return null; }
+    }
+
+    private static string BuildGeometryJson(string overpassJson, List<StreetMapDto> streets)
+    {
+        var knownNames = new HashSet<string>(
+            streets.Select(s => s.Name.Trim().ToLowerInvariant()));
+
+        var segments = new List<OsmSegment>();
+
+        using var doc = JsonDocument.Parse(overpassJson);
+        if (!doc.RootElement.TryGetProperty("elements", out var elements))
+            return "[]";
+
+        foreach (var element in elements.EnumerateArray())
+        {
+            if (!element.TryGetProperty("tags", out var tags)) continue;
+            if (!tags.TryGetProperty("name", out var nameProp)) continue;
+
+            var key = nameProp.GetString()?.Trim().ToLowerInvariant();
+            if (key == null || !knownNames.Contains(key)) continue;
+
+            if (!element.TryGetProperty("geometry", out var geom)) continue;
+
+            var pts = new List<double[]>();
+            foreach (var p in geom.EnumerateArray())
+                pts.Add([p.GetProperty("lat").GetDouble(), p.GetProperty("lon").GetDouble()]);
+
+            if (pts.Count < 2) continue;
+            segments.Add(new OsmSegment { Key = key, Latlngs = pts });
+        }
+
+        return JsonSerializer.Serialize(segments, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+    }
+
+    private class OsmSegment
+    {
+        public string Key { get; set; } = "";
+        public List<double[]> Latlngs { get; set; } = [];
     }
 
     private async Task ApplyFocusAsync(double lat, double lng, string? name)
@@ -187,6 +269,7 @@ var map = null;
 var focusMarker = null;
 var mapReady = false;
 var pendingOps = [];
+var streetPolylines = {};
 
 function runWhenReady(fn) {
   if (mapReady) { fn(); } else { pendingOps.push(fn); }
@@ -210,6 +293,44 @@ function addStreets(streets) {
         '<br>Risque : <b style="color:' + color + '">' + score + '</b>'
       );
       line.addTo(map);
+
+      var key = s.name.trim().toLowerCase();
+      streetPolylines[key] = { layer: line, color: color, street: s };
+    });
+  });
+}
+
+// Called from C# after fetching Overpass geometry via HttpClient.
+// segments = [{key: "...", latlngs: [[lat,lng],...]}]
+// Groups by key so a street with several OSM ways all get drawn.
+function applyOsmGeometry(segments) {
+  if (!segments || !segments.length) return;
+  runWhenReady(function() {
+    var byKey = {};
+    segments.forEach(function(seg) {
+      if (!byKey[seg.key]) byKey[seg.key] = [];
+      byKey[seg.key].push(seg.latlngs);
+    });
+
+    Object.keys(byKey).forEach(function(key) {
+      var entry = streetPolylines[key];
+      if (!entry) return;
+
+      // Remove straight-line placeholder
+      if (entry.layer) { map.removeLayer(entry.layer); entry.layer = null; }
+
+      var s      = entry.street;
+      var score  = s.currentRiskScore || 0;
+      var popup  = '<b>' + s.name + '</b>' +
+        (s.district ? '<br><span style="color:#93c5fd">' + s.district + '</span>' : '') +
+        '<br>Risque : <b style="color:' + entry.color + '">' + score + '</b>';
+
+      byKey[key].forEach(function(latlngs) {
+        var poly = L.polyline(latlngs, { color: entry.color, weight: 7, opacity: 0.9 });
+        poly.bindTooltip(s.name, { sticky: true, direction: 'top', className: 'street-tip' });
+        poly.bindPopup(popup);
+        poly.addTo(map);
+      });
     });
   });
 }

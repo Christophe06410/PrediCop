@@ -37,9 +37,13 @@
                 <Label Text="Paramètres" TextColor="White"
                        FontSize="16" FontAttributes="Bold"/>
                 <Grid ColumnDefinitions="*,Auto">
-                    <Label Text="Notifications missions" TextColor="#aab0c0"
-                           VerticalOptions="Center"/>
-                    <Switch Grid.Column="1" IsToggled="True" OnColor="#2563eb"/>
+                    <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                        <Label Text="Son d'alerte mission" TextColor="#aab0c0"/>
+                        <Label Text="Sonnerie + vibration à la réception d'une mission"
+                               TextColor="#6b7a99" FontSize="11"/>
+                    </VerticalStackLayout>
+                    <Switch Grid.Column="1" IsToggled="{Binding AlertSoundEnabled, Mode=TwoWay}"
+                            OnColor="#2563eb"/>
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto">
                     <Label Text="Suivi GPS actif" TextColor="#aab0c0"

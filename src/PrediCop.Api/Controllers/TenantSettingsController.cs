@@ -11,7 +11,7 @@ namespace PrediCop.Api.Controllers;
 [Authorize]
 public class TenantSettingsController(AppDbContext db) : ControllerBase
 {
-    private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
+    private Guid TenantId => Guid.TryParse(User.FindFirst("tenantId")?.Value, out var id) ? id : Guid.Empty;
 
     /// <summary>Active ou désactive le géofencing pour le tenant courant.</summary>
     [HttpPatch("geofencing")]
@@ -52,6 +52,9 @@ public class TenantSettingsController(AppDbContext db) : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TenantSettingsResponse>> GetSettings(CancellationToken ct)
     {
+        if (TenantId == Guid.Empty)
+            return Unauthorized();
+
         var tenant = await db.Tenants
             .Where(t => t.Id == TenantId)
             .Select(t => new TenantSettingsResponse

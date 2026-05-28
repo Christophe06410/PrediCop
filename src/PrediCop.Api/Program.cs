@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PrediCop.Api.Filters;
 using PrediCop.Api.Hubs;
 using PrediCop.Api.Middleware;
 using PrediCop.Api.Services;
@@ -23,7 +24,10 @@ builder.Services.Configure<PrediCop.Api.Settings.StripeSettings>(builder.Configu
 Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"] ?? "";
 
 // ---- Controllers ----
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ApiLoggingFilter>();
+    })
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(
             new System.Text.Json.Serialization.JsonStringEnumConverter()));

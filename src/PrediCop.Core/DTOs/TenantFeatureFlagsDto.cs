@@ -1,12 +1,11 @@
 namespace PrediCop.Core.DTOs;
 
 public record TenantFeatureFlagsResponse(
-    bool ModuleRhEnabled,
+    bool ModulePlanningEnabled,
     bool ModuleFourriereEnabled,
     bool ModuleFleetEnabled,
     bool ModuleLogisticsEnabled,
     bool ModuleVerbalisationEnabled,
-    bool AgentBloodTypeEnabled,
     bool AgentEmergencyContactEnabled,
     bool GpsTrackingEnabled,
     bool GeofencingEnabled,
@@ -16,7 +15,7 @@ public record TenantFeatureFlagsResponse(
 );
 
 public record UpdateModuleFlagsRequest(
-    bool ModuleRhEnabled,
+    bool ModulePlanningEnabled,
     bool ModuleFourriereEnabled,
     bool ModuleFleetEnabled,
     bool ModuleLogisticsEnabled,
@@ -24,7 +23,6 @@ public record UpdateModuleFlagsRequest(
 );
 
 public record UpdateSensitiveFieldFlagsRequest(
-    bool AgentBloodTypeEnabled,
     bool AgentEmergencyContactEnabled,
     bool GpsTrackingEnabled,
     bool GeofencingEnabled,

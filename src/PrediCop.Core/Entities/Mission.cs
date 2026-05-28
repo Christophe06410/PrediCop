@@ -28,4 +28,5 @@ public class Mission : TenantEntity
     public ICollection<MissionAssignment> Assignments { get; set; } = [];
     public ICollection<MissionIntervenant> Intervenants { get; set; } = [];
     public ICollection<MediaAttachment> MediaAttachments { get; set; } = [];
+    public ICollection<TrackingDocument> TrackingDocuments { get; set; } = [];
 }

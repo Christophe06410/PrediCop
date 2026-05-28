@@ -9,7 +9,7 @@
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-warehouse me-2 text-primary"></i>Gestion de la fourrière
     </h4>
-    <button class="btn btn-primary btn-sm" disabled title="Fonctionnalité à venir">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newImpoundModal">
         <i class="fa-solid fa-plus me-1"></i>Nouveau enlèvement
     </button>
 </div>
@@ -242,6 +242,107 @@
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
                     <button type="submit" class="btn btn-success btn-sm">
                         <i class="fa-solid fa-key me-1"></i>Confirmer la restitution
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nouveau enlèvement -->
+<div class="modal fade" id="newImpoundModal" tabindex="-1" aria-labelledby="newImpoundModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newImpoundModalLabel">
+                    <i class="fa-solid fa-plus me-2 text-primary"></i>Nouvel enlèvement
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="Create">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Plaque <span class="text-danger">*</span></label>
+                            <input type="text" name="plateNumber" class="form-control form-control-sm text-uppercase"
+                                   placeholder="AA-123-BB" required maxlength="20" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Marque <span class="text-danger">*</span></label>
+                            <input type="text" name="make" class="form-control form-control-sm"
+                                   placeholder="Renault" required maxlength="50" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Modèle <span class="text-danger">*</span></label>
+                            <input type="text" name="model" class="form-control form-control-sm"
+                                   placeholder="Clio" required maxlength="50" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Couleur <span class="text-danger">*</span></label>
+                            <input type="text" name="color" class="form-control form-control-sm"
+                                   placeholder="Blanc" required maxlength="30" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Catégorie <span class="text-danger">*</span></label>
+                            <select name="category" class="form-select form-select-sm" required>
+                                <option value="VoitureParticuliere">Voiture particulière</option>
+                                <option value="Utilitaire">Utilitaire</option>
+                                <option value="DeuxRoues">Deux-roues</option>
+                                <option value="PoidLourd">Poids lourd</option>
+                                <option value="Camping_Car">Camping-car</option>
+                                <option value="Remorque">Remorque</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Motif <span class="text-danger">*</span></label>
+                            <select name="reason" class="form-select form-select-sm" required>
+                                <option value="StationnementGenant">Stationnement gênant</option>
+                                <option value="StationnementDangereux">Stationnement dangereux</option>
+                                <option value="StationnementHandicap">Stationnement handicap</option>
+                                <option value="SansAssurance">Sans assurance</option>
+                                <option value="SansControleTechnique">Sans contrôle technique</option>
+                                <option value="Epave">Épave</option>
+                                <option value="Abandon">Abandon</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Agent verbalisateur <span class="text-danger">*</span></label>
+                            <select name="agentId" class="form-select form-select-sm" required>
+                                <option value="">— Sélectionner —</option>
+                                @foreach (var agent in Model.Agents)
+                                {
+                                    <option value="@agent.Id">@agent.FullName (@agent.BadgeNumber)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Lieu de stockage <span class="text-danger">*</span></label>
+                            <input type="text" name="storageLocation" class="form-control form-control-sm"
+                                   placeholder="Fourrière municipale" required maxlength="200" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Adresse d'enlèvement <span class="text-danger">*</span></label>
+                            <input type="text" name="originalAddress" class="form-control form-control-sm"
+                                   placeholder="12 rue de la Paix, 75001 Paris" required maxlength="300" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">État du véhicule</label>
+                            <textarea name="conditionNotes" class="form-control form-control-sm" rows="2"
+                                      placeholder="Observations sur l'état du véhicule..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Notes</label>
+                            <textarea name="notes" class="form-control form-control-sm" rows="2"
+                                      placeholder="Informations complémentaires..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer l'enlèvement
                     </button>
                 </div>
             </form>

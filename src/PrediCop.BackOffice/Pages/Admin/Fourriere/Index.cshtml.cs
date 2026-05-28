@@ -81,6 +81,44 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostCreateAsync(
+        string plateNumber, string make, string model, string color,
+        string category, string reason, Guid agentId,
+        string originalAddress, string storageLocation,
+        string? conditionNotes, string? notes,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (!Enum.TryParse<VehicleCategory>(category, out var vehicleCategory))
+                vehicleCategory = VehicleCategory.Autre;
+            if (!Enum.TryParse<ImpoundReason>(reason, out var impoundReason))
+                impoundReason = ImpoundReason.Autre;
+
+            var client = _httpClientFactory.CreateClient("PrediCopApi");
+            var request = new CreateImpoundRequest(
+                plateNumber.ToUpperInvariant(),
+                make, model, color,
+                vehicleCategory, impoundReason,
+                agentId, originalAddress, storageLocation,
+                null, null, conditionNotes, notes);
+
+            var response = await client.PostAsJsonAsync("/api/fourriere", request, JsonOpts, ct);
+
+            if (response.IsSuccessStatusCode)
+                TempData["SuccessMessage"] = $"Enlèvement du véhicule {plateNumber.ToUpperInvariant()} enregistré.";
+            else
+                TempData["ErrorMessage"] = "Impossible d'enregistrer l'enlèvement.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erreur lors de la création d'un enlèvement.");
+            TempData["ErrorMessage"] = "Une erreur est survenue.";
+        }
+
+        return RedirectToPage(new { StatusFilter, AgentFilter, PlateSearch });
+    }
+
     public async Task<IActionResult> OnPostReleaseAsync(
         Guid id, string releasedToName, string releasedToIdNumber, CancellationToken ct)
     {

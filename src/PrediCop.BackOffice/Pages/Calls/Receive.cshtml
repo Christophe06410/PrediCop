@@ -84,6 +84,21 @@
                     </div>
 
                     <div class="mb-3">
+                        <label asp-for="Input.IncidentCategory" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                            <select asp-for="Input.IncidentCategory" class="form-select" id="incident-category">
+                                <option value="">-- Sélectionner une catégorie --</option>
+                                @foreach (var cat in ReceiveModel.Categories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                        </div>
+                        <span asp-validation-for="Input.IncidentCategory" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-semibold"><i class="fa-solid fa-circle-exclamation me-1"></i>Priorité</label>
                         <div class="btn-group w-100" role="group" aria-label="Priorité de l'appel">
                             <input type="radio" class="btn-check" asp-for="Input.Priority" id="prio-routine" value="Routine" />
@@ -99,25 +114,10 @@
                                 <i class="fa-solid fa-fire me-1"></i>Critique
                             </label>
                             <input type="radio" class="btn-check" asp-for="Input.Priority" id="prio-sos" value="SOS" />
-                            <label class="btn btn-danger" for="prio-sos">
+                            <label class="btn btn-outline-danger border-2 fw-bold" for="prio-sos">
                                 <i class="fa-solid fa-siren-on me-1"></i>SOS
                             </label>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="Input.IncidentCategory" class="form-label fw-semibold"></label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
-                            <select asp-for="Input.IncidentCategory" class="form-select">
-                                <option value="">-- Sélectionner une catégorie --</option>
-                                @foreach (var cat in ReceiveModel.Categories)
-                                {
-                                    <option value="@cat">@cat</option>
-                                }
-                            </select>
-                        </div>
-                        <span asp-validation-for="Input.IncidentCategory" class="text-danger small"></span>
                     </div>
 
                     <div class="mb-3">
@@ -147,7 +147,6 @@
                             </span>
                         </div>
                         <span asp-validation-for="Input.IncidentAddress" class="text-danger small"></span>
-                        <div class="form-text" id="geo-text">Adresse géocodée automatiquement.</div>
                     </div>
 
                     <div class="mb-3">
@@ -183,6 +182,9 @@
                 @* 2a — Save draft: now a real submit targeting OnPostSaveDraftAsync *@
                 <button type="submit" asp-page-handler="SaveDraft" class="btn btn-outline-primary" id="btn-save-draft">
                     <i class="fa-solid fa-floppy-disk me-2"></i>Sauvegarder le brouillon
+                </button>
+                <button type="submit" asp-page-handler="SaveLogbook" class="btn btn-outline-success" id="btn-save-logbook">
+                    <i class="fa-solid fa-book me-2"></i>Main courante uniquement
                 </button>
                 <button type="submit" asp-page-handler="CreateMission" class="btn btn-primary btn-lg" id="btn-create">
                     <i class="fa-solid fa-paper-plane me-2"></i>Créer la Mission
@@ -230,8 +232,17 @@
                                 <td><span class="badge bg-info text-dark">@call.IncidentCategory</span></td>
                                 <td class="text-truncate" style="max-width:150px">@call.IncidentAddress</td>
                                 <td>
-                                    @{ ViewData["Status"] = call.Status; }
-                                    @await Html.PartialAsync("_StatusBadge")
+                                    @if (call.Status == "MissionCreated" && call.Missions.Any())
+                                    {
+                                        <a asp-page="/Missions/Details" asp-route-id="@call.Missions.First().Id"
+                                           class="text-decoration-none" title="Voir la mission">
+                                            @await Html.PartialAsync("_StatusBadge", (object)call.Status)
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        @await Html.PartialAsync("_StatusBadge", (object)call.Status)
+                                    }
                                 </td>
                                 <td>
                                     <a asp-page="/Calls/Details" asp-route-id="@call.Id"
@@ -280,14 +291,12 @@
         var geoTimer = null;
         var addressInput = document.getElementById('address-input');
         var geoIcon = document.getElementById('geo-icon');
-        var geoText = document.getElementById('geo-text');
         var geoStatus = document.getElementById('geo-status');
 
         function setGeoState(state, text) {
             // states: idle | loading | ok | error
             geoIcon.className = 'fa-solid';
             geoStatus.title = text || '';
-            geoText.textContent = text || '';
             if (state === 'loading') {
                 geoIcon.className = 'spinner-border spinner-border-sm text-secondary';
                 geoIcon.style.fontSize = '';
@@ -306,7 +315,7 @@
 
         function geocode(address) {
             if (!address || address.trim().length < 5) {
-                setGeoState('idle', 'Adresse géocodée automatiquement.');
+                setGeoState('idle', '');
                 return;
             }
             setGeoState('loading', 'Géocodage en cours...');
@@ -330,7 +339,7 @@
 
         addressInput.addEventListener('input', function () {
             clearTimeout(geoTimer);
-            setGeoState('idle', 'Adresse géocodée automatiquement.');
+            setGeoState('idle', '');
             geoTimer = setTimeout(function () { geocode(addressInput.value); }, 800);
         });
 
@@ -338,6 +347,32 @@
         addressInput.addEventListener('blur', function () {
             clearTimeout(geoTimer);
             geocode(addressInput.value);
+        });
+    })();
+
+    // ---- Priorité par défaut selon catégorie ----
+    (function () {
+        var categoryDefaults = {
+            'Tapage': 'Routine',
+            'Vol': 'Urgent',
+            'Bagarre': 'Urgent',
+            'Accident': 'Urgent',
+            'Incivilité': 'Routine',
+            "Trouble à l'ordre public": 'Urgent',
+            'Autre': 'Routine'
+        };
+        var radios = {
+            'Routine': document.getElementById('prio-routine'),
+            'Urgent': document.getElementById('prio-urgent'),
+            'Critique': document.getElementById('prio-critique'),
+            'SOS': document.getElementById('prio-sos')
+        };
+        document.getElementById('incident-category').addEventListener('change', function () {
+            var prio = categoryDefaults[this.value];
+            if (prio && !document.querySelector('input[name="Input.Priority"]:checked')) {
+                var radio = radios[prio];
+                if (radio) radio.checked = true;
+            }
         });
     })();
 

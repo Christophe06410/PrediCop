@@ -4,11 +4,18 @@ public class AuthService
 {
     private readonly ApiService _api;
     private readonly MediaUploadService _media;
-    private const string TokenKey = "auth_token";
-    private const string VehicleIdKey = "auth_vehicle_id";
+    private const string TokenKey            = "auth_token";
+    private const string VehicleIdKey        = "auth_vehicle_id";
+    private const string VehicleCallSignKey  = "auth_vehicle_callsign";
+    private const string UserIdKey           = "auth_user_id";
+    private const string UserNameKey         = "auth_user_name";
+    private const string UserRoleKey         = "auth_user_role";
+    private const string UserTenantIdKey     = "auth_user_tenant_id";
+    private const string UserTenantNameKey   = "auth_user_tenant_name";
 
     public string? Token { get; private set; }
     public Guid? VehicleId { get; private set; }
+    public string? VehicleCallSign { get; private set; }
     public UserInfo? CurrentUser { get; private set; }
     public bool IsLoggedIn => !string.IsNullOrEmpty(Token);
 
@@ -17,9 +24,25 @@ public class AuthService
         _api = api;
         _media = media;
         Token = Preferences.Get(TokenKey, null);
+
         var vidStr = Preferences.Get(VehicleIdKey, null);
         if (vidStr != null && Guid.TryParse(vidStr, out var vid))
             VehicleId = vid;
+
+        VehicleCallSign = Preferences.Get(VehicleCallSignKey, null);
+
+        // Restore CurrentUser so the app survives being killed by the OS (e.g. while GPS runs)
+        var uidStr     = Preferences.Get(UserIdKey, null);
+        var name       = Preferences.Get(UserNameKey, null);
+        var role       = Preferences.Get(UserRoleKey, null);
+        var tidStr     = Preferences.Get(UserTenantIdKey, null);
+        var tenantName = Preferences.Get(UserTenantNameKey, null);
+        if (uidStr != null && name != null && role != null && tidStr != null && tenantName != null
+            && Guid.TryParse(uidStr, out var uid) && Guid.TryParse(tidStr, out var tid))
+        {
+            CurrentUser = new UserInfo(uid, name, role, tid, tenantName);
+        }
+
         if (Token != null)
         {
             _api.SetAuthToken(Token);
@@ -58,6 +81,12 @@ public class AuthService
         else
             Preferences.Remove(VehicleIdKey);
 
+        Preferences.Set(UserIdKey,       CurrentUser.Id.ToString());
+        Preferences.Set(UserNameKey,     CurrentUser.FullName);
+        Preferences.Set(UserRoleKey,     CurrentUser.Role);
+        Preferences.Set(UserTenantIdKey, CurrentUser.TenantId.ToString());
+        Preferences.Set(UserTenantNameKey, CurrentUser.TenantName);
+
         _api.SetAuthToken(Token);
         _media.SetAuthToken(Token);
         return true;
@@ -71,9 +100,11 @@ public class AuthService
 
         Token = response.AccessToken;
         VehicleId = response.VehicleId;
+        VehicleCallSign = response.VehicleCallSign;
 
         Preferences.Set(TokenKey, Token);
         Preferences.Set(VehicleIdKey, VehicleId.Value.ToString());
+        Preferences.Set(VehicleCallSignKey, VehicleCallSign);
         _api.SetAuthToken(Token);
         _media.SetAuthToken(Token);
         return (true, response.VehicleCallSign);
@@ -83,9 +114,16 @@ public class AuthService
     {
         Token = null;
         VehicleId = null;
+        VehicleCallSign = null;
         CurrentUser = null;
         Preferences.Remove(TokenKey);
         Preferences.Remove(VehicleIdKey);
+        Preferences.Remove(VehicleCallSignKey);
+        Preferences.Remove(UserIdKey);
+        Preferences.Remove(UserNameKey);
+        Preferences.Remove(UserRoleKey);
+        Preferences.Remove(UserTenantIdKey);
+        Preferences.Remove(UserTenantNameKey);
     }
 
     // Private DTOs matching the API JSON structure exactly

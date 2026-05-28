@@ -21,6 +21,8 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
     public string VehiclesJson { get; set; } = "[]";
     public string AssignedVehicleJson { get; set; } = "null";
     public double? DistanceKm { get; set; }
+    public double? EtaMinutes { get; set; }
+    public List<string> AssignedVehicleOfficerNames { get; private set; } = [];
     public List<VehicleDto> OnMissionVehicles { get; set; } = [];
     public bool CanForceAssign =>
         Mission is not null
@@ -194,6 +196,17 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
             vehicle.LastLatitude.Value, vehicle.LastLongitude.Value,
             Mission.TargetLatitude, Mission.TargetLongitude);
 
+        var speedKmH = vehicle.PatrolType switch
+        {
+            "Motorcycle" => 45.0,
+            "Bicycle"    => 15.0,
+            "Pedestrian" => 5.0,
+            _            => 40.0   // Car ou null
+        };
+        EtaMinutes = Math.Round(DistanceKm.Value / speedKmH * 60, 0);
+
+        AssignedVehicleOfficerNames = vehicle.OfficerNames;
+
         AssignedVehicleJson = JsonSerializer.Serialize(vehicle, SerializeOpts);
     }
 
@@ -226,5 +239,6 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         public double? LastLatitude { get; set; }
         public double? LastLongitude { get; set; }
         public List<string> OfficerNames { get; set; } = [];
+        public string? PatrolType { get; set; }
     }
 }

@@ -47,7 +47,7 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
         if (tenant is null)
             return Problem(title: "Tenant non trouvé", statusCode: 404);
 
-        tenant.ModuleRhEnabled = request.ModuleRhEnabled;
+        tenant.ModulePlanningEnabled = request.ModulePlanningEnabled;
         tenant.ModuleFourriereEnabled = request.ModuleFourriereEnabled;
         tenant.ModuleFleetEnabled = request.ModuleFleetEnabled;
         tenant.ModuleLogisticsEnabled = request.ModuleLogisticsEnabled;
@@ -73,7 +73,6 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
         if (tenant is null)
             return Problem(title: "Tenant non trouvé", statusCode: 404);
 
-        tenant.AgentBloodTypeEnabled = request.AgentBloodTypeEnabled;
         tenant.AgentEmergencyContactEnabled = request.AgentEmergencyContactEnabled;
         tenant.GpsTrackingEnabled = request.GpsTrackingEnabled;
         tenant.GeofencingEnabled = request.GeofencingEnabled;
@@ -90,12 +89,11 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
     // ---- Helpers ----
 
     private static TenantFeatureFlagsResponse GetDefaultFlags() => new(
-        ModuleRhEnabled: false,
+        ModulePlanningEnabled: false,
         ModuleFourriereEnabled: false,
         ModuleFleetEnabled: false,
         ModuleLogisticsEnabled: false,
         ModuleVerbalisationEnabled: false,
-        AgentBloodTypeEnabled: false,
         AgentEmergencyContactEnabled: true,
         GpsTrackingEnabled: true,
         GeofencingEnabled: false,
@@ -105,12 +103,11 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
     );
 
     private static TenantFeatureFlagsResponse MapToResponse(Tenant t) => new(
-        ModuleRhEnabled: t.ModuleRhEnabled,
+        ModulePlanningEnabled: t.ModulePlanningEnabled,
         ModuleFourriereEnabled: t.ModuleFourriereEnabled,
         ModuleFleetEnabled: t.ModuleFleetEnabled,
         ModuleLogisticsEnabled: t.ModuleLogisticsEnabled,
         ModuleVerbalisationEnabled: t.ModuleVerbalisationEnabled,
-        AgentBloodTypeEnabled: t.AgentBloodTypeEnabled,
         AgentEmergencyContactEnabled: t.AgentEmergencyContactEnabled,
         GpsTrackingEnabled: t.GpsTrackingEnabled,
         GeofencingEnabled: t.GeofencingEnabled,

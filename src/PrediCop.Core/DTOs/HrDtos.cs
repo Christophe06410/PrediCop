@@ -7,7 +7,6 @@ public record AgentProfileResponse(
     Guid AgentId,
     string AgentFullName,
     string AgentBadgeNumber,
-    string? BloodType,
     string? EmergencyContact1Name,
     string? EmergencyContact1Phone,
     string? EmergencyContact1Relationship,
@@ -16,7 +15,6 @@ public record AgentProfileResponse(
     string? Notes);
 
 public record UpsertAgentProfileRequest(
-    string? BloodType,
     string? EmergencyContact1Name,
     string? EmergencyContact1Phone,
     string? EmergencyContact1Relationship,
@@ -71,3 +69,53 @@ public record UpsertShiftRequest(
     TimeOnly ShiftEnd,
     bool IsPublished,
     string? Notes);
+
+public record VehicleOccupancyResponse(
+    Guid VehicleId,
+    string CallSign,
+    int Capacity,
+    int Count,
+    List<string> AgentNames);
+
+public record LeaveEntitlementResponse(
+    Guid Id,
+    Guid AgentId,
+    string AgentFullName,
+    LeaveType Type,
+    decimal TotalDays,
+    decimal UsedDays,
+    decimal RemainingDays,
+    DateOnly ValidFrom,
+    DateOnly ValidTo);
+
+public record CreateLeaveEntitlementRequest(
+    Guid AgentId,
+    LeaveType Type,
+    decimal TotalDays,
+    DateOnly ValidFrom,
+    DateOnly ValidTo);
+
+public record UpdateLeaveEntitlementRequest(
+    decimal TotalDays,
+    DateOnly ValidFrom,
+    DateOnly ValidTo);
+
+public record AgentLeaveBalanceResponse(
+    LeaveType Type,
+    decimal TotalDays,
+    decimal UsedDays,
+    decimal RemainingDays,
+    DateOnly ValidFrom,
+    DateOnly ValidTo);
+
+// -------- CSV Import --------
+
+public record CsvImportResult(
+    int Imported,
+    int Skipped,
+    List<CsvImportError> Errors);
+
+public record CsvImportError(
+    int LineNumber,
+    string RawLine,
+    string Message);

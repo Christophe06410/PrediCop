@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PrediCop.Core.Entities;
 
 namespace PrediCop.Infrastructure.Data;
@@ -44,10 +45,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AgentQualification> AgentQualifications => Set<AgentQualification>();
     public DbSet<RgpdRequest> RgpdRequests => Set<RgpdRequest>();
 
-    // ---- Module RH ----
+    // ---- Module Planning ----
     public DbSet<AgentProfile> AgentProfiles => Set<AgentProfile>();
     public DbSet<Leave> Leaves => Set<Leave>();
     public DbSet<ShiftSchedule> ShiftSchedules => Set<ShiftSchedule>();
+    public DbSet<LeaveEntitlement> LeaveEntitlements => Set<LeaveEntitlement>();
 
     // ---- Module Logistique ----
     public DbSet<EquipmentCatalog> EquipmentCatalog => Set<EquipmentCatalog>();
@@ -63,6 +65,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     // ---- Module Fourrière ----
     public DbSet<ImpoundedVehicle> ImpoundedVehicles => Set<ImpoundedVehicle>();
+
+    // Force Kind=Utc on all DateTime values read from SQL Server.
+    // SQL Server datetime2 has no timezone info; EF Core returns Kind=Unspecified,
+    // which causes .ToLocalTime() to skip conversion. This converter fixes it globally.
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Properties<DateTime>()
+            .HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>()
+            .HaveConversion<UtcNullableDateTimeConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -248,3 +262,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         });
     }
 }
+
+/// <summary>Ensures DateTime values read from SQL Server have Kind=Utc.</summary>
+internal sealed class UtcDateTimeConverter()
+    : ValueConverter<DateTime, DateTime>(
+        v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
+        v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+internal sealed class UtcNullableDateTimeConverter()
+    : ValueConverter<DateTime?, DateTime?>(
+        v => v == null ? v : v.Value.Kind == DateTimeKind.Utc ? v : v.Value.ToUniversalTime(),
+        v => v == null ? v : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc));

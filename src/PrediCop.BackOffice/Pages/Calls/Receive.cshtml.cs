@@ -125,6 +125,7 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
                 Input.IncidentLongitude,
                 Input.ThirdParties,
                 Input.InternalNotes,
+                Input.Priority,
                 Status = "Draft"
             };
 
@@ -153,6 +154,66 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
 
         await LoadTodayCallsAsync();
         return Page();
+    }
+
+    /// <summary>
+    /// Saves the current call directly to the logbook (Status="Closed") without creating a mission.
+    /// On success the operator is redirected back to this page so they can start a new call.
+    /// </summary>
+    public async Task<IActionResult> OnPostSaveLogbookAsync()
+    {
+        ViewData["ActiveCall"] = true;
+        ViewData["CallStartTime"] = DateTime.Now;
+
+        // Like the draft handler, we accept partial data — no full model validation
+        ModelState.Clear();
+
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+
+            var logbookBody = new
+            {
+                Input.CallerName,
+                Input.CallerPhone,
+                Input.IncidentCategory,
+                Input.IncidentDescription,
+                Input.IncidentAddress,
+                Input.IncidentAddressComplement,
+                Input.IncidentLatitude,
+                Input.IncidentLongitude,
+                Input.ThirdParties,
+                Input.InternalNotes,
+                Input.Priority,
+                Status = "Closed"
+            };
+
+            var callResponse = await client.PostAsJsonAsync("/api/calls", logbookBody);
+
+            if (!callResponse.IsSuccessStatusCode)
+            {
+                var body = await callResponse.Content.ReadAsStringAsync();
+                logger.LogWarning("Save logbook failed {Status}: {Body}", (int)callResponse.StatusCode, body);
+                TempData["DraftErrorMessage"] =
+                    $"Impossible d'enregistrer la main courante ({(int)callResponse.StatusCode}). Vérifiez que l'API est démarrée.";
+                await LoadTodayCallsAsync();
+                return Page();
+            }
+
+            var created = await callResponse.Content.ReadFromJsonAsync<CallDto>();
+            TempData["SuccessMessage"] =
+                $"Main courante enregistrée — Réf. {created?.Reference ?? "?"}.";
+
+            return RedirectToPage();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur lors de l'enregistrement de la main courante");
+            TempData["DraftErrorMessage"] =
+                "Impossible de joindre le serveur. Vérifiez que l'API est démarrée.";
+            await LoadTodayCallsAsync();
+            return Page();
+        }
     }
 
     public IActionResult OnPostCloseAsync()

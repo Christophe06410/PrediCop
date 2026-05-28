@@ -66,18 +66,18 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 small">
+                <table class="table table-hover align-middle mb-0 small" data-sortable>
                     <thead class="table-dark">
                         <tr>
-                            <th>Véhicule</th>
-                            <th>Agents</th>
-                            <th>Début vacation</th>
-                            <th>Fin vacation</th>
-                            <th class="text-center">Durée</th>
-                            <th class="text-center">Missions</th>
-                            <th class="text-center">Patrouilles</th>
-                            <th class="text-center">Km estimés</th>
-                            <th class="text-center">Statut</th>
+                            <th data-col="0">Véhicule</th>
+                            <th data-col="1">Agents</th>
+                            <th data-col="2">Début vacation</th>
+                            <th data-col="3">Fin vacation</th>
+                            <th class="text-center" data-col="4">Durée</th>
+                            <th class="text-center" data-col="5">Missions</th>
+                            <th class="text-center" data-col="6">Patrouilles</th>
+                            <th class="text-center" data-col="7">Km estimés</th>
+                            <th class="text-center" data-col="8">Statut</th>
                             <th class="text-end" style="width:90px">Actions</th>
                         </tr>
                     </thead>
@@ -88,9 +88,9 @@
                             <tr>
                                 <td class="fw-semibold">@r.VehicleCallSign</td>
                                 <td class="text-muted">@(string.IsNullOrEmpty(r.OfficerNames) ? "—" : r.OfficerNames)</td>
-                                <td>@r.ShiftStart.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@r.ShiftEnd.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="text-center">
+                                <td data-sort="@r.ShiftStart.ToString("yyyy-MM-ddTHH:mm:ss")">@r.ShiftStart.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td data-sort="@r.ShiftEnd.ToString("yyyy-MM-ddTHH:mm:ss")">@r.ShiftEnd.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-center" data-sort="@((int)dur.TotalMinutes)">
                                     @((int)dur.TotalHours)h@dur.Minutes.ToString("D2")
                                 </td>
                                 <td class="text-center">

@@ -41,12 +41,12 @@
                     {
                         <tr>
                             <td class="fw-bold fs-6">
-                                <i class="fa-solid fa-car me-2 text-secondary"></i>@v.CallSign
+                                <i class="fa-solid fa-car me-2 text-secondary"></i>
+                                <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@v.Id" class="text-decoration-none fw-bold">@v.CallSign</a>
                             </td>
                             <td class="font-monospace">@v.LicensePlate</td>
                             <td>
-                                @{ ViewData["Status"] = v.Status; }
-                                @await Html.PartialAsync("_StatusBadge")
+                                @await Html.PartialAsync("_StatusBadge", (object)v.Status)
                             </td>
                             <td>
                                 @if (v.OfficerNames.Any())

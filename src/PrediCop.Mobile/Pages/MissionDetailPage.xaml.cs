@@ -158,13 +158,21 @@ public partial class MissionDetailPage : ContentPage
         _vm.CompletionReport = mission.CompletionReport ?? "";
         _vm.HasCompletionReport = !string.IsNullOrEmpty(mission.CompletionReport);
 
+        _vm.CallerName = mission.CallerName ?? "";
+        _vm.CallerPhone = mission.CallerPhone ?? "";
+        _vm.IncidentCategory = mission.IncidentCategory ?? "";
+        _vm.IncidentAddressComplement = mission.IncidentAddressComplement ?? "";
+        _vm.CallNotes = mission.CallNotes ?? "";
+        _vm.ThirdParties = mission.ThirdParties ?? "";
+        _vm.ShowEditReport = mission.Status == "Completed";
+        if (_vm.ShowEditReport)
+            EditReportEditor.Text = mission.CompletionReport ?? "";
+
         _vm.Priority = mission.Priority;
 
         (_vm.StatusText, _vm.StatusColor) = mission.Status switch
         {
             "Pending"    => ("En attente",  Color.FromArgb("#f59e0b")),
-            "Proposed"   => ("Proposée",    Color.FromArgb("#f59e0b")),
-            "Accepted"   => ("Acceptée",    Color.FromArgb("#22c55e")),
             "InProgress" => ("En cours",    Color.FromArgb("#3b82f6")),
             "Completed"  => ("Terminée",    Color.FromArgb("#6b7280")),
             "Cancelled"  => ("Annulée",     Color.FromArgb("#ef4444")),
@@ -175,7 +183,7 @@ public partial class MissionDetailPage : ContentPage
             .FirstOrDefault(a => a.Status is "Proposed" or "Pending");
         _vm.AssignmentId = pending?.Id;
         _vm.ShowAcceptRefuse = pending != null;
-        _vm.ShowComplete = mission.Status is "Accepted" or "InProgress";
+        _vm.ShowComplete = mission.Status is "InProgress";
 
         _vm.Intervenants = new ObservableCollection<IntervenantVm>(
             (mission.Intervenants ?? [])
@@ -246,8 +254,8 @@ public partial class MissionDetailPage : ContentPage
                 $"api/missions/{_missionId}/assignments/{_vm.AssignmentId}/accept", null);
             _vm.ShowAcceptRefuse = false;
             _vm.ShowComplete = true;
-            _vm.StatusText = "Acceptée";
-            _vm.StatusColor = Color.FromArgb("#22c55e");
+            _vm.StatusText = "En cours";
+            _vm.StatusColor = Color.FromArgb("#3b82f6");
         }
         catch { await DisplayAlert("Erreur", "Impossible d'accepter la mission.", "OK"); }
     }
@@ -326,6 +334,28 @@ public partial class MissionDetailPage : ContentPage
         catch { await DisplayAlert("Erreur", "Impossible de terminer la mission.", "OK"); }
     }
 
+    private void OnCallPhone(object sender, EventArgs e)
+    {
+        var phone = _vm.CallerPhone;
+        if (string.IsNullOrWhiteSpace(phone)) return;
+        try { PhoneDialer.Default.Open(phone); }
+        catch { /* plateforme non supportée */ }
+    }
+
+    private async void OnSaveReport(object sender, EventArgs e)
+    {
+        var report = EditReportEditor.Text ?? "";
+        try
+        {
+            await _api.PutAsync<object>($"api/missions/{_missionId}",
+                new { completionReport = report });
+            _vm.CompletionReport = report;
+            _vm.HasCompletionReport = !string.IsNullOrEmpty(report);
+            await DisplayAlert("Enregistré", "Le rapport a été mis à jour.", "OK");
+        }
+        catch { await DisplayAlert("Erreur", "Impossible d'enregistrer le rapport.", "OK"); }
+    }
+
     private static string RefusalCodeToLabel(string? code) => code switch
     {
         "VehicleBroken"    => "Véhicule en panne",
@@ -370,6 +400,13 @@ public partial class MissionDetailPage : ContentPage
         public string Priority { get; set; } = "Routine";
         public List<AssignmentDetailDto>? Assignments { get; set; }
         public List<IntervenantDetailDto>? Intervenants { get; set; }
+        // Données de l'appel source
+        public string? CallerName { get; set; }
+        public string? CallerPhone { get; set; }
+        public string? IncidentCategory { get; set; }
+        public string? IncidentAddressComplement { get; set; }
+        public string? CallNotes { get; set; }
+        public string? ThirdParties { get; set; }
     }
 
     private class AssignmentDetailDto

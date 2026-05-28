@@ -4,11 +4,13 @@ namespace PrediCop.Core.DTOs;
 
 public class CreateCallRequest
 {
-    public string CallerName { get; set; } = string.Empty;
-    public string CallerPhone { get; set; } = string.Empty;
-    public string IncidentDescription { get; set; } = string.Empty;
-    public string IncidentCategory { get; set; } = string.Empty;
-    public string IncidentAddress { get; set; } = string.Empty;
+    // All string fields are nullable so partial logbook entries (without full caller details)
+    // don't fail API model validation when the operator saves a quick logbook note.
+    public string? CallerName { get; set; }
+    public string? CallerPhone { get; set; }
+    public string? IncidentDescription { get; set; }
+    public string? IncidentCategory { get; set; }
+    public string? IncidentAddress { get; set; }
     public string? IncidentAddressComplement { get; set; }
     public double? IncidentLatitude { get; set; }
     public double? IncidentLongitude { get; set; }
@@ -16,6 +18,8 @@ public class CreateCallRequest
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
     public CallPriority Priority { get; set; } = CallPriority.Routine;
+    /// <summary>Null = defaults to Open. Pass Closed for logbook-only entries, Draft for drafts.</summary>
+    public CallStatus? Status { get; set; }
 }
 
 public class UpdateCallRequest

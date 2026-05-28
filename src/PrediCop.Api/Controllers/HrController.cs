@@ -21,7 +21,7 @@ public class HrController(AppDbContext db) : ControllerBase
     private async Task<bool> IsModuleEnabledAsync(CancellationToken ct)
     {
         var tenant = await GetTenantAsync(ct);
-        return tenant?.ModuleRhEnabled ?? false;
+        return tenant?.ModulePlanningEnabled ?? false;
     }
 
     // -------- Agent Profiles --------
@@ -32,15 +32,12 @@ public class HrController(AppDbContext db) : ControllerBase
         if (!await IsModuleEnabledAsync(ct))
             return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
 
-        var tenant = await GetTenantAsync(ct);
-        var bloodTypeEnabled = tenant?.AgentBloodTypeEnabled ?? false;
-
         var profiles = await db.Set<AgentProfile>()
             .Include(p => p.Agent)
             .Where(p => p.TenantId == TenantId)
             .ToListAsync(ct);
 
-        return Ok(profiles.Select(p => MapProfileToResponse(p, bloodTypeEnabled)).ToList());
+        return Ok(profiles.Select(MapProfileToResponse).ToList());
     }
 
     [HttpGet("profiles/{agentId:guid}")]
@@ -49,9 +46,6 @@ public class HrController(AppDbContext db) : ControllerBase
         if (!await IsModuleEnabledAsync(ct))
             return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
 
-        var tenant = await GetTenantAsync(ct);
-        var bloodTypeEnabled = tenant?.AgentBloodTypeEnabled ?? false;
-
         var profile = await db.Set<AgentProfile>()
             .Include(p => p.Agent)
             .FirstOrDefaultAsync(p => p.AgentId == agentId && p.TenantId == TenantId, ct);
@@ -59,7 +53,7 @@ public class HrController(AppDbContext db) : ControllerBase
         if (profile is null)
             return Problem(title: "Profil agent non trouvé", statusCode: 404);
 
-        return Ok(MapProfileToResponse(profile, bloodTypeEnabled));
+        return Ok(MapProfileToResponse(profile));
     }
 
     [HttpPost("profiles/{agentId:guid}")]
@@ -89,7 +83,6 @@ public class HrController(AppDbContext db) : ControllerBase
             db.Set<AgentProfile>().Add(profile);
         }
 
-        profile.BloodType = request.BloodType;
         profile.EmergencyContact1Name = request.EmergencyContact1Name;
         profile.EmergencyContact1Phone = request.EmergencyContact1Phone;
         profile.EmergencyContact1Relationship = request.EmergencyContact1Relationship;
@@ -271,6 +264,60 @@ public class HrController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    // -------- Vehicles Occupancy --------
+
+    [HttpGet("vehicles/occupancy")]
+    public async Task<ActionResult<List<VehicleOccupancyResponse>>> GetVehicleOccupancy(
+        [FromQuery] string? date,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        DateOnly targetDate;
+        if (!DateOnly.TryParse(date, out targetDate))
+            targetDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Charger tous les véhicules du tenant
+        var vehicles = await db.PatrolVehicles
+            .Where(v => v.TenantId == TenantId)
+            .OrderBy(v => v.CallSign)
+            .ToListAsync(ct);
+
+        if (vehicles.Count == 0)
+            return Ok(new List<VehicleOccupancyResponse>());
+
+        var vehicleIds = vehicles.Select(v => v.Id).ToList();
+
+        // Charger les créneaux pour cette date, groupés par VehicleId
+        var shifts = await db.Set<ShiftSchedule>()
+            .Include(s => s.Agent)
+            .Where(s => s.TenantId == TenantId
+                     && s.Date == targetDate
+                     && s.VehicleId.HasValue
+                     && vehicleIds.Contains(s.VehicleId!.Value))
+            .ToListAsync(ct);
+
+        var shiftsByVehicle = shifts
+            .GroupBy(s => s.VehicleId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var result = vehicles.Select(v =>
+        {
+            shiftsByVehicle.TryGetValue(v.Id, out var vehicleShifts);
+            var agents = vehicleShifts?.Select(s => s.Agent?.FullName ?? "Agent inconnu").ToList()
+                         ?? [];
+            return new VehicleOccupancyResponse(
+                v.Id,
+                v.CallSign,
+                v.Capacity,
+                agents.Count,
+                agents);
+        }).ToList();
+
+        return Ok(result);
+    }
+
     // -------- Schedules --------
 
     [HttpGet("schedules")]
@@ -363,6 +410,183 @@ public class HrController(AppDbContext db) : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Import créneaux depuis un fichier CSV.
+    /// Format attendu (séparateur virgule ou point-virgule) :
+    ///   Matricule,Nom,Prénom,Date,HeureDebut,HeureFin[,Véhicule][,Notes][,Publié]
+    /// La colonne Matricule (BadgeNumber) est utilisée en priorité pour identifier l'agent.
+    /// Si le matricule n'est pas trouvé, on tente un match Nom+Prénom (case-insensitive, trim).
+    /// Si 0 ou 2+ agents correspondent → ligne en erreur.
+    /// </summary>
+    [HttpPost("schedules/import-csv")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<CsvImportResult>> ImportSchedulesCsv(
+        IFormFile file,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        if (file is null || file.Length == 0)
+            return BadRequest("Aucun fichier fourni.");
+
+        // Charger tous les agents du tenant en mémoire pour matcher efficacement
+        var agents = await db.Users
+            .Where(u => u.TenantId == TenantId && u.IsActive)
+            .ToListAsync(ct);
+
+        var errors = new List<CsvImportError>();
+        int imported = 0;
+        int skipped = 0;
+
+        using var reader = new System.IO.StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
+        int lineNumber = 0;
+        string? line;
+
+        while ((line = await reader.ReadLineAsync(ct)) is not null)
+        {
+            lineNumber++;
+
+            // Ignorer les lignes vides et l'en-tête
+            if (string.IsNullOrWhiteSpace(line)) { skipped++; continue; }
+
+            // Détecter le séparateur : virgule ou point-virgule
+            var sep = line.Contains(';') ? ';' : ',';
+            var cols = line.Split(sep);
+
+            // Ignorer si ressemble à un en-tête (première colonne non numérique et non un matricule connu)
+            if (lineNumber == 1)
+            {
+                var firstCol = cols[0].Trim().ToUpperInvariant();
+                if (firstCol is "MATRICULE" or "BADGENUMBER" or "N°" or "NUMERO" or "N" or "ID")
+                { skipped++; continue; }
+            }
+
+            if (cols.Length < 5)
+            {
+                errors.Add(new CsvImportError(lineNumber, line,
+                    "Ligne malformée : au moins 5 colonnes requises (Matricule, Nom, Prénom, Date, HeureDebut, HeureFin)."));
+                continue;
+            }
+
+            var badge  = cols[0].Trim();
+            var nom    = cols[1].Trim();
+            var prenom = cols[2].Trim();
+            var dateStr  = cols[3].Trim();
+            var startStr = cols[4].Trim();
+            var endStr   = cols.Length > 5 ? cols[5].Trim() : string.Empty;
+
+            // Résolution de l'agent
+            User? agent = null;
+
+            // 1) Par matricule
+            if (!string.IsNullOrEmpty(badge))
+            {
+                agent = agents.FirstOrDefault(a =>
+                    string.Equals(a.BadgeNumber, badge, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 2) Fallback : Nom + Prénom
+            if (agent is null)
+            {
+                var candidates = agents
+                    .Where(a =>
+                        string.Equals(a.LastName.Trim(), nom, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(a.FirstName.Trim(), prenom, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (candidates.Count == 0)
+                {
+                    errors.Add(new CsvImportError(lineNumber, line,
+                        $"Agent introuvable par matricule ni par nom/prénom ({nom} {prenom})."));
+                    continue;
+                }
+
+                if (candidates.Count > 1)
+                {
+                    errors.Add(new CsvImportError(lineNumber, line,
+                        $"Homonymes détectés pour {nom} {prenom} ({candidates.Count} agents). Utilisez le matricule."));
+                    continue;
+                }
+
+                agent = candidates[0];
+            }
+
+            // Validation date / heures
+            if (!DateOnly.TryParse(dateStr, out var date))
+            {
+                errors.Add(new CsvImportError(lineNumber, line, $"Date invalide : \"{dateStr}\"."));
+                continue;
+            }
+
+            if (!TimeOnly.TryParse(startStr, out var shiftStart))
+            {
+                errors.Add(new CsvImportError(lineNumber, line, $"Heure de début invalide : \"{startStr}\"."));
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(endStr) || !TimeOnly.TryParse(endStr, out var shiftEnd))
+            {
+                errors.Add(new CsvImportError(lineNumber, line, $"Heure de fin invalide : \"{endStr}\"."));
+                continue;
+            }
+
+            // Colonnes optionnelles
+            var vehicleCallSign = cols.Length > 6 ? cols[6].Trim() : null;
+            var notes = cols.Length > 7 ? cols[7].Trim() : null;
+            var isPublished = cols.Length > 8 && cols[8].Trim() is "1" or "true" or "oui" or "yes";
+
+            // Résolution véhicule (optionnel)
+            Guid? vehicleId = null;
+            if (!string.IsNullOrEmpty(vehicleCallSign))
+            {
+                var vehicle = await db.PatrolVehicles
+                    .Where(v => v.TenantId == TenantId &&
+                                EF.Functions.Like(v.CallSign, vehicleCallSign))
+                    .FirstOrDefaultAsync(ct);
+                vehicleId = vehicle?.Id;
+            }
+
+            // Upsert créneau
+            var existing = await db.Set<ShiftSchedule>()
+                .FirstOrDefaultAsync(s =>
+                    s.AgentId == agent.Id &&
+                    s.Date == date &&
+                    s.TenantId == TenantId, ct);
+
+            if (existing is not null)
+            {
+                existing.VehicleId  = vehicleId;
+                existing.ShiftStart = shiftStart;
+                existing.ShiftEnd   = shiftEnd;
+                existing.IsPublished = isPublished;
+                existing.Notes      = string.IsNullOrEmpty(notes) ? existing.Notes : notes;
+                existing.UpdatedAt  = DateTime.UtcNow;
+            }
+            else
+            {
+                db.Set<ShiftSchedule>().Add(new ShiftSchedule
+                {
+                    TenantId    = TenantId,
+                    AgentId     = agent.Id,
+                    VehicleId   = vehicleId,
+                    Date        = date,
+                    ShiftStart  = shiftStart,
+                    ShiftEnd    = shiftEnd,
+                    IsPublished = isPublished,
+                    Notes       = string.IsNullOrEmpty(notes) ? null : notes
+                });
+            }
+
+            imported++;
+        }
+
+        if (imported > 0)
+            await db.SaveChangesAsync(ct);
+
+        return Ok(new CsvImportResult(imported, skipped, errors));
+    }
+
     [HttpDelete("schedules/{id:guid}")]
     public async Task<IActionResult> DeleteSchedule(Guid id, CancellationToken ct)
     {
@@ -382,14 +606,132 @@ public class HrController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    // -------- Entitlements --------
+
+    [HttpGet("entitlements")]
+    public async Task<ActionResult<List<LeaveEntitlementResponse>>> GetEntitlements(
+        [FromQuery] Guid? agentId,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        var query = db.LeaveEntitlements
+            .Include(e => e.Agent)
+            .Where(e => e.TenantId == TenantId);
+
+        if (agentId.HasValue)
+            query = query.Where(e => e.AgentId == agentId.Value);
+
+        var entitlements = await query
+            .OrderBy(e => e.Agent.LastName)
+            .ThenBy(e => e.Type)
+            .ToListAsync(ct);
+
+        // Charger les congés approuvés pour calculer UsedDays
+        var agentIds = entitlements.Select(e => e.AgentId).Distinct().ToList();
+        var approvedLeaves = await db.Leaves
+            .Where(l => l.TenantId == TenantId
+                     && l.Status == LeaveStatus.Approved
+                     && agentIds.Contains(l.AgentId))
+            .ToListAsync(ct);
+
+        return Ok(entitlements.Select(e => MapEntitlementToResponse(e, approvedLeaves)).ToList());
+    }
+
+    [HttpPost("entitlements")]
+    public async Task<ActionResult<LeaveEntitlementResponse>> CreateEntitlement(
+        [FromBody] CreateLeaveEntitlementRequest request,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        var agent = await db.Users.FirstOrDefaultAsync(u => u.Id == request.AgentId && u.TenantId == TenantId, ct);
+        if (agent is null)
+            return Problem(title: "Agent non trouvé", statusCode: 404);
+
+        var entitlement = new LeaveEntitlement
+        {
+            TenantId = TenantId,
+            AgentId = request.AgentId,
+            Agent = agent,
+            Type = request.Type,
+            TotalDays = request.TotalDays,
+            ValidFrom = request.ValidFrom,
+            ValidTo = request.ValidTo
+        };
+
+        db.LeaveEntitlements.Add(entitlement);
+        await db.SaveChangesAsync(ct);
+
+        var approvedLeaves = await db.Leaves
+            .Where(l => l.TenantId == TenantId
+                     && l.Status == LeaveStatus.Approved
+                     && l.AgentId == entitlement.AgentId)
+            .ToListAsync(ct);
+
+        return Ok(MapEntitlementToResponse(entitlement, approvedLeaves));
+    }
+
+    [HttpPut("entitlements/{id:guid}")]
+    public async Task<ActionResult<LeaveEntitlementResponse>> UpdateEntitlement(
+        Guid id,
+        [FromBody] UpdateLeaveEntitlementRequest request,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        var entitlement = await db.LeaveEntitlements
+            .Include(e => e.Agent)
+            .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == TenantId, ct);
+
+        if (entitlement is null)
+            return Problem(title: "Droit non trouvé", statusCode: 404);
+
+        entitlement.TotalDays = request.TotalDays;
+        entitlement.ValidFrom = request.ValidFrom;
+        entitlement.ValidTo = request.ValidTo;
+        entitlement.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+
+        var approvedLeaves = await db.Leaves
+            .Where(l => l.TenantId == TenantId
+                     && l.Status == LeaveStatus.Approved
+                     && l.AgentId == entitlement.AgentId)
+            .ToListAsync(ct);
+
+        return Ok(MapEntitlementToResponse(entitlement, approvedLeaves));
+    }
+
+    [HttpDelete("entitlements/{id:guid}")]
+    public async Task<IActionResult> DeleteEntitlement(Guid id, CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        var entitlement = await db.LeaveEntitlements
+            .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == TenantId, ct);
+
+        if (entitlement is null)
+            return Problem(title: "Droit non trouvé", statusCode: 404);
+
+        entitlement.IsDeleted = true;
+        entitlement.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
     // -------- Mappers --------
 
-    private static AgentProfileResponse MapProfileToResponse(AgentProfile p, bool bloodTypeEnabled = true) => new(
+    private static AgentProfileResponse MapProfileToResponse(AgentProfile p) => new(
         p.Id,
         p.AgentId,
         p.Agent?.FullName ?? string.Empty,
         p.Agent?.BadgeNumber ?? string.Empty,
-        bloodTypeEnabled ? p.BloodType : null,
         p.EmergencyContact1Name,
         p.EmergencyContact1Phone,
         p.EmergencyContact1Relationship,
@@ -424,4 +766,29 @@ public class HrController(AppDbContext db) : ControllerBase
         s.ShiftEnd,
         s.IsPublished,
         s.Notes);
+
+    private static LeaveEntitlementResponse MapEntitlementToResponse(
+        LeaveEntitlement e,
+        List<Leave> allApprovedLeaves)
+    {
+        var usedDays = allApprovedLeaves
+            .Where(l => l.AgentId == e.AgentId
+                     && l.Type == e.Type
+                     && l.StartDate >= e.ValidFrom
+                     && l.EndDate <= e.ValidTo)
+            .Sum(l => (decimal)(l.EndDate.DayNumber - l.StartDate.DayNumber + 1));
+
+        var remaining = Math.Max(0, e.TotalDays - usedDays);
+
+        return new LeaveEntitlementResponse(
+            e.Id,
+            e.AgentId,
+            e.Agent?.FullName ?? string.Empty,
+            e.Type,
+            e.TotalDays,
+            usedDays,
+            remaining,
+            e.ValidFrom,
+            e.ValidTo);
+    }
 }

@@ -50,7 +50,7 @@ public class MissionAlertBackgroundService(
         // Missions Pending ou Proposed depuis plus de AlertThresholdMinutes minutes
         var pendingMissions = await db.Missions
             .Include(m => m.Assignments)
-            .Where(m => (m.Status == MissionStatus.Pending || m.Status == MissionStatus.Proposed)
+            .Where(m => m.Status == MissionStatus.Pending
                         && m.CreatedAt < threshold)
             .ToListAsync(ct);
 

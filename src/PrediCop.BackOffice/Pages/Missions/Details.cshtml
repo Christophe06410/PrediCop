@@ -43,8 +43,7 @@
                             <i class="fa-solid fa-car-side me-2 text-success"></i>@mission.Reference
                         </h5>
                         <div class="d-flex gap-2 align-items-center flex-wrap">
-                            @{ ViewData["Status"] = mission.Status; }
-                            @await Html.PartialAsync("_StatusBadge")
+                            @await Html.PartialAsync("_StatusBadge", (object)mission.Status)
                             @{
                                 var (detPrioBadge, detPrioIcon, detPrioLabel) = mission.Priority switch
                                 {
@@ -79,9 +78,21 @@
                     <div class="col-md-6 text-md-end mt-2 mt-md-0 d-flex gap-2 justify-content-end align-items-center flex-wrap">
                         @if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
                         {
-                            <span class="badge bg-dark fs-6 py-2 px-3">
-                                <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
-                            </span>
+                            var assignedVehicleId = mission.Assignments
+                                .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                            if (assignedVehicleId.HasValue)
+                            {
+                                <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@assignedVehicleId"
+                                   class="badge bg-dark fs-6 py-2 px-3 text-decoration-none">
+                                    <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge bg-dark fs-6 py-2 px-3">
+                                    <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
+                                </span>
+                            }
                         }
                         @if (mission.Status is "Pending" or "Proposed")
                         {
@@ -134,10 +145,11 @@
                                 @foreach (var sib in mission.SiblingMissions.OrderByDescending(s => s.CreatedAt))
                                 {
                                     <tr>
-                                        <td class="fw-semibold">@sib.Reference</td>
+                                        <td class="fw-semibold">
+                                            <a asp-page="/Missions/Details" asp-route-id="@sib.Id" class="text-decoration-none fw-semibold">@sib.Reference</a>
+                                        </td>
                                         <td>
-                                            @{ ViewData["Status"] = sib.Status; }
-                                            @await Html.PartialAsync("_StatusBadge")
+                                            @await Html.PartialAsync("_StatusBadge", (object)sib.Status)
                                         </td>
                                         <td>
                                             @if (!string.IsNullOrEmpty(sib.AssignedVehicleCallSign))
@@ -192,6 +204,12 @@
                             <span class="badge bg-primary fs-6">
                                 <i class="fa-solid fa-route me-1"></i>@Model.DistanceKm.Value.ToString("F1") km
                             </span>
+                            @if (Model.EtaMinutes.HasValue)
+                            {
+                                <span class="badge bg-secondary fs-6 ms-1">
+                                    <i class="fa-solid fa-clock me-1"></i>≈ @((int)Model.EtaMinutes.Value) min
+                                </span>
+                            }
                             <small class="text-muted ms-1">jusqu'à la cible</small>
                         </dd>
                     }
@@ -199,6 +217,19 @@
                     {
                         <dt class="col-sm-4 text-muted">Distance véhicule</dt>
                         <dd class="col-sm-8 text-muted small">Position GPS non disponible</dd>
+                    }
+
+                    @if (Model.AssignedVehicleOfficerNames.Any())
+                    {
+                        <dt class="col-sm-4 text-muted">Équipage</dt>
+                        <dd class="col-sm-8">
+                            @foreach (var name in Model.AssignedVehicleOfficerNames)
+                            {
+                                <span class="badge bg-dark me-1">
+                                    <i class="fa-solid fa-user-shield me-1"></i>@name
+                                </span>
+                            }
+                        </dd>
                     }
 
                     <dt class="col-sm-4 text-muted">Briefing</dt>
@@ -443,17 +474,28 @@
                 </h6>
                 <label class="btn btn-sm btn-outline-success mb-0" style="cursor:pointer">
                     <i class="fa-solid fa-upload me-1"></i>Ajouter
-                    <input type="file" id="mediaFileInput" accept="image/*,video/*" multiple class="d-none"
+                    <input type="file" id="mediaFileInput" accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple class="d-none"
                            onchange="uploadMedia('@mission.Id', this)" />
                 </label>
             </div>
             <div class="card-body">
                 <div id="upload-progress" class="d-none mb-3">
-                    <div class="progress" style="height:6px">
-                        <div id="upload-bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width:0%"></div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted" id="upload-status">Envoi en cours...</small>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" id="upload-cancel"
+                                title="Annuler l'envoi">
+                            <i class="fa-solid fa-xmark me-1"></i>Annuler
+                        </button>
                     </div>
-                    <small class="text-muted" id="upload-status">Envoi en cours...</small>
+                    <div class="progress" style="height:14px">
+                        <div id="upload-bar"
+                             class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             style="width:0%"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
                 </div>
+                <div id="upload-alert-zone"></div>
 
                 <div class="row g-2" id="media-gallery">
                     @foreach (var m in mission.Media)
@@ -544,7 +586,7 @@
                                                 <div>
                                                     <strong class="d-block">
                                                         <span class="badge bg-secondary me-1">#@a.ProposalOrder</span>
-                                                        Véhicule @a.VehicleCallSign
+                                                        Véhicule <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@a.VehicleId" class="text-decoration-none">@a.VehicleCallSign</a>
                                                     </strong>
                                                     <small class="text-muted">
                                                         Proposé à @a.ProposedAt.ToLocalTime().ToString("HH:mm:ss")
@@ -559,8 +601,7 @@
                                                     }
                                                 </div>
                                                 <div class="text-end">
-                                                    @{ ViewData["Status"] = a.Status; }
-                                                    @await Html.PartialAsync("_StatusBadge")
+                                                    @await Html.PartialAsync("_StatusBadge", (object)a.Status)
                                                     @if (a.RespondedAt.HasValue)
                                                     {
                                                         <div class="text-muted small mt-1">Répondu à @a.RespondedAt.Value.ToLocalTime().ToString("HH:mm:ss")</div>
@@ -686,28 +727,135 @@
     }
 
     // ---- Médias ----
-    async function uploadMedia(missionId, input) {
-        const files = input.files;
+    var _currentXhr = null; // handle courant pour l'annulation
+
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' o';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' Ko';
+        return (bytes / 1048576).toFixed(1) + ' Mo';
+    }
+
+    function showUploadAlert(type, html) {
+        var zone = document.getElementById('upload-alert-zone');
+        var div = document.createElement('div');
+        div.className = 'alert alert-' + type + ' alert-dismissible fade show small mt-2';
+        div.setAttribute('role', 'alert');
+        div.innerHTML = html + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        zone.appendChild(div);
+    }
+
+    function uploadMedia(missionId, input) {
+        var files = Array.from(input.files);
+        // Réinitialiser l'input pour permettre de re-sélectionner le même fichier
+        input.value = '';
         if (!files.length) return;
-        const progress = document.getElementById('upload-progress');
-        const bar = document.getElementById('upload-bar');
-        const status = document.getElementById('upload-status');
+
+        var progress = document.getElementById('upload-progress');
+        var bar = document.getElementById('upload-bar');
+        var status = document.getElementById('upload-status');
+        var cancelBtn = document.getElementById('upload-cancel');
+
         progress.classList.remove('d-none');
-        let done = 0;
-        for (const file of files) {
-            status.textContent = `Envoi : ${file.name}`;
-            const fd = new FormData();
+        bar.style.width = '0%';
+        bar.textContent = '0%';
+        bar.setAttribute('aria-valuenow', 0);
+
+        var fileIndex = 0;
+        var aborted = false;
+
+        function setProgress(pct) {
+            var p = Math.round(pct);
+            bar.style.width = p + '%';
+            bar.textContent = p + '%';
+            bar.setAttribute('aria-valuenow', p);
+        }
+
+        function uploadNext() {
+            if (aborted || fileIndex >= files.length) {
+                progress.classList.add('d-none');
+                cancelBtn.onclick = null;
+                if (!aborted) location.reload();
+                return;
+            }
+
+            var file = files[fileIndex];
+            var globalBase = (fileIndex / files.length) * 100;
+            var globalSlice = 100 / files.length;
+
+            status.innerHTML =
+                '<i class="fa-solid fa-spinner fa-spin me-1"></i>' +
+                '<strong>' + escHtml(file.name) + '</strong>' +
+                ' &mdash; ' + formatBytes(file.size) +
+                ' (' + (fileIndex + 1) + '/' + files.length + ')';
+
+            var fd = new FormData();
             fd.append('file', file);
             fd.append('missionId', missionId);
             fd.append('recordedAt', new Date().toISOString());
-            try {
-                const r = await fetch('/api/proxy/media', { method: 'POST', body: fd });
-                if (!r.ok) { alert(`Erreur upload ${file.name}`); }
-            } catch { alert(`Impossible d'envoyer ${file.name}`); }
-            done++;
-            bar.style.width = `${Math.round(done / files.length * 100)}%`;
+
+            var xhr = new XMLHttpRequest();
+            _currentXhr = xhr;
+
+            xhr.upload.addEventListener('progress', function (e) {
+                if (e.lengthComputable) {
+                    var filePct = (e.loaded / e.total) * globalSlice;
+                    setProgress(globalBase + filePct);
+                }
+            });
+
+            xhr.addEventListener('load', function () {
+                _currentXhr = null;
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    fileIndex++;
+                    setProgress(((fileIndex) / files.length) * 100);
+                    uploadNext();
+                } else {
+                    progress.classList.add('d-none');
+                    var msg = '';
+                    try { msg = JSON.parse(xhr.responseText).title || JSON.parse(xhr.responseText).detail || ''; } catch {}
+                    showUploadAlert('danger',
+                        '<i class="fa-solid fa-circle-exclamation me-1"></i>' +
+                        '<strong>Erreur lors de l\'envoi de « ' + escHtml(file.name) + ' »</strong>' +
+                        (msg ? ' : ' + escHtml(msg) : ' (code ' + xhr.status + ')'));
+                }
+            });
+
+            xhr.addEventListener('error', function () {
+                _currentXhr = null;
+                progress.classList.add('d-none');
+                showUploadAlert('danger',
+                    '<i class="fa-solid fa-circle-exclamation me-1"></i>' +
+                    'Impossible d\'envoyer <strong>' + escHtml(file.name) + '</strong>. Vérifiez votre connexion.');
+            });
+
+            xhr.addEventListener('abort', function () {
+                _currentXhr = null;
+                aborted = true;
+                progress.classList.add('d-none');
+                showUploadAlert('info',
+                    '<i class="fa-solid fa-circle-info me-1"></i>Upload annulé.');
+            });
+
+            xhr.open('POST', '/api/proxy/media');
+            xhr.send(fd);
         }
-        location.reload();
+
+        cancelBtn.onclick = function () {
+            if (_currentXhr) {
+                aborted = true;
+                _currentXhr.abort();
+            }
+        };
+
+        uploadNext();
+    }
+
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
 
     async function deleteMedia(mediaId) {
@@ -803,10 +951,11 @@
         // --- Ligne pointillée véhicule assigné → cible ---
         if (assignedVehicle && assignedVehicle.lastLatitude && assignedVehicle.lastLongitude) {
             var dist = @(Model.DistanceKm.HasValue ? Model.DistanceKm.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) : "null");
+            var etaMin = @(Model.EtaMinutes.HasValue ? ((int)Model.EtaMinutes.Value).ToString() : "null");
             L.polyline(
                 [[assignedVehicle.lastLatitude, assignedVehicle.lastLongitude], center],
                 { color: '#f59e0b', weight: 3, dashArray: '8 6', opacity: 0.9 }
-            ).bindPopup('Distance : <b>' + (dist !== null ? dist + ' km' : '?') + '</b>').addTo(map);
+            ).bindPopup('Distance : <b>' + (dist !== null ? dist + ' km' : '?') + '</b>' + (etaMin !== null ? ' — ETA : <b>≈ ' + etaMin + ' min</b>' : '')).addTo(map);
         }
 
         if (bounds.isValid() && bounds.getNorthEast().distanceTo(bounds.getSouthWest()) > 100)
@@ -847,8 +996,8 @@
                     body: JSON.stringify({ vehicleId: vehicleId })
                 });
                 if (r.ok) {
-                    bootstrap.Modal.getInstance(document.getElementById('force-assign-modal')).hide();
-                    location.reload();
+                    try { bootstrap.Modal.getInstance(document.getElementById('force-assign-modal'))?.hide(); } catch {}
+                    setTimeout(function () { location.reload(); }, 300);
                 } else {
                     var err = await r.json().catch(() => ({}));
                     alert('Erreur : ' + (err.title || err.detail || r.status));

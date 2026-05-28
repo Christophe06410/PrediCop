@@ -1,0 +1,248 @@
+@page
+@model PrediCop.BackOffice.Pages.Planning.MesCongesModel
+@using PrediCop.Core.Enums
+@{
+    ViewData["Title"] = "Mes Congés";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-umbrella-beach me-2 text-primary"></i>Mes Congés
+    </h4>
+    @if (Model.ModuleDisabledMessage is null)
+    {
+        <button type="button" class="btn btn-success btn-sm"
+                data-bs-toggle="modal" data-bs-target="#newRequestModal">
+            <i class="fa-solid fa-plus me-1"></i>Nouvelle demande
+        </button>
+    }
+</div>
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i>@successMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMsg)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>@errorMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (Model.ModuleDisabledMessage is not null)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="fa-solid fa-circle-info me-2"></i>@Model.ModuleDisabledMessage
+    </div>
+}
+else
+{
+    <!-- Soldes -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-chart-pie me-2 text-info"></i>Mes soldes</h6>
+        </div>
+        <div class="card-body">
+            @if (!Model.Balances.Any())
+            {
+                <p class="text-muted mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Aucun droit à congés configuré pour votre compte. Contactez votre responsable.
+                </p>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var b in Model.Balances)
+                    {
+                        var pct = b.TotalDays > 0 ? (double)b.UsedDays / (double)b.TotalDays * 100 : 0;
+                        var barClass = b.RemainingDays <= 0 ? "bg-danger" : b.RemainingDays < 3 ? "bg-warning" : "bg-success";
+                        <div class="col-sm-6 col-lg-4">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold small">@Model.GetLeaveTypeLabel(b.Type)</span>
+                                        <span class="badge bg-secondary">@b.ValidFrom.ToString("dd/MM/yy") – @b.ValidTo.ToString("dd/MM/yy")</span>
+                                    </div>
+                                    <div class="fs-4 fw-bold text-@(b.RemainingDays <= 0 ? "danger" : "success")">
+                                        @b.RemainingDays.ToString("0.#") j
+                                        <small class="fs-6 fw-normal text-muted">restants</small>
+                                    </div>
+                                    <div class="progress mt-2" style="height:6px">
+                                        <div class="progress-bar @barClass" role="progressbar"
+                                             style="width:@pct.ToString("0")%"></div>
+                                    </div>
+                                    <small class="text-muted">@b.UsedDays.ToString("0.#") / @b.TotalDays.ToString("0.#") jours utilisés</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Mes demandes -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h6 class="mb-0 fw-bold"><i class="fa-solid fa-list-check me-2 text-primary"></i>Mes demandes</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Type</th>
+                            <th>Du</th>
+                            <th>Au</th>
+                            <th>Durée</th>
+                            <th>Statut</th>
+                            <th>Demandé le</th>
+                            <th>Notes / Motif refus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var leave in Model.Leaves)
+                        {
+                            var duration = leave.EndDate.DayNumber - leave.StartDate.DayNumber + 1;
+                            <tr>
+                                <td>@Model.GetLeaveTypeLabel(leave.Type)</td>
+                                <td class="text-nowrap">@leave.StartDate.ToString("dd/MM/yyyy")</td>
+                                <td class="text-nowrap">@leave.EndDate.ToString("dd/MM/yyyy")</td>
+                                <td>@duration j</td>
+                                <td>
+                                    <span class="badge @Model.GetLeaveStatusBadgeClass(leave.Status)">
+                                        @(leave.Status switch {
+                                            LeaveStatus.Pending => "En attente",
+                                            LeaveStatus.Approved => "Approuvé",
+                                            LeaveStatus.Rejected => "Refusé",
+                                            _ => leave.Status.ToString()
+                                        })
+                                    </span>
+                                </td>
+                                <td class="text-nowrap small text-muted">
+                                    @leave.RequestedAt.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="small">
+                                    @if (!string.IsNullOrEmpty(leave.Notes))
+                                    {
+                                        <span class="text-muted">@leave.Notes</span>
+                                    }
+                                    @if (leave.Status == LeaveStatus.Rejected && !string.IsNullOrEmpty(leave.RejectionReason))
+                                    {
+                                        <span class="text-danger"><i class="fa-solid fa-xmark me-1"></i>@leave.RejectionReason</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Leaves.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                    Aucune demande de congé. Cliquez sur "Nouvelle demande" pour commencer.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal nouvelle demande -->
+    <div class="modal fade" id="newRequestModal" tabindex="-1" aria-labelledby="newRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="CreateRequest">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="newRequestModalLabel">
+                            <i class="fa-solid fa-umbrella-beach me-2 text-success"></i>Nouvelle demande de congé
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Type de congé <span class="text-danger">*</span></label>
+                            <select name="leaveType" id="selfLeaveType" class="form-select" required>
+                                <option value="CongesPayes">Congés payés</option>
+                                <option value="RTT">RTT</option>
+                                <option value="Maladie">Maladie</option>
+                                <option value="Formation">Formation</option>
+                                <option value="RecupHeure">Récup. heures</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                            <div id="selfBalanceHint" class="form-text"></div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label fw-semibold">Du <span class="text-danger">*</span></label>
+                                <input type="date" name="startDate" class="form-control" required />
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-semibold">Au <span class="text-danger">*</span></label>
+                                <input type="date" name="endDate" class="form-control" required />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Notes</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Optionnel"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="fa-solid fa-paper-plane me-1"></i>Soumettre
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        const myBalances = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Balances.Select(b => new {
+                type = b.Type.ToString(),
+                totalDays = b.TotalDays,
+                usedDays = b.UsedDays,
+                remainingDays = b.RemainingDays
+            }).ToList()
+        ));
+
+        function updateSelfBalanceHint() {
+            const leaveType = document.getElementById('selfLeaveType')?.value;
+            const hint = document.getElementById('selfBalanceHint');
+            if (!hint) return;
+
+            if (!leaveType) { hint.textContent = ''; return; }
+            if (leaveType === 'Maladie') {
+                hint.innerHTML = '<span class="text-info"><i class="fa-solid fa-infinity me-1"></i>Maladie : illimité</span>';
+                return;
+            }
+
+            const b = myBalances.find(x => x.type === leaveType);
+            if (!b) {
+                hint.innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>Aucun droit défini pour ce type</span>';
+                return;
+            }
+
+            const color = b.remainingDays <= 0 ? 'danger' : b.remainingDays < 3 ? 'warning' : 'success';
+            hint.innerHTML = `<span class="text-${color}"><i class="fa-solid fa-circle-check me-1"></i>Solde : ${b.remainingDays.toFixed(1)} / ${b.totalDays.toFixed(1)} jours restants</span>`;
+        }
+
+        const selfTypeSelect = document.getElementById('selfLeaveType');
+        if (selfTypeSelect) {
+            selfTypeSelect.addEventListener('change', updateSelfBalanceHint);
+            updateSelfBalanceHint();
+        }
+    </script>
+}

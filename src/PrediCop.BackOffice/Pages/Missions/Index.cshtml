@@ -30,16 +30,16 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="active-missions-table">
+            <table class="table table-hover align-middle mb-0" id="active-missions-table" data-sortable>
                 <thead class="table-light">
                     <tr>
-                        <th>Priorité</th>
-                        <th>Référence</th>
-                        <th>Statut</th>
-                        <th>Adresse cible</th>
-                        <th>Véhicule assigné</th>
-                        <th>Créée le</th>
-                        <th>Durée</th>
+                        <th data-col="0">Priorité</th>
+                        <th data-col="1">Référence</th>
+                        <th data-col="2">Statut</th>
+                        <th data-col="3">Adresse cible</th>
+                        <th data-col="4">Véhicule assigné</th>
+                        <th data-col="5">Créée le</th>
+                        <th data-col="6">Durée</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -70,18 +70,31 @@
                                     </span>
                                 }
                             </td>
-                            <td class="fw-semibold text-primary">@m.Reference</td>
+                            <td class="fw-semibold text-primary">
+                                <a asp-page="/Missions/Details" asp-route-id="@m.Id" class="text-decoration-none fw-semibold text-primary">@m.Reference</a>
+                            </td>
                             <td>
-                                @{ ViewData["Status"] = m.Status; }
-                                @await Html.PartialAsync("_StatusBadge")
+                                @await Html.PartialAsync("_StatusBadge", (object)m.Status)
                             </td>
                             <td>@m.TargetAddress</td>
                             <td>
                                 @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign))
                                 {
-                                    <span class="badge bg-dark fs-6">
-                                        <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
-                                    </span>
+                                    var activeVehicleId = m.Assignments
+                                        .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                                    if (activeVehicleId.HasValue)
+                                    {
+                                        <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@activeVehicleId"
+                                           class="badge bg-dark fs-6 text-decoration-none">
+                                            <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-dark fs-6">
+                                            <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
+                                        </span>
+                                    }
                                 }
                                 else
                                 {
@@ -90,8 +103,8 @@
                                     </span>
                                 }
                             </td>
-                            <td class="text-nowrap">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
-                            <td class="@durationClass">@durationMin min</td>
+                            <td class="text-nowrap" data-sort="@m.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
+                            <td class="@durationClass" data-sort="@durationMin">@durationMin min</td>
                             <td class="text-end">
                                 <a asp-page="/Missions/Details" asp-route-id="@m.Id"
                                    class="btn btn-sm btn-outline-primary">
@@ -140,15 +153,15 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
+            <table class="table table-sm table-hover align-middle mb-0" data-sortable>
                 <thead class="table-light">
                     <tr>
-                        <th>Référence</th>
-                        <th>Statut</th>
-                        <th>Adresse</th>
-                        <th>Véhicule</th>
-                        <th>Créée</th>
-                        <th>Terminée</th>
+                        <th data-col="0">Référence</th>
+                        <th data-col="1">Statut</th>
+                        <th data-col="2">Adresse</th>
+                        <th data-col="3">Véhicule</th>
+                        <th data-col="4">Créée</th>
+                        <th data-col="5">Terminée</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -156,15 +169,29 @@
                     @foreach (var m in Model.RecentMissions)
                     {
                         <tr class="text-muted">
-                            <td class="fw-semibold">@m.Reference</td>
+                            <td class="fw-semibold">
+                                <a asp-page="/Missions/Details" asp-route-id="@m.Id" class="text-decoration-none fw-semibold">@m.Reference</a>
+                            </td>
                             <td>
-                                @{ ViewData["Status"] = m.Status; }
-                                @await Html.PartialAsync("_StatusBadge")
+                                @await Html.PartialAsync("_StatusBadge", (object)m.Status)
                             </td>
                             <td>@m.TargetAddress</td>
-                            <td>@(m.AssignedVehicleCallSign ?? "—")</td>
-                            <td>@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
-                            <td>@(m.CompletedAt?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
+                            <td>
+                                @{
+                                    var recentVehicleId = m.Assignments
+                                        .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed" or "Completed")?.VehicleId;
+                                }
+                                @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign) && recentVehicleId.HasValue)
+                                {
+                                    <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@recentVehicleId" class="text-decoration-none">@m.AssignedVehicleCallSign</a>
+                                }
+                                else
+                                {
+                                    @(m.AssignedVehicleCallSign ?? "—")
+                                }
+                            </td>
+                            <td data-sort="@m.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>
+                            <td data-sort="@(m.CompletedAt?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")">@(m.CompletedAt?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
                             <td>
                                 <a asp-page="/Missions/Details" asp-route-id="@m.Id"
                                    class="btn btn-sm btn-outline-secondary">

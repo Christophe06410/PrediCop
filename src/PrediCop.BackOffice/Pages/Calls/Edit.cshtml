@@ -36,8 +36,7 @@
                 <h6 class="mb-0 fw-semibold">
                     <i class="fa-solid fa-phone me-2 text-primary"></i>Modifier la main courante @Model.Call?.Reference
                 </h6>
-                @{ ViewData["Status"] = Model.Call?.Status; }
-                @await Html.PartialAsync("_StatusBadge")
+                @await Html.PartialAsync("_StatusBadge", (object)(Model.Call?.Status ?? ""))
             </div>
             <div class="card-body">
                 <form method="post" asp-page-handler="Save">

@@ -27,14 +27,14 @@ public class Tenant : BaseEntity
     public string? DpoEmail { get; set; } // email DPO pour les demandes RGPD
 
     // ---- Modules optionnels (activables par tenant) ----
-    public bool ModuleRhEnabled { get; set; } = false;
+    public bool ModulePlanningEnabled { get; set; } = false;
     public bool ModuleFourriereEnabled { get; set; } = false;
     public bool ModuleFleetEnabled { get; set; } = false;
     public bool ModuleLogisticsEnabled { get; set; } = false;
     public bool ModuleVerbalisationEnabled { get; set; } = false;
 
     // ---- Champs sensibles (RGPD Art. 9 et Art. 10) ----
-    public bool AgentBloodTypeEnabled { get; set; } = false;      // données de santé — requiert consentement explicite
+
     public bool AgentEmergencyContactEnabled { get; set; } = true; // contacts d'urgence
     public bool GpsTrackingEnabled { get; set; } = true;           // géolocalisation temps réel
     public bool PhotoAttachmentsEnabled { get; set; } = true;      // photos sur PV et fourrière

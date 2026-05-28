@@ -46,7 +46,7 @@ public class IndexTests
         handler.When("/api/hr/leaves").Respond("application/json", JsonSerializer.Serialize(leaves, JsonOpts));
         handler.When("/api/hr/schedules*").Respond("application/json", "[]");
 
-        var model = new BackOffice.Pages.Admin.HR.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.HR.IndexModel>());
+        var model = new BackOffice.Pages.Admin.Planning.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.Planning.IndexModel>());
         await model.OnGetAsync(CancellationToken.None);
 
         Assert.Equal(2, model.Leaves.Count);
@@ -59,7 +59,7 @@ public class IndexTests
 
         handler.When("*").Respond(HttpStatusCode.InternalServerError);
 
-        var model = new BackOffice.Pages.Admin.HR.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.HR.IndexModel>());
+        var model = new BackOffice.Pages.Admin.Planning.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.Planning.IndexModel>());
         var exception = await Record.ExceptionAsync(() => model.OnGetAsync(CancellationToken.None));
 
         Assert.Null(exception);
@@ -90,7 +90,7 @@ public class IndexTests
         handler.When("/api/hr/leaves").Respond("application/json", JsonSerializer.Serialize(leaves, JsonOpts));
         handler.When("/api/hr/schedules*").Respond("application/json", "[]");
 
-        var model = new BackOffice.Pages.Admin.HR.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.HR.IndexModel>());
+        var model = new BackOffice.Pages.Admin.Planning.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.Planning.IndexModel>());
         await model.OnGetAsync(CancellationToken.None);
 
         Assert.Equal(2, model.PendingLeavesCount);
@@ -105,7 +105,7 @@ public class IndexTests
         handler.When(HttpMethod.Post, $"/api/hr/leaves/{leaveId}/approve")
                .Respond(HttpStatusCode.NoContent);
 
-        var model = new BackOffice.Pages.Admin.HR.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.HR.IndexModel>())
+        var model = new BackOffice.Pages.Admin.Planning.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.Planning.IndexModel>())
         {
             TempData = CreateTempData()
         };
@@ -124,7 +124,7 @@ public class IndexTests
         handler.When(HttpMethod.Post, $"/api/hr/leaves/{leaveId}/reject")
                .Respond(HttpStatusCode.NoContent);
 
-        var model = new BackOffice.Pages.Admin.HR.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.HR.IndexModel>())
+        var model = new BackOffice.Pages.Admin.Planning.IndexModel(factory, MockHttpHelper.NullLogger<BackOffice.Pages.Admin.Planning.IndexModel>())
         {
             TempData = CreateTempData()
         };

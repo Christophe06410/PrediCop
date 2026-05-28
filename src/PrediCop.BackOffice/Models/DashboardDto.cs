@@ -55,6 +55,7 @@ public class HourlyMissionCount
 
 public class VehicleStats
 {
+    public Guid? VehicleId { get; set; }
     public string CallSign { get; set; } = string.Empty;
     public int AcceptedCount { get; set; }
     public int RefusedCount { get; set; }

@@ -28,6 +28,8 @@ public class MissionsController(
         [FromQuery] int page = 1,
         [FromQuery] int size = 20,
         [FromQuery] MissionStatus? status = null,
+        [FromQuery] Guid? vehicleId = null,
+        [FromQuery] DateTime? date = null,
         CancellationToken ct = default)
     {
         var query = db.Missions
@@ -37,6 +39,15 @@ public class MissionsController(
 
         if (status.HasValue)
             query = query.Where(m => m.Status == status.Value);
+
+        if (vehicleId.HasValue)
+            query = query.Where(m => m.Assignments.Any(a => a.VehicleId == vehicleId.Value));
+
+        if (date.HasValue)
+        {
+            var day = date.Value.Date;
+            query = query.Where(m => m.CreatedAt.Date == day);
+        }
 
         var totalCount = await query.CountAsync(ct);
 
@@ -86,8 +97,7 @@ public class MissionsController(
                     CreatedAt = sm.CreatedAt,
                     CompletedAt = sm.CompletedAt,
                     AssignedVehicleCallSign = sm.Assignments
-                        .FirstOrDefault(a => a.Status == MissionStatus.Accepted
-                                          || a.Status == MissionStatus.InProgress)
+                        .FirstOrDefault(a => a.Status == MissionStatus.Accepted)
                         ?.Vehicle?.CallSign
                 })
                 .ToList();
@@ -104,8 +114,6 @@ public class MissionsController(
             .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
             .Where(m => m.TenantId == TenantId
                 && (m.Status == MissionStatus.Pending
-                    || m.Status == MissionStatus.Proposed
-                    || m.Status == MissionStatus.Accepted
                     || m.Status == MissionStatus.InProgress));
 
         // When the JWT carries a vehicleId (mobile officer), restrict to:
@@ -126,8 +134,7 @@ public class MissionsController(
                 m.Assignments.Any(a =>
                     a.VehicleId == vehicleId &&
                     (a.Status == MissionStatus.Proposed ||
-                     a.Status == MissionStatus.Accepted ||
-                     a.Status == MissionStatus.InProgress))
+                     a.Status == MissionStatus.Accepted))
                 ||
                 // (b) unassigned Pending missions visible to available vehicles
                 (isAvailable
@@ -163,6 +170,7 @@ public class MissionsController(
         if (request.TargetLongitude.HasValue) mission.TargetLongitude = request.TargetLongitude.Value;
         if (request.LocationDetail is not null) mission.LocationDetail = request.LocationDetail;
         if (request.NarrativeReport is not null) mission.NarrativeReport = request.NarrativeReport;
+        if (request.CompletionReport is not null) mission.CompletionReport = request.CompletionReport;
         if (request.DispatchedAt.HasValue) mission.DispatchedAt = request.DispatchedAt;
         if (request.ArrivedAt.HasValue) mission.ArrivedAt = request.ArrivedAt;
 
@@ -508,7 +516,7 @@ public class MissionsController(
                     .Any(a => a.Id != activeAssignment.Id
                               && (a.Status == MissionStatus.Accepted || a.Status == MissionStatus.InProgress));
 
-                if (!hasActiveAssignment && prevMission.Status == MissionStatus.Accepted)
+                if (!hasActiveAssignment && prevMission.Status == MissionStatus.InProgress)
                     prevMission.Status = MissionStatus.Pending;
             }
         }
@@ -535,7 +543,7 @@ public class MissionsController(
         db.MissionAssignments.Add(newAssignment);
 
         // 7. Mettre à jour la mission
-        mission.Status = MissionStatus.Accepted;
+        mission.Status = MissionStatus.InProgress;
         mission.AcceptedAt = DateTime.UtcNow;
 
         // 8. Mettre le véhicule en OnMission
@@ -590,6 +598,53 @@ public class MissionsController(
         return Ok(missionResponse);
     }
 
+    // -------- Ajout d'un équipage en renfort --------
+
+    [HttpPost("{id:guid}/crew")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
+    public async Task<ActionResult<MissionAssignmentResponse>> AddCrew(
+        Guid id,
+        [FromBody] AddCrewRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var assignment = await missionService.AddCrewToMissionAsync(id, request.VehicleId, TenantId, ct);
+
+            await db.Entry(assignment).Reference(a => a.Vehicle).LoadAsync(ct);
+
+            var assignmentResponse = MapAssignmentToResponse(assignment);
+
+            // Notifier les opérateurs
+            var mission = await db.Missions
+                .Include(m => m.Call)
+                .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
+                .FirstOrDefaultAsync(m => m.Id == id, ct);
+
+            if (mission is not null)
+            {
+                await hubContext.Clients
+                    .Group($"operators_{TenantId}")
+                    .SendAsync("MissionStatusChanged", MapToResponse(mission), ct);
+            }
+
+            // Notifier le véhicule ajouté
+            await hubContext.Clients
+                .Group($"vehicle_{request.VehicleId}")
+                .SendAsync("MissionProposed", assignmentResponse, ct);
+
+            return Ok(assignmentResponse);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(title: "Impossible d'ajouter l'équipage", detail: ex.Message, statusCode: 400);
+        }
+        catch (Exception ex)
+        {
+            return Problem(title: "Erreur lors de l'ajout de l'équipage", detail: ex.Message, statusCode: 500);
+        }
+    }
+
     // -------- Mappers --------
 
     private static MissionResponse MapToResponse(Mission m) => new()
@@ -615,7 +670,13 @@ public class MissionsController(
         UpdatedAt = m.UpdatedAt,
         Assignments = m.Assignments.Select(MapAssignmentToResponse).ToList(),
         Intervenants = m.Intervenants.OrderBy(i => i.Order).Select(MapIntervenantToResponse).ToList(),
-        Media = m.MediaAttachments.OrderByDescending(ma => ma.RecordedAt).Select(MapMediaToResponse).ToList()
+        Media = m.MediaAttachments.OrderByDescending(ma => ma.RecordedAt).Select(MapMediaToResponse).ToList(),
+        CallerName = m.Call?.CallerName,
+        CallerPhone = m.Call?.CallerPhone,
+        IncidentCategory = m.Call?.IncidentCategory,
+        IncidentAddressComplement = m.Call?.IncidentAddressComplement,
+        CallNotes = m.Call?.Notes,
+        ThirdParties = m.Call?.ThirdParties,
     };
 
     private static MissionIntervenantResponse MapIntervenantToResponse(MissionIntervenant i) => new()
