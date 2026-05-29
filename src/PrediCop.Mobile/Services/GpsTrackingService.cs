@@ -32,7 +32,14 @@ public class GpsTrackingService : IDisposable
 
     private async Task StartTrackingAsync()
     {
-        var status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+        // Permissions.RequestAsync must run on the main thread — dispatch if called from a background thread
+        PermissionStatus status;
+        if (MainThread.IsMainThread)
+            status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+        else
+            status = await MainThread.InvokeOnMainThreadAsync(
+                () => Permissions.RequestAsync<Permissions.LocationWhenInUse>());
+
         if (status != PermissionStatus.Granted) return;
         _cts = new CancellationTokenSource();
         _ = PollLocationAsync(_cts.Token);
