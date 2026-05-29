@@ -105,12 +105,18 @@ public class AuthService
         Token = response.AccessToken;
         VehicleId = response.VehicleId;
         VehicleCallSign = response.VehicleCallSign;
-
-        Preferences.Set(TokenKey, Token);
-        Preferences.Set(VehicleIdKey, VehicleId.Value.ToString());
-        Preferences.Set(VehicleCallSignKey, VehicleCallSign);
         _api.SetAuthToken(Token);
         _media.SetAuthToken(Token);
+
+        // SharedPreferences.commit() is synchronous disk I/O — do it off the main thread
+        var t = Token; var vid = VehicleId.Value.ToString(); var cs = VehicleCallSign;
+        _ = Task.Run(() =>
+        {
+            Preferences.Set(TokenKey, t);
+            Preferences.Set(VehicleIdKey, vid);
+            Preferences.Set(VehicleCallSignKey, cs);
+        });
+
         return (true, response.VehicleCallSign);
     }
 

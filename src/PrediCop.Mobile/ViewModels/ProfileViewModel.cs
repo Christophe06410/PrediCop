@@ -65,6 +65,12 @@ public partial class ProfileViewModel(
 
         CurrentVehicle = callSign;
 
+        // Demander la permission GPS ici, sur le thread principal, avant de passer en arrière-plan.
+        // RequestAsync fait de l'IPC Android (~2-8s sur Samsung) — l'appeler depuis Task.Run force
+        // MAUI à redispatcher sur le main thread via InvokeOnMainThread, ce qui bloque l'UI.
+        await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+        System.Diagnostics.Debug.WriteLine($"[ProfileVM] GPS permission checked: {sw.ElapsedMilliseconds}ms");
+
         // SignalR + GPS se reconnectent en arrière-plan : ne pas bloquer l'UI
         _ = Task.Run(async () =>
         {

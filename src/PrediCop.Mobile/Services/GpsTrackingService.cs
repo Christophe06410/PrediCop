@@ -32,13 +32,15 @@ public class GpsTrackingService : IDisposable
 
     private async Task StartTrackingAsync()
     {
-        // Permissions.RequestAsync must run on the main thread — dispatch if called from a background thread
+        // CheckStatusAsync is a fast in-memory PackageManager check (no IPC, no dialog).
+        // The caller (ProfileViewModel) is responsible for calling RequestAsync on the main
+        // thread before spawning the background task that eventually reaches here.
         PermissionStatus status;
         if (MainThread.IsMainThread)
-            status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+            status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         else
             status = await MainThread.InvokeOnMainThreadAsync(
-                () => Permissions.RequestAsync<Permissions.LocationWhenInUse>());
+                () => Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>());
 
         if (status != PermissionStatus.Granted) return;
         _cts = new CancellationTokenSource();
