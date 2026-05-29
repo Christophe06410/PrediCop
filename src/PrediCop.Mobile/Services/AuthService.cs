@@ -4,18 +4,20 @@ public class AuthService
 {
     private readonly ApiService _api;
     private readonly MediaUploadService _media;
-    private const string TokenKey            = "auth_token";
-    private const string VehicleIdKey        = "auth_vehicle_id";
-    private const string VehicleCallSignKey  = "auth_vehicle_callsign";
-    private const string UserIdKey           = "auth_user_id";
-    private const string UserNameKey         = "auth_user_name";
-    private const string UserRoleKey         = "auth_user_role";
-    private const string UserTenantIdKey     = "auth_user_tenant_id";
-    private const string UserTenantNameKey   = "auth_user_tenant_name";
+    private const string TokenKey              = "auth_token";
+    private const string VehicleIdKey          = "auth_vehicle_id";
+    private const string VehicleCallSignKey    = "auth_vehicle_callsign";
+    private const string VehicleDisplayLabelKey= "auth_vehicle_display_label";
+    private const string UserIdKey             = "auth_user_id";
+    private const string UserNameKey           = "auth_user_name";
+    private const string UserRoleKey           = "auth_user_role";
+    private const string UserTenantIdKey       = "auth_user_tenant_id";
+    private const string UserTenantNameKey     = "auth_user_tenant_name";
 
     public string? Token { get; private set; }
     public Guid? VehicleId { get; private set; }
     public string? VehicleCallSign { get; private set; }
+    public string? VehicleDisplayLabel { get; private set; }
     public UserInfo? CurrentUser { get; private set; }
     public bool IsLoggedIn => !string.IsNullOrEmpty(Token);
 
@@ -29,7 +31,8 @@ public class AuthService
         if (vidStr != null && Guid.TryParse(vidStr, out var vid))
             VehicleId = vid;
 
-        VehicleCallSign = Preferences.Get(VehicleCallSignKey, null);
+        VehicleCallSign    = Preferences.Get(VehicleCallSignKey, null);
+        VehicleDisplayLabel = Preferences.Get(VehicleDisplayLabelKey, null);
 
         // Restore CurrentUser so the app survives being killed by the OS (e.g. while GPS runs)
         var uidStr     = Preferences.Get(UserIdKey, null);
@@ -120,15 +123,23 @@ public class AuthService
         return (true, response.VehicleCallSign);
     }
 
+    public void SetVehicleDisplayLabel(string label)
+    {
+        VehicleDisplayLabel = label;
+        _ = Task.Run(() => Preferences.Set(VehicleDisplayLabelKey, label));
+    }
+
     public void Logout()
     {
         Token = null;
         VehicleId = null;
         VehicleCallSign = null;
+        VehicleDisplayLabel = null;
         CurrentUser = null;
         Preferences.Remove(TokenKey);
         Preferences.Remove(VehicleIdKey);
         Preferences.Remove(VehicleCallSignKey);
+        Preferences.Remove(VehicleDisplayLabelKey);
         Preferences.Remove(UserIdKey);
         Preferences.Remove(UserNameKey);
         Preferences.Remove(UserRoleKey);

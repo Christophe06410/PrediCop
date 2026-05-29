@@ -31,7 +31,7 @@ public partial class ProfileViewModel(
         if (auth.CurrentUser == null) return;
         UserName = auth.CurrentUser.FullName;
         Badge = $"Rôle : {auth.CurrentUser.Role}";
-        CurrentVehicle = auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
+        CurrentVehicle = auth.VehicleDisplayLabel ?? auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
     }
 
     public async Task<List<VehicleItem>> LoadVehiclesAsync()
@@ -64,6 +64,7 @@ public partial class ProfileViewModel(
         if (!success) return false;
 
         CurrentVehicle = callSign;
+        auth.SetVehicleDisplayLabel(callSign);
 
         // Demander la permission GPS ici, sur le thread principal, avant de passer en arrière-plan.
         // RequestAsync fait de l'IPC Android (~2-8s sur Samsung) — l'appeler depuis Task.Run force

@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:PrediCop.Mobile.Views"
              x:Class="PrediCop.Mobile.Pages.ProfilePage"
              BackgroundColor="#1a2035">
 
-    <ScrollView>
+    <Grid RowDefinitions="Auto,*">
+    <views:AppHeader Grid.Row="0"/>
+    <ScrollView Grid.Row="1">
     <VerticalStackLayout Padding="24" Spacing="20">
 
         <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
@@ -78,4 +81,5 @@
                 CornerRadius="12" HeightRequest="50" Clicked="OnLogoutClicked"/>
     </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </ContentPage>

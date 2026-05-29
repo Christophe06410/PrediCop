@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tab bar height (default Material = 56dp, augmenté pour meilleure ergonomie) -->
+    <dimen name="design_bottom_navigation_height">72dp</dimen>
+</resources>

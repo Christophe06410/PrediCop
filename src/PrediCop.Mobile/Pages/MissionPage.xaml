@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:PrediCop.Mobile.Views"
              x:Class="PrediCop.Mobile.Pages.MissionPage"
              BackgroundColor="#1a2035">
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <views:AppHeader Grid.Row="0"/>
 
         <!-- Status bar -->
-        <Grid Grid.Row="0" BackgroundColor="#243050" Padding="16,12">
+        <Grid Grid.Row="1" BackgroundColor="#243050" Padding="16,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -32,7 +35,7 @@
         </Grid>
 
         <!-- Toggle disponibilité -->
-        <Grid Grid.Row="1" BackgroundColor="#1e2d4a" Padding="16,8">
+        <Grid Grid.Row="2" BackgroundColor="#1e2d4a" Padding="16,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -45,7 +48,7 @@
         </Grid>
 
         <!-- Mission en cours ou message vide -->
-        <ScrollView Grid.Row="2">
+        <ScrollView Grid.Row="3">
             <VerticalStackLayout Padding="16" Spacing="12">
 
                 <!-- Notification de mission proposée -->
