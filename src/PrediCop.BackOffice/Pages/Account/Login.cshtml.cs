@@ -142,12 +142,14 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
     {
         try
         {
-            var client = httpClientFactory.CreateClient("PrediCopApi");
+            // Use the anonymous client: no JWT session required on the login page
+            var client = httpClientFactory.CreateClient("PrediCopApiAnon");
             var tenants = await client.GetFromJsonAsync<List<TenantSummaryDto>>("/api/auth/tenants", HttpJsonOptions);
             Tenants = tenants ?? [];
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Impossible de charger la liste des villes depuis l'API");
             Tenants = [];
         }
     }

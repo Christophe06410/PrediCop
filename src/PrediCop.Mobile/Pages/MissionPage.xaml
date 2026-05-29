@@ -11,10 +11,19 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0"
                    Text="{Binding VehicleLabel}" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
-            <Frame Grid.Column="1"
+            <Button Grid.Column="1"
+                    Text="+ VL"
+                    BackgroundColor="#2563eb" TextColor="White"
+                    CornerRadius="8" Padding="10,4" FontSize="12" HeightRequest="34"
+                    IsVisible="{Binding ShowAssignVehicleButton}"
+                    Clicked="OnAssignVehicleClicked"
+                    Margin="8,0,0,0"
+                    VerticalOptions="Center"/>
+            <Frame Grid.Column="2"
                    BackgroundColor="{Binding StatusColor}"
                    CornerRadius="20" Padding="12,6" HasShadow="False">
                 <Label Text="{Binding StatusText}"

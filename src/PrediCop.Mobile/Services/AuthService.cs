@@ -57,7 +57,11 @@ public class AuthService
             var result = await _api.GetAsync<List<TenantItem>>("api/auth/tenants");
             return result ?? [];
         }
-        catch { return []; }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AuthService] GetTenantsAsync failed: {ex.Message}");
+            return [];
+        }
     }
 
     public async Task<bool> LoginAsync(string email, string password, string tenantSlug)

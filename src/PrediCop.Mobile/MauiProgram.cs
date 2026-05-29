@@ -54,6 +54,7 @@ public static class MauiProgram
         });
 
         builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton<MobileErrorService>();
         builder.Services.AddSingleton<TenantFeaturesService>();
         builder.Services.AddSingleton<GpsTrackingService>();
         builder.Services.AddSingleton(new SignalRService(apiBaseUrl));
@@ -85,6 +86,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PatrolViewModel>();
         builder.Services.AddTransient<PatrolActivationViewModel>();
         builder.Services.AddTransient<ProfileViewModel>();
+        builder.Services.AddTransient<BeaconPairingViewModel>();
         builder.Services.AddTransient<TicketingViewModel>();
 
         // Pages
@@ -94,6 +96,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PatrolActivationPage>();
         builder.Services.AddTransient<MapPage>();
         builder.Services.AddTransient<ProfilePage>();
+        builder.Services.AddTransient<BeaconPairingPage>();
         builder.Services.AddTransient<TicketingPage>();
         // MissionDetailPage is instantiated manually (missionId is a runtime parameter)
 
@@ -115,6 +118,11 @@ public static class MauiProgram
 #endif
 
         var app = builder.Build();
+
+        // Câble MobileErrorService dans ApiService après résolution du container
+        // (évite la dépendance circulaire à l'enregistrement)
+        var apiService = app.Services.GetRequiredService<ApiService>();
+        apiService.ErrorReporter = app.Services.GetRequiredService<MobileErrorService>();
 
         // Initialise la base SQLite locale et démarre la sync automatique au retour du réseau
         var localDb = app.Services.GetRequiredService<LocalDbService>();

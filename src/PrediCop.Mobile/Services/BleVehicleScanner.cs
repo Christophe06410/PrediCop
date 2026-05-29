@@ -136,12 +136,82 @@ public class BleVehicleScanner
         catch { return null; }
     }
 
+    /// <summary>
+    /// Scans all BLE devices in range for ~5 s without matching against known vehicles.
+    /// Used by the beacon pairing UI so an admin can pick a device and associate it to a vehicle.
+    /// Returns devices ordered by descending RSSI (strongest signal first).
+    /// </summary>
+    public async Task<List<DiscoveredBeacon>> ScanForPairingAsync(CancellationToken ct = default)
+    {
+        if (_ble.State == BluetoothState.Unavailable || _ble.State == BluetoothState.Unknown)
+            throw new InvalidOperationException("Bluetooth non disponible sur cet appareil.");
+
+        var permissionStatus = await RequestPermissionsAsync();
+        if (!permissionStatus)
+            throw new InvalidOperationException("Permissions Bluetooth refusées. Vérifiez les autorisations de l'application.");
+
+        var seen = new Dictionary<string, DiscoveredBeacon>(StringComparer.OrdinalIgnoreCase);
+
+        void OnDeviceDiscovered(object? sender, DeviceEventArgs e)
+        {
+            // Prefer service UUID advertised by the beacon (most reliable identifier)
+            foreach (var rec in e.Device.AdvertisementRecords
+                         .Where(r => r.Type == Plugin.BLE.Abstractions.AdvertisementRecordType.UuidsComplete128Bit
+                                  || r.Type == Plugin.BLE.Abstractions.AdvertisementRecordType.UuidsIncomplete128Bit))
+            {
+                var uuid = ParseUuidFromBytes(rec.Data);
+                if (uuid is not null && !seen.ContainsKey(uuid))
+                {
+                    var name = string.IsNullOrWhiteSpace(e.Device.Name) ? "Beacon BLE" : e.Device.Name;
+                    seen[uuid] = new DiscoveredBeacon(uuid, name, e.Device.Rssi);
+                    return;
+                }
+            }
+
+            // Fallback: device hardware Id as UUID string
+            var deviceId = e.Device.Id.ToString().ToUpperInvariant();
+            if (!seen.ContainsKey(deviceId))
+            {
+                var name = string.IsNullOrWhiteSpace(e.Device.Name) ? "Appareil BLE" : e.Device.Name;
+                seen[deviceId] = new DiscoveredBeacon(deviceId, name, e.Device.Rssi);
+            }
+        }
+
+        _adapter.DeviceDiscovered += OnDeviceDiscovered;
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(ScanDurationMs);
+            try { await _adapter.StartScanningForDevicesAsync(cancellationToken: cts.Token); }
+            catch (OperationCanceledException) { }
+        }
+        finally
+        {
+            _adapter.DeviceDiscovered -= OnDeviceDiscovered;
+            try { await _adapter.StopScanningForDevicesAsync(); } catch { }
+        }
+
+        return [.. seen.Values.OrderByDescending(d => d.Rssi)];
+    }
+
     private class ApiVehicleWithBeacon
     {
         public Guid Id { get; set; }
         public string CallSign { get; set; } = "";
         public string? BeaconUuid { get; set; }
     }
+}
+
+/// <summary>A BLE device discovered during a pairing scan.</summary>
+public record DiscoveredBeacon(string Uuid, string Name, int Rssi)
+{
+    public string RssiDisplay => Rssi switch
+    {
+        > -60 => "●●●● Excellent",
+        > -70 => "●●●○ Bon",
+        > -80 => "●●○○ Faible",
+        _     => "●○○○ Très faible"
+    };
 }
 
 /// <summary>

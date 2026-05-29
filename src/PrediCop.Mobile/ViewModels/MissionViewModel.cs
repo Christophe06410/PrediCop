@@ -54,6 +54,7 @@ public partial class MissionViewModel : ObservableObject
     [ObservableProperty] private string statusText = "DISPONIBLE";
     [ObservableProperty] private Color statusColor = Color.FromArgb("#22c55e");
     [ObservableProperty] private string vehicleLabel = "Véhicule: --";
+    [ObservableProperty] private bool showAssignVehicleButton;
 
     // Frame visibility
     [ObservableProperty] private bool showMissionProposal;
@@ -162,7 +163,9 @@ public partial class MissionViewModel : ObservableObject
     {
         VehicleLabel = _auth.VehicleCallSign is not null
             ? $"VL : {_auth.VehicleCallSign}"
-            : "Véhicule: --";
+            : "Aucun VL assigné";
+        ShowAssignVehicleButton = _auth.VehicleCallSign is null
+            && string.Equals(_auth.CurrentUser?.Role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
     }
 
     [RelayCommand]

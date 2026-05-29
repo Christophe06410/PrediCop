@@ -124,6 +124,14 @@ public partial class ProfilePage : ContentPage
             await DisplayAlert("Erreur", error ?? "Impossible de modifier le mot de passe.", "OK");
     }
 
+    private async void OnBeaconPairingClicked(object sender, EventArgs e)
+    {
+        var services = Handler?.MauiContext?.Services;
+        if (services is null) return;
+        var page = services.GetRequiredService<BeaconPairingPage>();
+        await Navigation.PushAsync(page);
+    }
+
     private async void OnLogoutClicked(object sender, EventArgs e)
     {
         var confirm = await DisplayAlert("Déconnexion", "Se déconnecter ?", "Oui", "Annuler");

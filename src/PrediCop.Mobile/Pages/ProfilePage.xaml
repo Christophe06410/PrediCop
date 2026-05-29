@@ -4,6 +4,7 @@
              x:Class="PrediCop.Mobile.Pages.ProfilePage"
              BackgroundColor="#1a2035">
 
+    <ScrollView>
     <VerticalStackLayout Padding="24" Spacing="20">
 
         <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
@@ -20,15 +21,31 @@
                 <Label Text="Véhicule de service" TextColor="White"
                        FontSize="16" FontAttributes="Bold"/>
                 <Label Text="{Binding CurrentVehicle}" TextColor="#93c5fd" FontSize="14"/>
-                <Button Text="Sélectionner mon véhicule"
-                        BackgroundColor="#2563eb" TextColor="White"
-                        CornerRadius="10" HeightRequest="44"
-                        Clicked="OnSelectVehicleClicked"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <Button Grid.Column="0"
+                            Text="Sélectionner mon véhicule"
+                            BackgroundColor="#2563eb" TextColor="White"
+                            CornerRadius="10" HeightRequest="44"
+                            IsEnabled="{Binding IsLoadingVehicles, Converter={StaticResource InvertBoolConverter}}"
+                            Clicked="OnSelectVehicleClicked"/>
+                    <ActivityIndicator Grid.Column="1"
+                                       IsRunning="{Binding IsLoadingVehicles}"
+                                       IsVisible="{Binding IsLoadingVehicles}"
+                                       Color="#2563eb"
+                                       WidthRequest="36" HeightRequest="36"
+                                       Margin="10,0,0,0"
+                                       VerticalOptions="Center"/>
+                </Grid>
                 <Button x:Name="BtnDetectVehicle"
                         Text="Détecter mon véhicule (BLE)"
                         BackgroundColor="#0f766e" TextColor="White"
                         CornerRadius="10" HeightRequest="44"
                         Clicked="OnDetectVehicleClicked"/>
+                <Button Text="Configurer les beacons"
+                        BackgroundColor="#1e3a5f" TextColor="White"
+                        CornerRadius="10" HeightRequest="44"
+                        IsVisible="{Binding IsAdminOrManager}"
+                        Clicked="OnBeaconPairingClicked"/>
             </VerticalStackLayout>
         </Frame>
 
@@ -60,4 +77,5 @@
         <Button Text="Se déconnecter" BackgroundColor="#374151" TextColor="White"
                 CornerRadius="12" HeightRequest="50" Clicked="OnLogoutClicked"/>
     </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

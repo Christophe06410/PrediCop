@@ -96,4 +96,40 @@ public partial class MissionPage : ContentPage
         if (report == null) return;
         await ViewModel.CompleteMissionAsync(report);
     }
+
+    private async void OnAssignVehicleClicked(object sender, EventArgs e)
+    {
+        var auth = Handler?.MauiContext?.Services.GetService<AuthService>();
+        if (auth is null) return;
+
+        List<ApiVehicleItem>? vehicles;
+        try { vehicles = await _api.GetAsync<List<ApiVehicleItem>>("api/vehicles"); }
+        catch { await DisplayAlert("Erreur", "Impossible de charger les véhicules.", "OK"); return; }
+
+        if (vehicles is null or { Count: 0 })
+        {
+            await DisplayAlert("Véhicules", "Aucun véhicule disponible.", "OK");
+            return;
+        }
+
+        var labels = vehicles.Select(v => $"{v.CallSign} — {v.LicensePlate}").ToArray();
+        var selected = await DisplayActionSheet("Sélectionner votre véhicule", "Annuler", null, labels);
+        if (selected is null or "Annuler") return;
+
+        var vehicle = vehicles.FirstOrDefault(v => selected.StartsWith(v.CallSign));
+        if (vehicle is null) return;
+
+        var (success, _) = await auth.SelectVehicleAsync(vehicle.Id);
+        if (success)
+            ViewModel.RefreshVehicleLabel();
+        else
+            await DisplayAlert("Erreur", "Impossible d'assigner ce véhicule.", "OK");
+    }
+
+    private class ApiVehicleItem
+    {
+        public Guid Id { get; set; }
+        public string CallSign { get; set; } = "";
+        public string LicensePlate { get; set; } = "";
+    }
 }

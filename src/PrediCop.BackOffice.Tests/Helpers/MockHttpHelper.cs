@@ -20,6 +20,7 @@ public static class MockHttpHelper
 
         var factory = new Mock<IHttpClientFactory>();
         factory.Setup(f => f.CreateClient("PrediCopApi")).Returns(client);
+        factory.Setup(f => f.CreateClient("PrediCopApiAnon")).Returns(client);
 
         return (handler, factory.Object);
     }

@@ -42,14 +42,22 @@ public static class DbInitializer
 
         // Upgrade existing test tenant to unlimited active subscription
         var existingTenant = await context.Tenants.FirstAsync();
+        bool tenantChanged = false;
         if (existingTenant.SubscriptionStatus == SubscriptionStatus.None)
         {
             existingTenant.SubscriptionStatus = SubscriptionStatus.Active;
             existingTenant.SubscriptionPlan = SubscriptionPlan.Premium;
             existingTenant.VehicleLimit = 9999;
             existingTenant.UserLimit = 9999;
-            await context.SaveChangesAsync();
+            tenantChanged = true;
         }
+        if (!existingTenant.IsActive)
+        {
+            existingTenant.IsActive = true;
+            tenantChanged = true;
+        }
+        if (tenantChanged)
+            await context.SaveChangesAsync();
 
         // --- Officer + vehicle (idempotent) ---
         if (!await context.Users.AnyAsync(u => u.TenantId == tenantId && u.Role == UserRole.Officer))

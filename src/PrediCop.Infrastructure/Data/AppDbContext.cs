@@ -66,6 +66,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // ---- Module Fourrière ----
     public DbSet<ImpoundedVehicle> ImpoundedVehicles => Set<ImpoundedVehicle>();
 
+    // ---- Télémétrie mobile ----
+    public DbSet<MobileErrorLog> MobileErrorLogs => Set<MobileErrorLog>();
+
     // Force Kind=Utc on all DateTime values read from SQL Server.
     // SQL Server datetime2 has no timezone info; EF Core returns Kind=Unspecified,
     // which causes .ToLocalTime() to skip conversion. This converter fixes it globally.

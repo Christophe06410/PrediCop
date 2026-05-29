@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.BeaconPairingPage"
+             Title="Association beacon"
+             BackgroundColor="#1a2035">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+
+            <!-- Sélection du véhicule -->
+            <Frame BackgroundColor="#243050" CornerRadius="12" HasShadow="False" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Véhicule à configurer"
+                           TextColor="White" FontSize="15" FontAttributes="Bold"/>
+                    <Picker Title="Sélectionnez un véhicule"
+                            TitleColor="#6b7a99"
+                            TextColor="White"
+                            BackgroundColor="#1e3a5f"
+                            ItemsSource="{Binding Vehicles}"
+                            ItemDisplayBinding="{Binding Label}"
+                            SelectedItem="{Binding SelectedVehicle, Mode=TwoWay}"/>
+                    <Label Text="{Binding SelectedVehicleBeacon}"
+                           TextColor="#6b7a99" FontSize="12"
+                           IsVisible="{Binding IsVehicleSelected}"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Scan BLE -->
+            <Frame BackgroundColor="#243050" CornerRadius="12" HasShadow="False" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Détection Bluetooth"
+                           TextColor="White" FontSize="15" FontAttributes="Bold"/>
+                    <Label Text="{Binding StatusMessage}"
+                           TextColor="#93c5fd" FontSize="13"/>
+                    <Button Text="Lancer le scan (5 s)"
+                            Command="{Binding ScanCommand}"
+                            IsEnabled="{Binding CanScan}"
+                            BackgroundColor="#0f766e" TextColor="White"
+                            CornerRadius="10" HeightRequest="44"/>
+                    <ActivityIndicator IsRunning="{Binding IsScanning}"
+                                       IsVisible="{Binding IsScanning}"
+                                       Color="#2563eb" HeightRequest="32"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Liste des beacons découverts -->
+            <Frame BackgroundColor="#243050" CornerRadius="12" HasShadow="False" Padding="16"
+                   IsVisible="{Binding HasBeacons}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Beacons détectés (signal décroissant)"
+                           TextColor="White" FontSize="15" FontAttributes="Bold"/>
+                    <CollectionView ItemsSource="{Binding DiscoveredBeacons}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="#1e3a5f" Margin="0,4"
+                                       Padding="14" CornerRadius="10" HasShadow="False">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="{Binding Name}"
+                                               TextColor="White" FontAttributes="Bold" FontSize="14"/>
+                                        <Label Text="{Binding RssiDisplay}"
+                                               TextColor="#6b7a99" FontSize="12"/>
+                                        <Label Text="{Binding Uuid}"
+                                               TextColor="#6b7a99" FontSize="10"
+                                               LineBreakMode="CharacterWrap"/>
+                                        <Button Text="Associer à ce véhicule"
+                                                Clicked="OnAssociateClicked"
+                                                CommandParameter="{Binding .}"
+                                                BackgroundColor="#2563eb" TextColor="White"
+                                                CornerRadius="8" HeightRequest="38"
+                                                Margin="0,8,0,0"/>
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
