@@ -12,15 +12,16 @@
             <!-- Icône logo dans un badge arrondi -->
             <Border Grid.Column="0"
                     BackgroundColor="#1e3a70"
+                    Stroke="Transparent"
                     StrokeThickness="0"
-                    WidthRequest="42" HeightRequest="42"
+                    WidthRequest="44" HeightRequest="44"
                     Margin="0,0,14,0"
                     VerticalOptions="Center">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="11"/>
                 </Border.StrokeShape>
                 <Image Source="logo_pm.png"
-                       HeightRequest="28" WidthRequest="28"
+                       HeightRequest="34" WidthRequest="34"
                        Aspect="AspectFit"
                        HorizontalOptions="Center"
                        VerticalOptions="Center"/>

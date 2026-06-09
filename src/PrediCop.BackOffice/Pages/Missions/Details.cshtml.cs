@@ -24,6 +24,7 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
     public double? EtaMinutes { get; set; }
     public List<string> AssignedVehicleOfficerNames { get; private set; } = [];
     public List<VehicleDto> OnMissionVehicles { get; set; } = [];
+    public List<VehicleDto> AvailableVehicles { get; set; } = [];
     public bool CanForceAssign =>
         Mission is not null
         && (Mission.Priority == "Critique" || Mission.Priority == "SOS")
@@ -45,6 +46,8 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         if (Mission is null) return NotFound();
 
         ComputeDistanceToTarget();
+
+        await LoadAvailableVehiclesAsync(client);
 
         if (CanForceAssign)
             await LoadOnMissionVehiclesAsync(client);
@@ -208,6 +211,19 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         AssignedVehicleOfficerNames = vehicle.OfficerNames;
 
         AssignedVehicleJson = JsonSerializer.Serialize(vehicle, SerializeOpts);
+    }
+
+    private async Task LoadAvailableVehiclesAsync(HttpClient client)
+    {
+        try
+        {
+            var vehicles = await client.GetFromJsonAsync<List<VehicleDto>>("/api/vehicles", JsonOpts);
+            AvailableVehicles = vehicles ?? [];
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Impossible de charger les véhicules disponibles pour l'ajout de patrouille");
+        }
     }
 
     private static double Haversine(double lat1, double lon1, double lat2, double lon2)

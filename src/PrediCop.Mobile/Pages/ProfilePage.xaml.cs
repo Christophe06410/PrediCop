@@ -16,10 +16,17 @@ public partial class ProfilePage : ContentPage
         BindingContext = vm;
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
         _vm.LoadProfile();
+
+        // Pré-demander la permission GPS dès l'ouverture de l'onglet,
+        // avant toute sélection de véhicule, pour éviter le gel de l'UI au moment du choix.
+        await ProfileViewModel.EnsureLocationPermissionAsync();
+
+        // Récupérer la plaque d'immatriculation depuis l'API si elle n'est pas encore dans le cache.
+        await _vm.RefreshVehicleLabelAsync();
     }
 
     private void OnGpsToggled(object sender, ToggledEventArgs e)

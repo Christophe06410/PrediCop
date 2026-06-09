@@ -34,6 +34,35 @@ public partial class ProfileViewModel(
         CurrentVehicle = auth.VehicleDisplayLabel ?? auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
     }
 
+    /// <summary>Si un véhicule est assigné mais que le label ne contient pas encore la plaque,
+    /// on va chercher l'info dans l'API et on met à jour l'affichage + le cache.</summary>
+    public async Task RefreshVehicleLabelAsync()
+    {
+        if (auth.VehicleId is null) return;
+
+        // La plaque est déjà dans le label (format "CallSign — Plaque") — rien à faire
+        if (auth.VehicleDisplayLabel?.Contains('—') == true)
+        {
+            CurrentVehicle = auth.VehicleDisplayLabel;
+            return;
+        }
+
+        try
+        {
+            var vehicles = await api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
+            var match = vehicles?.FirstOrDefault(v => v.Id == auth.VehicleId);
+            if (match is null) return;
+
+            var label = $"{match.CallSign} — {match.LicensePlate}";
+            CurrentVehicle = label;
+            auth.SetVehicleDisplayLabel(label);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProfileVM] RefreshVehicleLabelAsync ÉCHEC: {ex.Message}");
+        }
+    }
+
     public async Task<List<VehicleItem>> LoadVehiclesAsync()
     {
         IsLoadingVehicles = true;
@@ -66,12 +95,6 @@ public partial class ProfileViewModel(
         CurrentVehicle = callSign;
         auth.SetVehicleDisplayLabel(callSign);
 
-        // Demander la permission GPS ici, sur le thread principal, avant de passer en arrière-plan.
-        // RequestAsync fait de l'IPC Android (~2-8s sur Samsung) — l'appeler depuis Task.Run force
-        // MAUI à redispatcher sur le main thread via InvokeOnMainThread, ce qui bloque l'UI.
-        await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-        System.Diagnostics.Debug.WriteLine($"[ProfileVM] GPS permission checked: {sw.ElapsedMilliseconds}ms");
-
         // SignalR + GPS se reconnectent en arrière-plan : ne pas bloquer l'UI
         _ = Task.Run(async () =>
         {
@@ -101,6 +124,15 @@ public partial class ProfileViewModel(
 
         System.Diagnostics.Debug.WriteLine($"[ProfileVM] SelectVehicleAsync (UI total): {sw.ElapsedMilliseconds}ms");
         return true;
+    }
+
+    /// <summary>Demande la permission GPS sur le thread principal avant que l'utilisateur sélectionne un véhicule.
+    /// L'IPC Android de RequestAsync peut prendre plusieurs secondes — l'appeler en amont évite de geler l'UI.</summary>
+    public static async Task EnsureLocationPermissionAsync()
+    {
+        var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+        if (status != PermissionStatus.Granted)
+            await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
     }
 
     public void StopGps() => gps.Stop();

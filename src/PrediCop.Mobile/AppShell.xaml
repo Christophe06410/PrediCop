@@ -32,27 +32,27 @@
     <TabBar x:Name="MainTabBar" Route="main">
 
         <!-- Onglets Officer (patrouille) -->
-        <Tab x:Name="TabMissions" Route="missions" Title="Missions">
+        <Tab x:Name="TabMissions" Route="missions" Title="Missions" Icon="tab_missions.png">
             <ShellContent ContentTemplate="{DataTemplate pages:MissionPage}"
                           Shell.NavBarIsVisible="False" />
         </Tab>
-        <Tab x:Name="TabPatrol" Route="patrol" Title="Patrouille">
+        <Tab x:Name="TabPatrol" Route="patrol" Title="Patrouille" Icon="tab_patrol.png">
             <ShellContent ContentTemplate="{DataTemplate pages:PatrolPage}"
                           Shell.NavBarIsVisible="False" />
         </Tab>
-        <Tab x:Name="TabMap" Route="map" Title="Carte">
+        <Tab x:Name="TabMap" Route="map" Title="Carte" Icon="tab_map.png">
             <ShellContent ContentTemplate="{DataTemplate pages:MapPage}"
                           Shell.NavBarIsVisible="False" />
         </Tab>
 
         <!-- Onglet Verbalisation — caché par défaut, affiché si module activé -->
-        <Tab x:Name="TabTickets" Route="tickets" Title="PV" IsVisible="False">
+        <Tab x:Name="TabTickets" Route="tickets" Title="PV" Icon="tab_tickets.png" IsVisible="False">
             <ShellContent ContentTemplate="{DataTemplate pages:TicketingPage}"
                           Shell.NavBarIsVisible="False" />
         </Tab>
 
         <!-- Profil — toujours visible -->
-        <Tab x:Name="TabProfile" Route="profile" Title="Profil">
+        <Tab x:Name="TabProfile" Route="profile" Title="Profil" Icon="tab_profile.png">
             <ShellContent ContentTemplate="{DataTemplate pages:ProfilePage}"
                           Shell.NavBarIsVisible="False" />
         </Tab>

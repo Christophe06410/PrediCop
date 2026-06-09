@@ -199,11 +199,11 @@
 
                     @if (Model.DistanceKm.HasValue)
                     {
-                        <dt class="col-sm-4 text-muted">Distance véhicule</dt>
-                        <dd class="col-sm-8">
-                            <span class="badge bg-primary fs-6">
-                                <i class="fa-solid fa-route me-1"></i>@Model.DistanceKm.Value.ToString("F1") km
-                            </span>
+                        <dt class="col-sm-4 text-muted">Distance patrouille</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-primary fs-6">
+                                    <i class="fa-solid fa-route me-1"></i>@Model.DistanceKm.Value.ToString("F1") km
+                                </span>
                             @if (Model.EtaMinutes.HasValue)
                             {
                                 <span class="badge bg-secondary fs-6 ms-1">
@@ -215,7 +215,7 @@
                     }
                     else if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
                     {
-                        <dt class="col-sm-4 text-muted">Distance véhicule</dt>
+                        <dt class="col-sm-4 text-muted">Distance patrouille</dt>
                         <dd class="col-sm-8 text-muted small">Position GPS non disponible</dd>
                     }
 
@@ -551,12 +551,39 @@
     <!-- Timeline des assignments -->
     <div class="col-12">
         <div class="card shadow-sm">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-timeline me-2 text-warning"></i>Timeline des propositions de véhicules
+                    <i class="fa-solid fa-timeline me-2 text-warning"></i>Timeline des propositions de patrouilles
                 </h6>
+                <button class="btn btn-sm btn-outline-warning" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#collapseAddPatrouille">
+                    <i class="fa-solid fa-plus me-1"></i>Ajouter une patrouille
+                </button>
             </div>
             <div class="card-body">
+                <!-- Formulaire ajout patrouille -->
+                <div class="collapse mb-3" id="collapseAddPatrouille">
+                    <div class="card card-body bg-light border-warning border-opacity-25">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Patrouille (véhicule)</label>
+                                <select id="patrol_vehicleId" class="form-select form-select-sm">
+                                    <option value="">Sélectionner…</option>
+                                    @foreach (var v in Model.AvailableVehicles)
+                                    {
+                                        <option value="@v.Id">@v.CallSign @(!string.IsNullOrEmpty(v.Indicatif) ? $"— {v.Indicatif}" : "") (@v.Status)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-auto">
+                                <button class="btn btn-sm btn-warning" onclick="addPatrouille('@mission.Id')">
+                                    <i class="fa-solid fa-plus me-1"></i>Ajouter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 @if (mission.Assignments.Any())
                 {
                     <div class="timeline">
@@ -869,6 +896,24 @@
 
     function openMedia(mediaId) {
         window.open(`/api/proxy/media/${mediaId}/file`, '_blank');
+    }
+
+    // ---- Patrouilles ----
+    async function addPatrouille(missionId) {
+        const vehicleId = document.getElementById('patrol_vehicleId').value;
+        if (!vehicleId) { alert('Veuillez sélectionner une patrouille.'); return; }
+        try {
+            const r = await fetch(`/api/proxy/missions/${missionId}/crew`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vehicleId })
+            });
+            if (r.ok) location.reload();
+            else {
+                const err = await r.json().catch(() => null);
+                alert(err?.detail ?? 'Erreur lors de l\'ajout de la patrouille.');
+            }
+        } catch { alert('Impossible de joindre le serveur.'); }
     }
     </script>
     <script>

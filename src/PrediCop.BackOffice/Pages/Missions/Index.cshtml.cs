@@ -31,10 +31,14 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
             var active = await client.GetFromJsonAsync<List<MissionDto>>("/api/missions/active", options);
             ActiveMissions = active ?? [];
 
-            // Recent missions — paginated, all statuses, take last 20
-            var paged = await client.GetFromJsonAsync<MissionsPage>("/api/missions?size=20&page=1", options);
-            RecentMissions = (paged?.Items ?? [])
-                .Where(m => m.Status is "Completed" or "Cancelled" or "Refused")
+            // Recent missions — query terminal statuses directly so active missions don't crowd out results
+            var completedPaged  = await client.GetFromJsonAsync<MissionsPage>("/api/missions?status=Completed&size=20&page=1", options);
+            var cancelledPaged  = await client.GetFromJsonAsync<MissionsPage>("/api/missions?status=Cancelled&size=5&page=1", options);
+
+            RecentMissions = (completedPaged?.Items ?? [])
+                .Concat(cancelledPaged?.Items ?? [])
+                .OrderByDescending(m => m.CompletedAt ?? m.CreatedAt)
+                .Take(20)
                 .ToList();
         }
         catch (Exception ex)
@@ -48,7 +52,7 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         foreach (var m in ActiveMissions.Concat(RecentMissions))
         {
             m.AssignedVehicleCallSign ??= m.Assignments
-                .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")
+                .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed" or "Completed")
                 ?.VehicleCallSign;
         }
     }
