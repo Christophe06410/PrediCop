@@ -34,6 +34,13 @@ public class SignalRService : IAsyncDisposable
         _connection.On<object>("StreetRiskUpdated", data =>
             StreetRiskUpdated?.Invoke(this, new StreetRiskArgs(data)));
 
+        // After auto-reconnect the connection gets a new ConnectionId and is no longer
+        // in the vehicle group — rejoin explicitly so mission proposals keep arriving.
+        _connection.Reconnected += async _ =>
+        {
+            try { await _connection.InvokeAsync("JoinVehicleGroup", vehicleId); } catch { }
+        };
+
         await _connection.StartAsync();
         await _connection.InvokeAsync("JoinVehicleGroup", vehicleId);
     }

@@ -56,7 +56,18 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
         var nearby = await gpsService.FindNearbyAvailableVehiclesAsync(
             mission.TargetLatitude, mission.TargetLongitude, 5, ct);
 
-        var next = nearby.FirstOrDefault(v => !alreadyProposedVehicleIds.Contains(v.VehicleId));
+        var blockedVehicleIds = await context.MissionAssignments
+            .Where(a => a.MissionId != missionId
+                && (a.Status == MissionStatus.Proposed
+                    || a.Status == MissionStatus.Accepted
+                    || a.Status == MissionStatus.InProgress))
+            .Select(a => a.VehicleId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var next = nearby.FirstOrDefault(v =>
+            !alreadyProposedVehicleIds.Contains(v.VehicleId)
+            && !blockedVehicleIds.Contains(v.VehicleId));
 
         if (next == default)
             throw new InvalidOperationException("No available vehicle found for this mission.");
@@ -158,6 +169,56 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
             .ToList();
 
         foreach (var vehicleId in activeVehicleIds)
+        {
+            var vehicle = await context.PatrolVehicles.FindAsync([vehicleId], ct);
+            if (vehicle is not null)
+                vehicle.Status = VehicleStatus.Available;
+        }
+
+        var call = await context.Calls.FindAsync([mission.CallId], ct);
+        if (call is not null)
+            call.Status = CallStatus.Closed;
+
+        await context.SaveChangesAsync(ct);
+        return mission;
+    }
+
+    public async Task<Mission> CancelMissionAsync(Guid missionId, string reason, CancellationToken ct = default)
+    {
+        var mission = await context.Missions
+            .Include(m => m.Assignments)
+            .FirstOrDefaultAsync(m => m.Id == missionId, ct)
+            ?? throw new InvalidOperationException($"Mission {missionId} not found.");
+
+        if (mission.Status == MissionStatus.Completed)
+            throw new InvalidOperationException("Une mission terminée ne peut pas être annulée.");
+
+        if (mission.Status == MissionStatus.Cancelled)
+            throw new InvalidOperationException("La mission est déjà annulée.");
+
+        mission.Status = MissionStatus.Cancelled;
+        mission.CompletedAt = DateTime.UtcNow;
+        mission.CompletionReport = reason;
+
+        var impactedVehicleIds = mission.Assignments
+            .Where(a => a.Status == MissionStatus.Proposed
+                || a.Status == MissionStatus.Accepted
+                || a.Status == MissionStatus.InProgress)
+            .Select(a => a.VehicleId)
+            .Distinct()
+            .ToList();
+
+        foreach (var assignment in mission.Assignments.Where(a =>
+                     a.Status == MissionStatus.Proposed
+                     || a.Status == MissionStatus.Accepted
+                     || a.Status == MissionStatus.InProgress))
+        {
+            assignment.Status = MissionStatus.Cancelled;
+            assignment.RespondedAt ??= DateTime.UtcNow;
+            assignment.RefusalReason ??= reason;
+        }
+
+        foreach (var vehicleId in impactedVehicleIds)
         {
             var vehicle = await context.PatrolVehicles.FindAsync([vehicleId], ct);
             if (vehicle is not null)

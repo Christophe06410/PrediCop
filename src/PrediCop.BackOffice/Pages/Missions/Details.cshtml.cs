@@ -29,6 +29,9 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         Mission is not null
         && (Mission.Priority == "Critique" || Mission.Priority == "SOS")
         && (Mission.Status is "Pending" or "Proposed");
+    public bool CanCancelMission =>
+        Mission is not null
+        && Mission.Status is "Pending" or "Proposed" or "Accepted" or "InProgress";
 
     /// <summary>Vrai si cet appel a des missions antérieures (mission de reprise).</summary>
     public bool IsResumedMission => Mission?.SiblingMissions.Count > 0;
@@ -116,6 +119,36 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         catch (Exception ex)
         {
             logger.LogError(ex, "Erreur dispatch mission {Id}", id);
+            TempData["ErrorMessage"] = "Impossible de joindre le serveur.";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostCancelAsync(Guid id, [FromForm] string? cancellationReason, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(cancellationReason))
+        {
+            TempData["ErrorMessage"] = "Le motif d'annulation est requis.";
+            return RedirectToPage(new { id });
+        }
+
+        try
+        {
+            var client = httpClientFactory.CreateClient("PrediCopApi");
+            var response = await client.PostAsJsonAsync($"/api/missions/{id}/cancel", new
+            {
+                reason = cancellationReason.Trim()
+            }, ct);
+
+            if (response.IsSuccessStatusCode)
+                TempData["SuccessMessage"] = "Mission annulée.";
+            else
+                TempData["ErrorMessage"] = $"Erreur lors de l'annulation ({(int)response.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erreur annulation mission {Id}", id);
             TempData["ErrorMessage"] = "Impossible de joindre le serveur.";
         }
 

@@ -9,5 +9,6 @@ public interface IMissionService
     Task<MissionAssignment> ProposeToNextVehicleAsync(Guid missionId, CancellationToken ct = default);
     Task<MissionAssignment> RespondToProposalAsync(Guid assignmentId, bool accepted, RefusalReasonCode? reasonCode, string? refusalReason, CancellationToken ct = default);
     Task<Mission> CompleteMissionAsync(Guid missionId, string report, CancellationToken ct = default);
+    Task<Mission> CancelMissionAsync(Guid missionId, string reason, CancellationToken ct = default);
     Task<MissionAssignment> AddCrewToMissionAsync(Guid missionId, Guid vehicleId, Guid tenantId, CancellationToken ct = default);
 }

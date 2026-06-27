@@ -102,6 +102,13 @@
                                 </button>
                             </form>
                         }
+                        @if (Model.CanCancelMission)
+                        {
+                            <button type="button" class="btn btn-outline-danger fw-semibold"
+                                    data-bs-toggle="modal" data-bs-target="#cancel-mission-modal">
+                                <i class="fa-solid fa-ban me-2"></i>Annuler la mission
+                            </button>
+                        }
                         @if (Model.CanForceAssign)
                         {
                             <button type="button" class="btn btn-danger fw-semibold"
@@ -244,16 +251,28 @@
                         <dd class="col-sm-8">@mission.AcceptedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                     }
 
-                    @if (mission.CompletedAt.HasValue)
+                    @if (mission.CompletedAt.HasValue && mission.Status != "Cancelled")
                     {
                         <dt class="col-sm-4 text-muted">Terminée le</dt>
                         <dd class="col-sm-8">@mission.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                    }
+
+                    @if (mission.CancelledAt.HasValue)
+                    {
+                        <dt class="col-sm-4 text-muted">Annulée le</dt>
+                        <dd class="col-sm-8">@mission.CancelledAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(mission.CompletionReport))
                     {
                         <dt class="col-sm-4 text-muted">Rapport</dt>
                         <dd class="col-sm-8">@mission.CompletionReport</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(mission.CancellationReason))
+                    {
+                        <dt class="col-sm-4 text-muted">Motif annulation</dt>
+                        <dd class="col-sm-8">@mission.CancellationReason</dd>
                     }
                 </dl>
             </div>
@@ -652,6 +671,40 @@
         </div>
     </div>
 </div>
+
+@if (Model.CanCancelMission)
+{
+    <div class="modal fade" id="cancel-mission-modal" tabindex="-1" aria-labelledby="cancelMissionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@mission.Id">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title fw-bold" id="cancelMissionLabel">
+                            <i class="fa-solid fa-ban me-2"></i>Annuler la mission @mission.Reference
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            L'annulation sera conservée dans l'historique et la patrouille sera remise au statut libre.
+                        </div>
+                        <label for="cancellationReason" class="form-label fw-semibold">Motif d'annulation</label>
+                        <textarea id="cancellationReason" name="cancellationReason" class="form-control"
+                                  rows="4" maxlength="1000" required
+                                  placeholder="Ex: rappel de l'appelant, plus de besoin sur site..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Retour</button>
+                        <button type="submit" class="btn btn-danger fw-semibold">
+                            <i class="fa-solid fa-ban me-2"></i>Confirmer l'annulation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 @if (Model.CanForceAssign)
 {

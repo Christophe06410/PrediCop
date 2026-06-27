@@ -271,6 +271,7 @@ public class MissionsController(
             await hubContext.Clients
                 .Group($"operators_{TenantId}")
                 .SendAsync("MissionStatusChanged", missionResponse, ct);
+            await BroadcastMissionStatusToVehiclesAsync(missionResponse, ct);
 
             return Ok(MapAssignmentToResponse(updated));
         }
@@ -303,6 +304,7 @@ public class MissionsController(
             await hubContext.Clients
                 .Group($"operators_{TenantId}")
                 .SendAsync("MissionStatusChanged", missionResponse, ct);
+            await BroadcastMissionStatusToVehiclesAsync(missionResponse, ct);
 
             return Ok(MapAssignmentToResponse(updated));
         }
@@ -386,12 +388,57 @@ public class MissionsController(
             await hubContext.Clients
                 .Group($"operators_{TenantId}")
                 .SendAsync("MissionStatusChanged", response, ct);
+            await BroadcastMissionStatusToVehiclesAsync(response, ct);
 
             return Ok(response);
         }
         catch (Exception ex)
         {
             return Problem(title: "Erreur lors de la complétion", detail: ex.Message, statusCode: 500);
+        }
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
+    public async Task<ActionResult<MissionResponse>> Cancel(
+        Guid id,
+        [FromBody] CancelMissionRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Problem(title: "Le motif d'annulation est requis", statusCode: 400);
+
+        var mission = await db.Missions
+            .FirstOrDefaultAsync(m => m.Id == id && m.TenantId == TenantId, ct);
+
+        if (mission is null)
+            return Problem(title: "Mission non trouvÃ©e", statusCode: 404);
+
+        try
+        {
+            var cancelled = await missionService.CancelMissionAsync(id, request.Reason.Trim(), ct);
+
+            await db.Entry(cancelled).Reference(m => m.Call).LoadAsync(ct);
+            await db.Entry(cancelled).Collection(m => m.Assignments).LoadAsync(ct);
+            foreach (var a in cancelled.Assignments)
+                await db.Entry(a).Reference(x => x.Vehicle).LoadAsync(ct);
+
+            var response = MapToResponse(cancelled);
+
+            await hubContext.Clients
+                .Group($"operators_{TenantId}")
+                .SendAsync("MissionStatusChanged", response, ct);
+            await BroadcastMissionStatusToVehiclesAsync(response, ct);
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(title: "Annulation impossible", detail: ex.Message, statusCode: 400);
+        }
+        catch (Exception ex)
+        {
+            return Problem(title: "Erreur lors de l'annulation", detail: ex.Message, statusCode: 500);
         }
     }
 
@@ -664,8 +711,10 @@ public class MissionsController(
         DispatchedAt = m.DispatchedAt,
         AcceptedAt = m.AcceptedAt,
         ArrivedAt = m.ArrivedAt,
-        CompletedAt = m.CompletedAt,
+        CompletedAt = m.Status == MissionStatus.Cancelled ? null : m.CompletedAt,
+        CancelledAt = m.Status == MissionStatus.Cancelled ? m.CompletedAt : null,
         CompletionReport = m.CompletionReport,
+        CancellationReason = m.Status == MissionStatus.Cancelled ? m.CompletionReport : null,
         CreatedAt = m.CreatedAt,
         UpdatedAt = m.UpdatedAt,
         Assignments = m.Assignments.Select(MapAssignmentToResponse).ToList(),
@@ -719,4 +768,17 @@ public class MissionsController(
         RefusalReason = a.RefusalReason,
         DistanceAtProposal = a.DistanceAtProposal
     };
+
+    private Task BroadcastMissionStatusToVehiclesAsync(MissionResponse mission, CancellationToken ct)
+    {
+        var vehicleIds = mission.Assignments
+            .Select(a => a.VehicleId)
+            .Distinct()
+            .ToList();
+
+        return Task.WhenAll(vehicleIds.Select(vehicleId =>
+            hubContext.Clients
+                .Group($"vehicle_{vehicleId}")
+                .SendAsync("MissionStatusChanged", mission, ct)));
+    }
 }

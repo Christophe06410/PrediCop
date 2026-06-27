@@ -35,6 +35,18 @@ public partial class LoginViewModel(
         {
             var list = await auth.GetTenantsAsync();
             Tenants = new ObservableCollection<TenantItem>(list);
+            SelectedTenant ??= Tenants.FirstOrDefault();
+
+            if (Tenants.Count == 0)
+            {
+                ErrorMessage = "Aucune ville disponible. Vérifiez la connexion au serveur.";
+                HasError = true;
+            }
+            else
+            {
+                HasError = false;
+                ErrorMessage = "";
+            }
 
 #if DEBUG
             SelectedTenant = Tenants.FirstOrDefault(t => t.Slug == "predicop") ?? Tenants.FirstOrDefault();
@@ -63,14 +75,16 @@ public partial class LoginViewModel(
         bool isOfficer = string.Equals(role, "Officer", StringComparison.OrdinalIgnoreCase);
         bool isPatrolLeader = string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
         bool isPatrolAgent = string.Equals(role, "PatrolAgent", StringComparison.OrdinalIgnoreCase);
+        bool isPatrolRole = isOfficer || isPatrolLeader || isPatrolAgent;
+
+        if (isPatrolRole && auth.VehicleId.HasValue && !signalR.IsConnected)
+            try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
 
         if (features.Current.GpsTrackingEnabled)
         {
             if (isOfficer && auth.VehicleId.HasValue)
             {
                 // Officer classique : GPS lié au véhicule
-                if (!signalR.IsConnected)
-                    try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
                 if (!gps.IsTracking)
                     try { await gps.StartAsync(auth.VehicleId.Value); } catch { }
             }

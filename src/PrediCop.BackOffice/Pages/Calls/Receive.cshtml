@@ -16,12 +16,18 @@
 *@
 
 <!-- Barre d'état appel en cours -->
-<div class="alert alert-dark d-flex align-items-center gap-3 py-2 mb-3 rounded-2" id="call-status-bar">
-    <span class="text-warning fw-bold fs-6">
-        <i class="fa-solid fa-phone-volume fa-beat me-2"></i>Appel en cours
+<div class="alert alert-secondary d-flex align-items-center gap-3 py-2 mb-3 rounded-2 flex-wrap" id="call-status-bar">
+    <span class="fw-bold fs-6" id="call-status-text">
+        <i class="fa-solid fa-headset me-2"></i>En attente
     </span>
-    <span class="text-white fw-bold" id="call-timer">00:00</span>
-    <span class="text-secondary small">Démarré à @Model.CallStartTime.ToString("HH:mm:ss")</span>
+    <span class="fw-bold font-monospace" id="call-timer">--:--</span>
+    <span class="text-muted small" id="call-detail"></span>
+    <button type="button" class="btn btn-success btn-sm ms-1" id="btn-decrocher">
+        <i class="fa-solid fa-phone me-1"></i>Décrocher
+    </button>
+    <button type="button" class="btn btn-danger btn-sm ms-1 d-none" id="btn-raccrocher">
+        <i class="fa-solid fa-phone-slash me-1"></i>Raccrocher
+    </button>
 </div>
 
 @if (TempData["SuccessMessage"] != null)
@@ -175,7 +181,7 @@
         </div>
 
         <div class="card-footer bg-light d-flex justify-content-between align-items-center">
-            <button type="submit" asp-page-handler="Close" class="btn btn-outline-secondary" id="btn-close">
+            <button type="submit" asp-page-handler="Close" class="btn btn-outline-secondary" id="btn-close" data-clear-timer>
                 <i class="fa-solid fa-times me-2"></i>Fermer sans suite
             </button>
             <div class="d-flex gap-2">
@@ -183,10 +189,10 @@
                 <button type="submit" asp-page-handler="SaveDraft" class="btn btn-outline-primary" id="btn-save-draft">
                     <i class="fa-solid fa-floppy-disk me-2"></i>Sauvegarder le brouillon
                 </button>
-                <button type="submit" asp-page-handler="SaveLogbook" class="btn btn-outline-success" id="btn-save-logbook">
+                <button type="submit" asp-page-handler="SaveLogbook" class="btn btn-outline-success" id="btn-save-logbook" data-clear-timer>
                     <i class="fa-solid fa-book me-2"></i>Main courante uniquement
                 </button>
-                <button type="submit" asp-page-handler="CreateMission" class="btn btn-primary btn-lg" id="btn-create">
+                <button type="submit" asp-page-handler="CreateMission" class="btn btn-primary btn-lg" id="btn-create" data-clear-timer>
                     <i class="fa-solid fa-paper-plane me-2"></i>Créer la Mission
                 </button>
             </div>
@@ -273,17 +279,105 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-    // ---- Timer appel en cours ----
+    // ---- Timer appel (manuel : Décrocher / Raccrocher) ----
     (function () {
-        var started = new Date();
-        function updateTimer() {
-            var diff = Math.floor((new Date() - started) / 1000);
-            var m = Math.floor(diff / 60).toString().padStart(2, '0');
-            var s = (diff % 60).toString().padStart(2, '0');
-            document.getElementById('call-timer').textContent = m + ':' + s;
+        var KEY_START = 'predicop_call_start';
+        var KEY_END   = 'predicop_call_end';
+
+        var bar    = document.getElementById('call-status-bar');
+        var label  = document.getElementById('call-status-text');
+        var timer  = document.getElementById('call-timer');
+        var detail = document.getElementById('call-detail');
+        var btnDec = document.getElementById('btn-decrocher');
+        var btnRac = document.getElementById('btn-raccrocher');
+
+        var startTs = null, endTs = null, tickId = null;
+
+        function fmt(ms) {
+            var s = Math.floor(ms / 1000);
+            return Math.floor(s / 60).toString().padStart(2,'0') + ':' + (s % 60).toString().padStart(2,'0');
         }
-        updateTimer();
-        setInterval(updateTimer, 1000);
+
+        function tick() {
+            timer.textContent = fmt((endTs || Date.now()) - startTs);
+        }
+
+        function applyState(state) {
+            bar.className = 'alert d-flex align-items-center gap-3 py-2 mb-3 rounded-2 flex-wrap';
+            if (state === 'waiting') {
+                bar.classList.add('alert-secondary');
+                label.innerHTML = '<i class="fa-solid fa-headset me-2"></i>En attente';
+                label.className = 'fw-bold fs-6 text-muted';
+                timer.textContent = '--:--';
+                timer.className = 'fw-bold font-monospace text-muted';
+                detail.textContent = '';
+                btnDec.classList.remove('d-none');
+                btnRac.classList.add('d-none');
+            } else if (state === 'active') {
+                bar.classList.add('alert-dark');
+                label.innerHTML = '<i class="fa-solid fa-phone-volume fa-beat me-2 text-warning"></i>Appel en cours';
+                label.className = 'fw-bold fs-6 text-white';
+                timer.className = 'fw-bold font-monospace text-white';
+                detail.textContent = 'Décroché à ' + new Date(startTs).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+                detail.className = 'text-secondary small';
+                btnDec.classList.add('d-none');
+                btnRac.classList.remove('d-none');
+            } else if (state === 'ended') {
+                bar.classList.add('alert-success');
+                label.innerHTML = '<i class="fa-solid fa-phone-slash me-2"></i>Appel terminé';
+                label.className = 'fw-bold fs-6 text-white';
+                timer.className = 'fw-bold font-monospace text-white';
+                detail.textContent = 'Durée : ' + fmt(endTs - startTs);
+                detail.className = 'text-white small';
+                btnDec.classList.add('d-none');
+                btnRac.classList.add('d-none');
+            }
+        }
+
+        function clearSession() {
+            sessionStorage.removeItem(KEY_START);
+            sessionStorage.removeItem(KEY_END);
+        }
+
+        // Restore après rechargement (ex: sauvegarde brouillon)
+        var savedStart = sessionStorage.getItem(KEY_START);
+        var savedEnd   = sessionStorage.getItem(KEY_END);
+        if (savedStart) {
+            startTs = parseInt(savedStart, 10);
+            if (savedEnd) {
+                endTs = parseInt(savedEnd, 10);
+                tick();
+                applyState('ended');
+            } else {
+                applyState('active');
+                tick();
+                tickId = setInterval(tick, 1000);
+            }
+        } else {
+            applyState('waiting');
+        }
+
+        btnDec.addEventListener('click', function () {
+            startTs = Date.now(); endTs = null;
+            sessionStorage.setItem(KEY_START, startTs);
+            sessionStorage.removeItem(KEY_END);
+            applyState('active');
+            tick();
+            tickId = setInterval(tick, 1000);
+        });
+
+        btnRac.addEventListener('click', function () {
+            endTs = Date.now();
+            sessionStorage.setItem(KEY_END, endTs);
+            clearInterval(tickId); tickId = null;
+            tick();
+            applyState('ended');
+        });
+
+        // Nettoyer sessionStorage quand on quitte définitivement la réception
+        document.querySelectorAll('[data-clear-timer]').forEach(function (btn) {
+            btn.addEventListener('click', clearSession);
+        });
     })();
 
     // ---- 2d — Auto-geocode on address change (debounced 800ms) ----

@@ -19,7 +19,9 @@ public class MissionDto
     public DateTime? AcceptedAt { get; set; }
     public DateTime? ArrivedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
     public string? CompletionReport { get; set; }
+    public string? CancellationReason { get; set; }
     public string? AssignedVehicleCallSign { get; set; }
     public Guid? AssignedVehicleId { get; set; }
     public List<MissionAssignmentDto> Assignments { get; set; } = [];

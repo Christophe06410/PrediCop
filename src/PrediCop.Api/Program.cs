@@ -150,6 +150,8 @@ app.UseTenantMiddleware();
 app.UseAuditContextMiddleware();
 app.UseAuthorization();
 
+app.MapGet("/", () => Results.Redirect("/bo/Public", permanent: true));
+
 app.MapControllers();
 app.MapHub<PoliceHub>("/hubs/police");
 

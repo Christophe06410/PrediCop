@@ -188,6 +188,18 @@ public class CallsController(
             var mission = await missionService.CreateMissionFromCallAsync(call.Id, ct);
 
             var response = await BuildMissionResponseAsync(mission.Id, ct);
+
+            var proposedAssignment = response.Assignments
+                .OrderByDescending(a => a.ProposalOrder)
+                .FirstOrDefault(a => a.Status == MissionStatus.Proposed);
+
+            if (proposedAssignment is not null)
+            {
+                await hubContext.Clients
+                    .Group($"vehicle_{proposedAssignment.VehicleId}")
+                    .SendAsync("MissionProposed", proposedAssignment, ct);
+            }
+
             return CreatedAtAction("GetMission", "Missions", new { id = mission.Id }, response);
         }
         catch (Exception ex)
