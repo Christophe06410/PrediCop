@@ -59,6 +59,24 @@ public static class DbInitializer
         if (tenantChanged)
             await context.SaveChangesAsync();
 
+        // --- SuperAdmin (idempotent) ---
+        if (!await context.Users.AnyAsync(u => u.Role == UserRole.SuperAdmin))
+        {
+            var systemTenant = await context.Tenants.FirstAsync(t => t.Slug == "predicop");
+            context.Users.Add(new User
+            {
+                TenantId = systemTenant.Id,
+                FirstName = "Super",
+                LastName = "Admin",
+                Email = "superadmin@predicop.fr",
+                BadgeNumber = "SA-001",
+                PasswordHash = global::BCrypt.Net.BCrypt.HashPassword("SuperAdmin123!"),
+                Role = UserRole.SuperAdmin,
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+        }
+
         // --- Officer + vehicle (idempotent) ---
         if (!await context.Users.AnyAsync(u => u.TenantId == tenantId && u.Role == UserRole.Officer))
         {

@@ -99,7 +99,10 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
         GeofencingEnabled: false,
         PhotoAttachmentsEnabled: true,
         GpsDataRetentionDays: 30,
-        AuditLogRetentionDays: 365
+        AuditLogRetentionDays: 365,
+        CountryCode: "FR",
+        CurrencyCode: "EUR",
+        CurrencySymbol: "€"
     );
 
     private static TenantFeatureFlagsResponse MapToResponse(Tenant t) => new(
@@ -113,6 +116,9 @@ public class TenantFeaturesController(AppDbContext db) : ControllerBase
         GeofencingEnabled: t.GeofencingEnabled,
         PhotoAttachmentsEnabled: t.PhotoAttachmentsEnabled,
         GpsDataRetentionDays: t.GpsDataRetentionDays,
-        AuditLogRetentionDays: t.AuditLogRetentionDays
+        AuditLogRetentionDays: t.AuditLogRetentionDays,
+        CountryCode: t.CountryCode,
+        CurrencyCode: t.CurrencyCode,
+        CurrencySymbol: t.CurrencySymbol
     );
 }

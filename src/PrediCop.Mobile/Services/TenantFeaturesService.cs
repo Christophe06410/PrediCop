@@ -26,6 +26,9 @@ public class TenantMobileFeatures
     public bool GpsTrackingEnabled { get; set; } = true;
     public bool GeofencingEnabled { get; set; } = false;
     public bool PhotoAttachmentsEnabled { get; set; } = true;
+    public string CountryCode { get; set; } = "FR";
+    public string CurrencyCode { get; set; } = "EUR";
+    public string CurrencySymbol { get; set; } = "€";
 
     public static TenantMobileFeatures Default => new();
 }

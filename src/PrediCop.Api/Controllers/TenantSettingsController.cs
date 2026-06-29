@@ -47,6 +47,25 @@ public class TenantSettingsController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Met à jour la localisation (pays, monnaie) du tenant.</summary>
+    [HttpPatch("localization")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetLocalization(
+        [FromBody] SetLocalizationRequest request,
+        CancellationToken ct)
+    {
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == TenantId, ct);
+        if (tenant is null)
+            return Problem(title: "Tenant non trouvé", statusCode: 404);
+
+        tenant.CountryCode = request.CountryCode.Trim().ToUpper();
+        tenant.CurrencyCode = request.CurrencyCode.Trim().ToUpper();
+        tenant.CurrencySymbol = request.CurrencySymbol.Trim();
+        await db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
     /// <summary>Retourne les paramètres tenant courants (géofencing, DPO).</summary>
     [HttpGet("settings")]
     [Authorize(Roles = "Admin")]
@@ -60,7 +79,10 @@ public class TenantSettingsController(AppDbContext db) : ControllerBase
             .Select(t => new TenantSettingsResponse
             {
                 GeofencingEnabled = t.GeofencingEnabled,
-                DpoEmail = t.DpoEmail
+                DpoEmail = t.DpoEmail,
+                CountryCode = t.CountryCode,
+                CurrencyCode = t.CurrencyCode,
+                CurrencySymbol = t.CurrencySymbol
             })
             .FirstOrDefaultAsync(ct);
 

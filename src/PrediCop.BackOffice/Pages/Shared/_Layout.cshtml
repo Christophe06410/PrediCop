@@ -136,6 +136,18 @@
                             }
                         </ul>
                     </li>
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <li class="nav-item dropdown">
+                            <a class="nav-link nav-icon-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-crown text-warning"></i>
+                                <span class="nav-text text-warning">Super Admin</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" asp-page="/SuperAdmin/Tenants/Index"><i class="fa-solid fa-city me-2"></i>Villes / Tenants</a></li>
+                            </ul>
+                        </li>
+                    }
                     <li class="nav-item ms-2 flex-shrink-0">
                         <form asp-page="/Search/Index" method="get" class="d-flex">
                             <div class="input-group input-group-sm">
@@ -196,7 +208,7 @@
                 <a asp-page="/Rgpd/Index" class="text-secondary text-decoration-none me-3">
                     <i class="fa-solid fa-shield-halved me-1"></i>RGPD
                 </a>
-                Back-Office v1.0 &mdash; .NET 10
+                Back-Office v@(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "?")
             </span>
         </div>
     </footer>

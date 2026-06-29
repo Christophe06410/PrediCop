@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PrediCop.Mobile.Pages.TicketDetailPage"
+             Title="Détail PV"
+             BackgroundColor="#1a2035">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="SaveToolbarItem" Text="Enregistrer" Clicked="OnSaveClicked"/>
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               IsRunning="True" IsVisible="True"
+                               Color="#2563eb" HeightRequest="48"/>
+
+            <!-- Numéro du PV -->
+            <Label x:Name="TicketNumberLabel"
+                   TextColor="#60a5fa" FontSize="13" FontAttributes="Bold"
+                   IsVisible="False"/>
+
+            <!-- Badge statut -->
+            <Frame x:Name="StatusFrame"
+                   BackgroundColor="#243050" CornerRadius="8"
+                   Padding="10,6" HasShadow="False" IsVisible="False">
+                <Label x:Name="StatusLabel" TextColor="White" FontSize="13" FontAttributes="Bold"/>
+            </Frame>
+
+            <!-- Champs du PV -->
+            <Frame x:Name="FormFrame"
+                   BackgroundColor="#243050" CornerRadius="12"
+                   Padding="16" HasShadow="False" IsVisible="False">
+                <VerticalStackLayout Spacing="12">
+
+                    <!-- Plaque -->
+                    <Label Text="Plaque d'immatriculation" TextColor="#aab0c0" FontSize="13"/>
+                    <Entry x:Name="EntryPlate"
+                           BackgroundColor="#1a2035" TextColor="White"
+                           Keyboard="Text" IsTextPredictionEnabled="False"
+                           TextChanged="OnPlateTextChanged"/>
+
+                    <!-- Adresse -->
+                    <Label Text="Adresse de l'infraction" TextColor="#aab0c0" FontSize="13"/>
+                    <Entry x:Name="EntryAddress"
+                           BackgroundColor="#1a2035" TextColor="White"/>
+
+                    <!-- Type d'infraction -->
+                    <Label Text="Type d'infraction" TextColor="#aab0c0" FontSize="13"/>
+                    <Picker x:Name="InfractionPicker"
+                            BackgroundColor="#1a2035" TextColor="White"
+                            TitleColor="#4a5568" Title="Sélectionner…"
+                            SelectedIndexChanged="OnInfractionChanged"/>
+
+                    <!-- Montant -->
+                    <Label Text="Montant de l'amende (€)" TextColor="#aab0c0" FontSize="13"/>
+                    <Entry x:Name="EntryFine"
+                           BackgroundColor="#1a2035" TextColor="White"
+                           Keyboard="Numeric"/>
+
+                    <!-- Véhicule (optionnel) -->
+                    <Label Text="Véhicule contrevenant (optionnel)"
+                           TextColor="#6b7a99" FontSize="12" Margin="0,4,0,0"/>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Entry Grid.Column="0" x:Name="EntryMake"
+                               Placeholder="Marque" PlaceholderColor="#4a5568"
+                               BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                        <Entry Grid.Column="1" x:Name="EntryModel"
+                               Placeholder="Modèle" PlaceholderColor="#4a5568"
+                               BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                        <Entry Grid.Column="2" x:Name="EntryColor"
+                               Placeholder="Couleur" PlaceholderColor="#4a5568"
+                               BackgroundColor="#1a2035" TextColor="White" FontSize="13"/>
+                    </Grid>
+
+                    <!-- Observations -->
+                    <Label Text="Observations" TextColor="#6b7a99" FontSize="12"/>
+                    <Editor x:Name="EditorNotes"
+                            BackgroundColor="#1a2035" TextColor="White"
+                            HeightRequest="80" AutoSize="Disabled"
+                            PlaceholderColor="#4a5568"/>
+
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Annuler ce PV (visible uniquement si créé aujourd'hui) -->
+            <Button x:Name="CancelTicketButton"
+                    Text="Annuler ce PV"
+                    BackgroundColor="#7f1d1d" TextColor="White"
+                    CornerRadius="10" HeightRequest="44" FontSize="14"
+                    IsVisible="False"
+                    Clicked="OnCancelTicketClicked"/>
+
+            <BoxView HeightRequest="16" Color="Transparent"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

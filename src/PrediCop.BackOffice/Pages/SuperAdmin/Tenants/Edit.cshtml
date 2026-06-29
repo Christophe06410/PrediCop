@@ -1,0 +1,173 @@
+@page "{id:guid?}"
+@model PrediCop.BackOffice.Pages.SuperAdmin.Tenants.EditModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Modifier la ville" : "Nouvelle ville";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-city me-2 text-warning"></i>@ViewData["Title"]
+    </h4>
+    <a asp-page="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-2"></i>Retour
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm" style="max-width:680px">
+    <div class="card-body">
+        @if (!Model.IsEdit)
+        {
+            <form method="post" asp-page-handler="Create">
+                <input type="hidden" asp-for="TenantId" />
+
+                <h6 class="fw-semibold text-muted text-uppercase mb-3" style="letter-spacing:.05em">
+                    <i class="fa-solid fa-city me-2"></i>Informations de la ville
+                </h6>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Nom de la ville</label>
+                        <input asp-for="CreateRequest.Name" class="form-control" placeholder="Ex : Bordeaux" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Slug (identifiant unique)</label>
+                        <input asp-for="CreateRequest.Slug" class="form-control font-monospace" placeholder="Ex : bordeaux" required
+                               pattern="[a-z0-9\-]+" title="Minuscules, chiffres et tirets uniquement" />
+                        <div class="form-text">Minuscules sans accents, tirets autorisés.</div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Plan</label>
+                        <select asp-for="CreateRequest.SubscriptionPlan" class="form-select">
+                            <option value="Essential">Essential</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Premium">Premium</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Limite véhicules</label>
+                        <input asp-for="CreateRequest.VehicleLimit" type="number" class="form-control" min="1" max="9999" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Limite utilisateurs</label>
+                        <input asp-for="CreateRequest.UserLimit" type="number" class="form-control" min="1" max="9999" />
+                    </div>
+                </div>
+
+                <hr class="my-3" />
+                <h6 class="fw-semibold text-muted text-uppercase mb-3" style="letter-spacing:.05em">
+                    <i class="fa-solid fa-user-shield me-2"></i>Compte administrateur
+                </h6>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Prénom</label>
+                        <input asp-for="CreateRequest.AdminFirstName" class="form-control" placeholder="Ex : Jean" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Nom</label>
+                        <input asp-for="CreateRequest.AdminLastName" class="form-control" placeholder="Ex : Dupont" required />
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Email</label>
+                        <input asp-for="CreateRequest.AdminEmail" type="email" class="form-control"
+                               placeholder="admin@police-bordeaux.fr" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Mot de passe initial</label>
+                        <input asp-for="CreateRequest.AdminPassword" type="password" class="form-control"
+                               placeholder="••••••••" required minlength="8" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning px-4">
+                        <i class="fa-solid fa-plus me-2"></i>Créer la ville
+                    </button>
+                    <a asp-page="Index" class="btn btn-outline-secondary">Annuler</a>
+                </div>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Update" asp-route-id="@Model.TenantId">
+                <input type="hidden" asp-for="TenantId" />
+
+                <h6 class="fw-semibold text-muted text-uppercase mb-3" style="letter-spacing:.05em">
+                    <i class="fa-solid fa-city me-2"></i>Informations
+                </h6>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Nom de la ville</label>
+                        <input asp-for="UpdateRequest.Name" class="form-control" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Slug</label>
+                        <input type="text" class="form-control font-monospace bg-light" value="@Model.Tenant?.Slug" readonly />
+                        <div class="form-text">Non modifiable après création.</div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Plan</label>
+                        <select asp-for="UpdateRequest.SubscriptionPlan" class="form-select">
+                            <option value="None">None</option>
+                            <option value="Essential">Essential</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Premium">Premium</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Statut abonnement</label>
+                        <select asp-for="UpdateRequest.SubscriptionStatus" class="form-select">
+                            <option value="None">None</option>
+                            <option value="Trialing">Trialing</option>
+                            <option value="Active">Active</option>
+                            <option value="PastDue">PastDue</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Actif</label>
+                        <div class="form-check form-switch mt-2">
+                            <input asp-for="UpdateRequest.IsActive" class="form-check-input" type="checkbox" role="switch" />
+                            <label class="form-check-label" asp-for="UpdateRequest.IsActive">Activé</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Limite véhicules</label>
+                        <input asp-for="UpdateRequest.VehicleLimit" type="number" class="form-control" min="1" max="9999" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Limite utilisateurs</label>
+                        <input asp-for="UpdateRequest.UserLimit" type="number" class="form-control" min="1" max="9999" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning px-4">
+                        <i class="fa-solid fa-floppy-disk me-2"></i>Enregistrer
+                    </button>
+                    <a asp-page="Index" class="btn btn-outline-secondary">Annuler</a>
+                </div>
+            </form>
+        }
+    </div>
+</div>

@@ -51,6 +51,17 @@ public record UpdateTicketStatusRequest(
     string? Notes
 );
 
+public record UpdateTicketContentRequest(
+    string PlateNumber,
+    string IssuedAtAddress,
+    InfractionType InfractionType,
+    decimal FineAmount,
+    string? VehicleMake,
+    string? VehicleModel,
+    string? VehicleColor,
+    string? Notes
+);
+
 public record TicketStatsResponse(
     int TotalIssued,
     int TotalPaid,

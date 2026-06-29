@@ -1,29 +1,59 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:views="clr-namespace:PrediCop.Mobile.Views"
              x:Class="PrediCop.Mobile.Pages.MapPage"
              BackgroundColor="#1a2035">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
         <views:AppHeader Grid.Row="0"/>
 
-        <WebView Grid.Row="1" x:Name="MapWebView"
-                 BackgroundColor="Transparent"/>
+        <!-- Barre de contrôle : flèche retour patrouille + toggle couleur des rues -->
+        <Grid Grid.Row="1" BackgroundColor="#243050" Padding="8,6"
+              ColumnDefinitions="Auto,*,Auto,Auto">
+            <Button Grid.Column="0"
+                    x:Name="BackToPatrolButton"
+                    Text="←"
+                    BackgroundColor="Transparent"
+                    TextColor="#60a5fa"
+                    FontSize="22"
+                    FontAttributes="Bold"
+                    Padding="6,0"
+                    HeightRequest="36"
+                    IsVisible="False"
+                    Clicked="OnBackToPatrolClicked"/>
+            <!-- spacer -->
+            <BoxView Grid.Column="1" Color="Transparent"/>
+            <Label Grid.Column="2"
+                   Text="Couleur des rues"
+                   TextColor="#aab0c0"
+                   FontSize="13"
+                   VerticalOptions="Center"
+                   Margin="0,0,6,0"/>
+            <Switch Grid.Column="3"
+                    OnColor="#2563eb"
+                    IsToggled="False"
+                    Toggled="OnStreetsColorToggled"
+                    VerticalOptions="Center"/>
+        </Grid>
 
-        <!-- Visible uniquement quand un point est focalisé (depuis patrouille) -->
-        <Button x:Name="DirectionsButton"
-                Grid.Row="1"
-                IsVisible="False"
-                Text="Itineraire GPS"
-                BackgroundColor="#2563eb"
-                TextColor="White"
-                CornerRadius="24"
-                Padding="20,10"
-                FontAttributes="Bold"
-                HorizontalOptions="Center"
-                VerticalOptions="End"
-                Margin="0,0,0,24"
-                Clicked="OnDirectionsClicked"/>
+        <!-- Carte -->
+        <Grid Grid.Row="2">
+            <WebView x:Name="MapWebView" BackgroundColor="Transparent"/>
+
+            <!-- Visible uniquement quand un point est focalisé (depuis patrouille) -->
+            <Button x:Name="DirectionsButton"
+                    IsVisible="False"
+                    Text="Itineraire GPS"
+                    BackgroundColor="#2563eb"
+                    TextColor="White"
+                    CornerRadius="24"
+                    Padding="20,10"
+                    FontAttributes="Bold"
+                    HorizontalOptions="Center"
+                    VerticalOptions="End"
+                    Margin="0,0,0,24"
+                    Clicked="OnDirectionsClicked"/>
+        </Grid>
     </Grid>
 </ContentPage>

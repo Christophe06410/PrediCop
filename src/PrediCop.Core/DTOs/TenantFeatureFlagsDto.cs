@@ -11,7 +11,10 @@ public record TenantFeatureFlagsResponse(
     bool GeofencingEnabled,
     bool PhotoAttachmentsEnabled,
     int GpsDataRetentionDays,
-    int AuditLogRetentionDays
+    int AuditLogRetentionDays,
+    string CountryCode = "FR",
+    string CurrencyCode = "EUR",
+    string CurrencySymbol = "€"
 );
 
 public record UpdateModuleFlagsRequest(

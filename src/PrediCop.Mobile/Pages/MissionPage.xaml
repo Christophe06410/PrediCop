@@ -17,7 +17,11 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0"
-                   Text="{Binding VehicleLabel}" TextColor="White" FontAttributes="Bold" VerticalOptions="Center"/>
+                   Text="{Binding VehicleLabel}" TextColor="White" FontAttributes="Bold" VerticalOptions="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnVehicleLabelTapped"/>
+                </Label.GestureRecognizers>
+            </Label>
             <Button Grid.Column="1"
                     Text="+ VL"
                     BackgroundColor="#2563eb" TextColor="White"

@@ -1,0 +1,114 @@
+@page
+@model PrediCop.BackOffice.Pages.SuperAdmin.Tenants.IndexModel
+@{
+    ViewData["Title"] = "Gestion des villes / tenants";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">
+        <i class="fa-solid fa-city me-2 text-warning"></i>Villes / Tenants
+        <span class="badge bg-secondary ms-2">@Model.Tenants.Count</span>
+    </h4>
+    <a asp-page="/SuperAdmin/Tenants/Edit" class="btn btn-warning">
+        <i class="fa-solid fa-plus me-2"></i>Nouvelle ville
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ville</th>
+                        <th>Slug</th>
+                        <th>Plan</th>
+                        <th>Statut</th>
+                        <th class="text-center">Utilisateurs</th>
+                        <th class="text-center">Véhicules</th>
+                        <th>Créée le</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model.Tenants)
+                    {
+                        var planColor = t.SubscriptionPlan switch
+                        {
+                            "Premium"  => "bg-warning text-dark",
+                            "Standard" => "bg-info text-dark",
+                            "Essential"=> "bg-secondary",
+                            _          => "bg-light text-dark"
+                        };
+                        var statusColor = t.SubscriptionStatus switch
+                        {
+                            "Active"   => "bg-success",
+                            "Trialing" => "bg-info text-dark",
+                            "PastDue"  => "bg-danger",
+                            "Cancelled"=> "bg-secondary",
+                            _          => "bg-light text-dark"
+                        };
+                        <tr class="@(!t.IsActive ? "table-secondary text-muted" : "")">
+                            <td>
+                                <strong>@t.Name</strong>
+                                @if (!t.IsActive)
+                                {
+                                    <span class="badge bg-secondary ms-1">Suspendu</span>
+                                }
+                            </td>
+                            <td><code class="small">@t.Slug</code></td>
+                            <td><span class="badge @planColor">@t.SubscriptionPlan</span></td>
+                            <td><span class="badge @statusColor">@t.SubscriptionStatus</span></td>
+                            <td class="text-center">
+                                <span class="fw-semibold">@t.UserCount</span>
+                                <span class="text-muted small">/ @t.UserLimit</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="fw-semibold">@t.VehicleCount</span>
+                                <span class="text-muted small">/ @t.VehicleLimit</span>
+                            </td>
+                            <td class="text-muted small">@t.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">
+                                <a asp-page="/SuperAdmin/Tenants/Edit" asp-route-id="@t.Id"
+                                   class="btn btn-sm btn-outline-warning" title="Modifier">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <form method="post" asp-page-handler="ToggleActive" asp-route-id="@t.Id" class="d-inline">
+                                    <button type="submit"
+                                            class="btn btn-sm @(t.IsActive ? "btn-outline-secondary" : "btn-outline-success")"
+                                            title="@(t.IsActive ? "Suspendre" : "Réactiver")">
+                                        <i class="fa-solid @(t.IsActive ? "fa-ban" : "fa-check")"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Tenants.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fa-solid fa-city fa-2x mb-2 d-block"></i>
+                                Aucune ville enregistrée.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -23,7 +23,7 @@ public class AuthController(AppDbContext db, IConfiguration configuration, ITotp
     public async Task<ActionResult<List<TenantSummaryDto>>> GetTenants(CancellationToken ct)
     {
         var tenants = await db.Tenants
-            .Where(t => t.IsActive)
+            .Where(t => t.IsActive && t.Slug != "predicop")
             .OrderBy(t => t.Name)
             .Select(t => new TenantSummaryDto { Id = t.Id, Name = t.Name, Slug = t.Slug })
             .ToListAsync(ct);
@@ -53,7 +53,7 @@ public class AuthController(AppDbContext db, IConfiguration configuration, ITotp
             return Problem(title: "Identifiants invalides", statusCode: 401);
 
         // Si l'utilisateur est Admin/Manager et a activé la 2FA, retourner un TempToken
-        if (user.TotpEnabled && (user.Role == UserRole.Admin || user.Role == UserRole.Manager))
+        if (user.TotpEnabled && (user.Role == UserRole.Admin || user.Role == UserRole.Manager || user.Role == UserRole.SuperAdmin))
         {
             var tempToken = GenerateTempToken(user.Id);
             return Ok(new LoginResponse

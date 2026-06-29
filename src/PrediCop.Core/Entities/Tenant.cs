@@ -39,6 +39,11 @@ public class Tenant : BaseEntity
     public bool GpsTrackingEnabled { get; set; } = true;           // géolocalisation temps réel
     public bool PhotoAttachmentsEnabled { get; set; } = true;      // photos sur PV et fourrière
 
+    // ---- Localisation / Monnaie ----
+    public string CountryCode { get; set; } = "FR";                // ISO 3166-1 alpha-2
+    public string CurrencyCode { get; set; } = "EUR";              // ISO 4217
+    public string CurrencySymbol { get; set; } = "€";
+
     // ---- Rétention des données (jours, 0 = pas de purge automatique) ----
     public int GpsDataRetentionDays { get; set; } = 30;            // CNIL recommande 30 jours
     public int AuditLogRetentionDays { get; set; } = 365;

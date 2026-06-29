@@ -14,4 +14,14 @@ public class TenantSettingsResponse
 {
     public bool GeofencingEnabled { get; set; }
     public string? DpoEmail { get; set; }
+    public string CountryCode { get; set; } = "FR";
+    public string CurrencyCode { get; set; } = "EUR";
+    public string CurrencySymbol { get; set; } = "€";
+}
+
+public class SetLocalizationRequest
+{
+    public string CountryCode { get; set; } = "FR";
+    public string CurrencyCode { get; set; } = "EUR";
+    public string CurrencySymbol { get; set; } = "€";
 }

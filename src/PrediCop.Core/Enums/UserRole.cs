@@ -8,5 +8,6 @@ public enum UserRole
     Manager      = 3,
     Admin        = 4,
     PatrolLeader = 5,  // Chef de patrouille — menu étendu, active la patrouille
-    PatrolAgent  = 6   // Agent patrouilleur — connexion simple, géoloc individuelle
+    PatrolAgent  = 6,  // Agent patrouilleur — connexion simple, géoloc individuelle
+    SuperAdmin   = 99  // Accès cross-tenant : gestion des villes/tenants PrediCop
 }

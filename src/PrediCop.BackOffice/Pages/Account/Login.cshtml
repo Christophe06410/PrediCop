@@ -56,18 +56,18 @@
 
             <div class="mb-4">
                 <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Ville</label>
-                <div class="input-group">
+                <div id="citySelectGroup" class="input-group">
                     <span class="input-group-text border-end-0">
                         <i class="fa-solid fa-city text-muted"></i>
                     </span>
                     @if (Model.Tenants.Count == 0)
                     {
-                        <input asp-for="CitySlug" type="text" class="form-control border-start-0 ps-1"
+                        <input asp-for="CitySlug" id="cityInput" type="text" class="form-control border-start-0 ps-1"
                                placeholder="Identifiant de la ville (ex: toulouse)" />
                     }
                     else
                     {
-                        <select asp-for="CitySlug" class="form-select border-start-0">
+                        <select asp-for="CitySlug" id="citySelect" class="form-select border-start-0">
                             <option value="">-- Sélectionnez votre ville --</option>
                             @foreach (var tenant in Model.Tenants)
                             {
@@ -75,6 +75,13 @@
                             }
                         </select>
                     }
+                </div>
+                <div id="saGroup" class="input-group d-none">
+                    <span class="input-group-text border-end-0 border-warning">
+                        <i class="fa-solid fa-crown text-warning"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0 text-warning fw-semibold" value="Super Admin — PrediCop" readonly />
+                    <input type="hidden" id="saSlugInput" name="CitySlug" value="predicop" />
                 </div>
             </div>
 
@@ -86,5 +93,27 @@
 
     <div class="text-center pb-3 text-muted" style="font-size:.78rem">
         <i class="fa-solid fa-shield-halved me-1"></i>PrediCop &copy; @DateTime.Now.Year — v1.0
+        &nbsp;|&nbsp;
+        <a href="#" id="saToggle" class="text-muted text-decoration-none" onclick="toggleSuperAdmin(); return false;">
+            <i class="fa-solid fa-user-shield"></i>
+        </a>
     </div>
 </div>
+
+<script>
+function toggleSuperAdmin() {
+    const cityGroup = document.getElementById('citySelectGroup');
+    const saGroup = document.getElementById('saGroup');
+    const citySelect = document.getElementById('citySelect') || document.getElementById('cityInput');
+    const active = !saGroup.classList.contains('d-none');
+    if (active) {
+        saGroup.classList.add('d-none');
+        cityGroup.classList.remove('d-none');
+        if (citySelect) citySelect.name = 'CitySlug';
+    } else {
+        cityGroup.classList.add('d-none');
+        saGroup.classList.remove('d-none');
+        if (citySelect) citySelect.name = '';
+    }
+}
+</script>

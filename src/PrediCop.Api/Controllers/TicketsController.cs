@@ -160,6 +160,47 @@ public class TicketsController(AppDbContext db) : ControllerBase
         return CreatedAtAction(nameof(GetTicket), new { id = ticket.Id }, MapToResponse(ticket));
     }
 
+    // ── PUT /api/tickets/{id} ─────────────────────────────────────────────────
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ElectronicTicketResponse>> UpdateContent(
+        Guid id,
+        [FromBody] UpdateTicketContentRequest request,
+        CancellationToken ct)
+    {
+        if (!await IsModuleEnabledAsync(ct))
+            return Problem(title: "Module non activé pour ce tenant", statusCode: 403);
+
+        var ticket = await db.Set<ElectronicTicket>()
+            .Include(t => t.IssuedBy)
+            .Include(t => t.Mission)
+            .FirstOrDefaultAsync(t => t.Id == id && t.TenantId == TenantId, ct);
+
+        if (ticket is null)
+            return Problem(title: "PV non trouvé", statusCode: 404);
+
+        if (ticket.IssuedAt.ToLocalTime().Date != DateTime.Today)
+            return Problem(title: "Modification impossible",
+                detail: "Ce PV ne peut plus être modifié (créé un autre jour).", statusCode: 422);
+
+        if (ticket.Status == TicketStatus.Paid || ticket.Status == TicketStatus.Cancelled)
+            return Problem(title: "Modification impossible",
+                detail: "Le statut du PV ne permet pas sa modification.", statusCode: 422);
+
+        ticket.PlateNumber      = request.PlateNumber.Trim().ToUpper();
+        ticket.IssuedAtAddress  = request.IssuedAtAddress;
+        ticket.InfractionType   = request.InfractionType;
+        ticket.FineAmount       = request.FineAmount;
+        ticket.VehicleMake      = request.VehicleMake;
+        ticket.VehicleModel     = request.VehicleModel;
+        ticket.VehicleColor     = request.VehicleColor;
+        ticket.Notes            = request.Notes;
+        ticket.UpdatedAt        = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+        return Ok(MapToResponse(ticket));
+    }
+
     // ── PUT /api/tickets/{id}/status ──────────────────────────────────────────
 
     [HttpPut("{id:guid}/status")]

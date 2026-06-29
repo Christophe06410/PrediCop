@@ -65,7 +65,8 @@
                                Text="{Binding PlateNumber}"
                                BackgroundColor="#1a2035" TextColor="White"
                                Keyboard="Text" IsTextPredictionEnabled="False"
-                               x:Name="EntryPlate"/>
+                               x:Name="EntryPlate"
+                               TextChanged="OnPlateTextChanged"/>
 
                         <!-- Adresse -->
                         <Label Text="Adresse de l'infraction *" TextColor="#aab0c0" FontSize="13"/>
@@ -94,13 +95,19 @@
 
                         <!-- Type d'infraction -->
                         <Label Text="Type d'infraction *" TextColor="#aab0c0" FontSize="13"/>
-                        <Picker ItemsSource="{Binding Source={x:Static vm:TicketingViewModel.InfractionTypes}}"
+                        <Picker ItemsSource="{Binding InfractionTypes}"
                                 SelectedItem="{Binding SelectedInfraction}"
                                 BackgroundColor="#1a2035" TextColor="White"
                                 TitleColor="#4a5568" Title="Sélectionner…"/>
 
                         <!-- Montant -->
-                        <Label Text="Montant de l'amende (€) *" TextColor="#aab0c0" FontSize="13"/>
+                        <Label TextColor="#aab0c0" FontSize="13">
+                            <Label.Text>
+                                <MultiBinding StringFormat="Montant de l'amende ({0}) *">
+                                    <Binding Path="CurrencySymbol"/>
+                                </MultiBinding>
+                            </Label.Text>
+                        </Label>
                         <Entry Placeholder="0.00"
                                PlaceholderColor="#4a5568"
                                Text="{Binding FineAmountText}"
@@ -170,6 +177,9 @@
                         <DataTemplate x:DataType="vm:TicketSummary">
                             <Frame BackgroundColor="#243050" CornerRadius="10"
                                    Padding="14,10" HasShadow="False">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnTicketTapped" CommandParameter="{Binding .}"/>
+                                </Frame.GestureRecognizers>
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
 
                                     <!-- Numéro + plaque -->
@@ -201,8 +211,9 @@
                                         <Label Grid.Column="1"
                                                TextColor="#34d399" FontSize="13" FontAttributes="Bold">
                                             <Label.Text>
-                                                <MultiBinding StringFormat="{}{0:F0} €">
+                                                <MultiBinding StringFormat="{}{0:F0} {1}">
                                                     <Binding Path="Amount"/>
+                                                    <Binding Path="CurrencySymbol"/>
                                                 </MultiBinding>
                                             </Label.Text>
                                         </Label>

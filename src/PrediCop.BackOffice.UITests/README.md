@@ -24,6 +24,9 @@ Ou directement via l'outil CLI Playwright :
 playwright install chromium
 ```
 
+## Login SuperAdmin
+Sur la page de login, cliquer l'icône fa-user-shield en bas → saisir superadmin@predicop.fr / SuperAdmin123!.
+
 ## Variables d'environnement (optionnelles)
 
 | Variable | Valeur par défaut | Description |

@@ -9,8 +9,12 @@ namespace PrediCop.Mobile.ViewModels;
 public partial class TicketingViewModel(
     ApiService api,
     AuthService auth,
+    TenantFeaturesService tenantFeatures,
     ILogger<TicketingViewModel> log) : ObservableObject
 {
+    public ApiService ApiServiceRef => api;
+    public string CurrencySymbol => tenantFeatures.Current.CurrencySymbol;
+
     // ── UI state ──────────────────────────────────────────────────────────────
 
     [ObservableProperty] private bool showForm;
@@ -54,7 +58,12 @@ public partial class TicketingViewModel(
     [ObservableProperty] private ObservableCollection<TicketSummary> recentTickets = [];
     [ObservableProperty] private bool hasNoTickets;
 
-    public static List<InfractionItem> InfractionTypes { get; } =
+    public List<InfractionItem> InfractionTypes =>
+        GetInfractionTypesForCountry(tenantFeatures.Current.CountryCode);
+
+    public static List<InfractionItem> DefaultInfractionTypes => _infractionTypesFr;
+
+    private static readonly List<InfractionItem> _infractionTypesFr =
     [
         new("StationnementInterdit",    "Stationnement interdit",           35m),
         new("StationnementGenant",      "Stationnement gênant",             35m),
@@ -65,12 +74,19 @@ public partial class TicketingViewModel(
         new("NonRespectPriorite",       "Non-respect priorité",            135m),
         new("PortableAuVolant",         "Téléphone au volant",             135m),
         new("CeintureSecurity",         "Ceinture non attachée",           135m),
-        new("DefautAssurance",          "Défaut d'assurance",              500m),
+        new("DefautAssurance",          "Défaut d'assurance",              750m),
         new("DefautControleTechnique",  "Défaut contrôle technique",       135m),
         new("NuisanceSonore",           "Nuisance sonore",                  68m),
         new("DegradationEspacePublic",  "Dégradation espace public",        68m),
         new("Autre",                    "Autre infraction",                   0m),
     ];
+
+    private static List<InfractionItem> GetInfractionTypesForCountry(string countryCode) =>
+        countryCode.ToUpperInvariant() switch
+        {
+            "FR" => _infractionTypesFr,
+            _    => _infractionTypesFr,   // fallback FR par défaut
+        };
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
@@ -175,15 +191,19 @@ public partial class TicketingViewModel(
             var list = await api.GetAsync<List<TicketDto>>(url);
             if (list is null || list.Count == 0) { HasNoTickets = true; return; }
 
+            var currency = tenantFeatures.Current.CurrencySymbol;
             foreach (var t in list)
                 RecentTickets.Add(new TicketSummary(
+                    t.Id,
                     t.TicketNumber,
                     t.PlateNumber,
                     GetInfractionLabel(t.InfractionType),
                     t.FineAmount,
                     GetStatusLabel(t.Status),
                     GetStatusColor(t.Status),
-                    t.IssuedAt.ToLocalTime().ToString("dd/MM HH:mm")));
+                    t.IssuedAt.ToLocalTime().ToString("dd/MM HH:mm"),
+                    t.IssuedAt.ToLocalTime().Date == DateTime.Today,
+                    currency));
         }
         catch (Exception ex)
         {
@@ -209,7 +229,7 @@ public partial class TicketingViewModel(
     }
 
     private static string GetInfractionLabel(string key) =>
-        InfractionTypes.FirstOrDefault(i => i.EnumKey == key)?.Label ?? key;
+        _infractionTypesFr.FirstOrDefault(i => i.EnumKey == key)?.Label ?? key;
 
     private static string GetStatusLabel(string status) => status switch
     {
@@ -233,6 +253,7 @@ public partial class TicketingViewModel(
 
     private class TicketDto
     {
+        public Guid Id           { get; set; }
         public string TicketNumber   { get; set; } = "";
         public string PlateNumber    { get; set; } = "";
         public string InfractionType { get; set; } = "";
@@ -248,10 +269,13 @@ public record InfractionItem(string EnumKey, string Label, decimal DefaultFine)
 }
 
 public record TicketSummary(
+    Guid Id,
     string Number,
     string Plate,
     string Infraction,
     decimal Amount,
     string StatusLabel,
     Color StatusColor,
-    string FormattedDate);
+    string FormattedDate,
+    bool IsToday,
+    string CurrencySymbol = "€");

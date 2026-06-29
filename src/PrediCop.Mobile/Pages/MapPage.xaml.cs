@@ -244,6 +244,7 @@ public partial class MapPage : ContentPage
         var lngStr = lng.ToString("F6", CultureInfo.InvariantCulture);
         await MapWebView.EvaluateJavaScriptAsync($"setFocusMarker({latStr}, {lngStr}, '{escapedName}')");
         DirectionsButton.IsVisible = true;
+        BackToPatrolButton.IsVisible = true;
     }
 
     private void ClearPending()
@@ -264,12 +265,24 @@ public partial class MapPage : ContentPage
         catch { await DisplayAlert("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
     }
 
+    private async void OnBackToPatrolClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//main/patrol");
+    }
+
+    private async void OnStreetsColorToggled(object? sender, ToggledEventArgs e)
+    {
+        if (_mapReady)
+            await MapWebView.EvaluateJavaScriptAsync($"setStreetsVisible({(e.Value ? "true" : "false")})");
+    }
+
     private const string MapScript = """
 var map = null;
 var focusMarker = null;
 var mapReady = false;
 var pendingOps = [];
 var streetPolylines = {};
+var streetsVisible = false;
 
 function runWhenReady(fn) {
   if (mapReady) { fn(); } else { pendingOps.push(fn); }
@@ -285,7 +298,7 @@ function addStreets(streets) {
                   score > 20 ? '#eab308' : '#22c55e';
       var line = L.polyline(
         [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
-        { color: color, weight: 7, opacity: 0.9 }
+        { color: color, weight: 7, opacity: streetsVisible ? 0.9 : 0 }
       );
       line.bindTooltip(s.name, { sticky: true, direction: 'top', className: 'street-tip' });
       line.bindPopup('<b>' + s.name + '</b>' +
@@ -295,14 +308,13 @@ function addStreets(streets) {
       line.addTo(map);
 
       var key = s.name.trim().toLowerCase();
-      streetPolylines[key] = { layer: line, color: color, street: s };
+      streetPolylines[key] = { layers: [line], color: color, street: s };
     });
   });
 }
 
 // Called from C# after fetching Overpass geometry via HttpClient.
 // segments = [{key: "...", latlngs: [[lat,lng],...]}]
-// Groups by key so a street with several OSM ways all get drawn.
 function applyOsmGeometry(segments) {
   if (!segments || !segments.length) return;
   runWhenReady(function() {
@@ -316,8 +328,9 @@ function applyOsmGeometry(segments) {
       var entry = streetPolylines[key];
       if (!entry) return;
 
-      // Remove straight-line placeholder
-      if (entry.layer) { map.removeLayer(entry.layer); entry.layer = null; }
+      // Remove straight-line placeholder layers
+      entry.layers.forEach(function(l) { map.removeLayer(l); });
+      entry.layers = [];
 
       var s      = entry.street;
       var score  = s.currentRiskScore || 0;
@@ -326,11 +339,23 @@ function applyOsmGeometry(segments) {
         '<br>Risque : <b style="color:' + entry.color + '">' + score + '</b>';
 
       byKey[key].forEach(function(latlngs) {
-        var poly = L.polyline(latlngs, { color: entry.color, weight: 7, opacity: 0.9 });
+        var poly = L.polyline(latlngs, { color: entry.color, weight: 7, opacity: streetsVisible ? 0.9 : 0 });
         poly.bindTooltip(s.name, { sticky: true, direction: 'top', className: 'street-tip' });
         poly.bindPopup(popup);
         poly.addTo(map);
+        entry.layers.push(poly);
       });
+    });
+  });
+}
+
+function setStreetsVisible(show) {
+  streetsVisible = show;
+  Object.keys(streetPolylines).forEach(function(key) {
+    var entry = streetPolylines[key];
+    if (!entry || !entry.layers) return;
+    entry.layers.forEach(function(poly) {
+      poly.setStyle({ opacity: show ? 0.9 : 0 });
     });
   });
 }

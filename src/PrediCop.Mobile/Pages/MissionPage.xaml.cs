@@ -97,6 +97,11 @@ public partial class MissionPage : ContentPage
         await ViewModel.CompleteMissionAsync(report);
     }
 
+    private async void OnVehicleLabelTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync("//main/profile");
+    }
+
     private async void OnAssignVehicleClicked(object sender, EventArgs e)
     {
         var auth = Handler?.MauiContext?.Services.GetService<AuthService>();

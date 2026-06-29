@@ -46,7 +46,10 @@ public class MissionsController(
         if (date.HasValue)
         {
             var day = date.Value.Date;
-            query = query.Where(m => m.CreatedAt.Date == day);
+            if (status.HasValue && status.Value == MissionStatus.Completed)
+                query = query.Where(m => m.CompletedAt.HasValue && m.CompletedAt.Value.Date == day);
+            else
+                query = query.Where(m => m.CreatedAt.Date == day);
         }
 
         var totalCount = await query.CountAsync(ct);
