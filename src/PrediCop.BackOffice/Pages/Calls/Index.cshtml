@@ -88,6 +88,7 @@
                     <tr>
                         <th data-col="0">Référence</th>
                         <th data-col="1">Heure</th>
+                        <th data-col="1b" title="Durée de l'appel téléphonique">Durée</th>
                         <th data-col="2">Appelant</th>
                         <th data-col="3">Téléphone</th>
                         <th data-col="4">Priorité</th>
@@ -108,6 +109,21 @@
                                 <span title="@call.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
                                     @call.ReceivedAt.ToLocalTime().ToString("dd/MM HH:mm")
                                 </span>
+                            </td>
+                            <td class="text-nowrap text-muted small">
+                                @if (call.CallDurationSeconds.HasValue)
+                                {
+                                    var d = call.CallDurationSeconds.Value;
+                                    var m = d / 60;
+                                    var s = d % 60;
+                                    <span title="Durée de l'appel">
+                                        <i class="fa-solid fa-clock me-1 opacity-50"></i>@($"{m:D2}:{s:D2}")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-secondary opacity-50">—</span>
+                                }
                             </td>
                             <td>@call.CallerName</td>
                             <td>@call.CallerPhone</td>
@@ -171,7 +187,7 @@
                     @if (!Model.Calls.Any())
                     {
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="10" class="text-center text-muted py-4">
                                 <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
                                 Aucune main courante trouvée avec les filtres sélectionnés.
                             </td>

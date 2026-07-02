@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PrediCop.Core.Enums;
 using PrediCop.Core.Interfaces;
 using PrediCop.Infrastructure.Data;
@@ -21,22 +21,27 @@ public class GpsService(AppDbContext context) : IGpsService
     }
 
     public async Task<IEnumerable<(Guid VehicleId, double Lat, double Lng, double Distance)>> FindNearbyAvailableVehiclesAsync(
-        double latitude, double longitude, int maxResults = 5, CancellationToken ct = default)
+        double latitude, double longitude, Guid tenantId, int maxResults = 5, CancellationToken ct = default)
     {
         var vehicles = await context.PatrolVehicles
-            .Where(v => v.Status == VehicleStatus.Available
-                     && v.LastLatitude.HasValue
-                     && v.LastLongitude.HasValue)
+            .Where(v => v.TenantId == tenantId && v.Status == VehicleStatus.Available)
             .Select(v => new
             {
                 v.Id,
-                Lat = v.LastLatitude!.Value,
-                Lng = v.LastLongitude!.Value
+                Lat = v.LastLatitude,
+                Lng = v.LastLongitude
             })
             .ToListAsync(ct);
 
+        // Vehicles without GPS position get a sentinel distance so they are dispatched last
         return vehicles
-            .Select(v => (v.Id, v.Lat, v.Lng, Distance: CalculateDistance(latitude, longitude, v.Lat, v.Lng)))
+            .Select(v => (
+                VehicleId: v.Id,
+                Lat: v.Lat ?? 0.0,
+                Lng: v.Lng ?? 0.0,
+                Distance: v.Lat.HasValue && v.Lng.HasValue
+                    ? CalculateDistance(latitude, longitude, v.Lat.Value, v.Lng.Value)
+                    : 9999.0))
             .OrderBy(v => v.Distance)
             .Take(maxResults)
             .ToList();

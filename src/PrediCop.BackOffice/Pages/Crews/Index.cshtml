@@ -1,5 +1,7 @@
 @page
 @model PrediCop.BackOffice.Pages.Crews.IndexModel
+@inject IConfiguration Configuration
+@inject IHttpContextAccessor HttpContextAccessor
 @{
     ViewData["Title"] = "Équipages en service";
 }
@@ -152,19 +154,25 @@ else
 
     // SignalR : rechargement si une mission change de statut
     (function () {
+        var _apiHubUrl = '@(Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7229")' + '/hubs/police';
+        var _token = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") ?? ""));
+
         var connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/police')
+            .withUrl(_apiHubUrl, { accessTokenFactory: function () { return _token; } })
             .withAutomaticReconnect()
             .build();
 
         connection.on('MissionStatusChanged', function (data) {
-            // Recharger la page pour refléter le nouveau statut
             location.reload();
         });
 
-        connection.start().catch(function (err) {
-            console.warn('[Crews] SignalR connection failed:', err);
-        });
+        connection.start()
+            .then(function () {
+                connection.invoke('JoinOperatorGroup').catch(function () {});
+            })
+            .catch(function (err) {
+                console.warn('[Crews] SignalR connection failed:', err);
+            });
     })();
     </script>
 }

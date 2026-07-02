@@ -3,14 +3,35 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrediCop.Core.DTOs;
 using PrediCop.Core.Entities;
+using PrediCop.Core.Interfaces;
 using PrediCop.Infrastructure.Data;
 
 namespace PrediCop.Api.Controllers;
 
 [ApiController]
 [Route("api/mobile-logs")]
-public class MobileLogsController(AppDbContext db, ILogger<MobileLogsController> logger) : ControllerBase
+public class MobileLogsController(
+    AppDbContext db,
+    ILogger<MobileLogsController> logger,
+    IFlowLogService flowLog) : ControllerBase
 {
+    /// <summary>
+    /// Reçoit un log de debug depuis l'application mobile (DEBUG uniquement).
+    /// Écrit dans la fenêtre Output de VS ET persisté dans la table FlowLogs (Source=Mobile).
+    /// </summary>
+    [HttpPost("~/api/log")]
+    [AllowAnonymous]
+    public IActionResult DebugLog([FromBody] MobileDebugLogRequest request)
+    {
+        logger.LogInformation("[Mobile:{Tag}] {Message}", request.Tag, request.Message);
+
+        Guid? tenantId = Guid.TryParse(User.FindFirstValue("tenantId"), out var tid) ? tid : null;
+        Guid? userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var uid) ? uid : null;
+        flowLog.Log("Mobile", "Information", request.Tag ?? "Mobile", request.Message ?? string.Empty, tenantId, userId);
+
+        return NoContent();
+    }
+
     /// <summary>
     /// Reçoit un rapport d'erreur grave depuis l'application mobile.
     /// Accepte les appels anonymes (erreurs avant login) et authentifiés.

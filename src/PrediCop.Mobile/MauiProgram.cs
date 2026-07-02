@@ -58,6 +58,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<TenantFeaturesService>();
         builder.Services.AddSingleton<GpsTrackingService>();
         builder.Services.AddSingleton(new SignalRService(apiBaseUrl));
+        builder.Services.AddSingleton<MissionAlertService>();
+        builder.Services.AddSingleton<ConnectionStatusService>();
 
         // Son de notification système (mission proposée)
 #if ANDROID
@@ -119,10 +121,24 @@ public static class MauiProgram
 
         var app = builder.Build();
 
+        // Initialise le logger debug mobile (envoie les logs à la console de l'API)
+#if DEBUG
+        MobileLogger.Init(app.Services.GetRequiredService<ApiService>());
+#endif
+
         // Câble MobileErrorService dans ApiService après résolution du container
         // (évite la dépendance circulaire à l'enregistrement)
         var apiService = app.Services.GetRequiredService<ApiService>();
         apiService.ErrorReporter = app.Services.GetRequiredService<MobileErrorService>();
+
+        // Instanciation eager de MissionViewModel : son constructeur s'abonne à SignalR.
+        // Sans ça, l'abonnement ne se fait qu'à la première visite de l'onglet Missions,
+        // donc la bannière globale ne fonctionnerait pas sur les autres onglets.
+        _ = app.Services.GetRequiredService<MissionViewModel>();
+
+        // Instanciation eager du service de statut de connexion : il s'abonne dès le départ
+        // aux changements SignalR/réseau pour que la pastille du header soit toujours à jour.
+        _ = app.Services.GetRequiredService<ConnectionStatusService>();
 
         // Initialise la base SQLite locale et démarre la sync automatique au retour du réseau
         var localDb = app.Services.GetRequiredService<LocalDbService>();

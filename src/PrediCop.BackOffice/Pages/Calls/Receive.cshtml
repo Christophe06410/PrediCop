@@ -161,9 +161,10 @@
                                placeholder="Bâtiment, étage, digicode..." />
                     </div>
 
-                    @* 2d — lat/lon fields are now hidden; values are filled by the auto-geocoder *@
+                    @* lat/lon filled by auto-geocoder; duration filled by the call timer JS *@
                     <input asp-for="Input.IncidentLatitude" type="hidden" id="gps-lat" />
                     <input asp-for="Input.IncidentLongitude" type="hidden" id="gps-lon" />
+                    <input asp-for="Input.CallDurationSeconds" type="hidden" id="call-duration-seconds" />
 
                     <div class="mb-3">
                         <label asp-for="Input.ThirdParties" class="form-label fw-semibold"></label>
@@ -348,6 +349,9 @@
                 endTs = parseInt(savedEnd, 10);
                 tick();
                 applyState('ended');
+                // Restaurer la durée dans le champ caché après rechargement de page
+                var durField = document.getElementById('call-duration-seconds');
+                if (durField) durField.value = Math.floor((endTs - startTs) / 1000);
             } else {
                 applyState('active');
                 tick();
@@ -372,6 +376,9 @@
             clearInterval(tickId); tickId = null;
             tick();
             applyState('ended');
+            // Sauvegarder la durée dans le champ caché pour la persister en base
+            var durField = document.getElementById('call-duration-seconds');
+            if (durField) durField.value = Math.floor((endTs - startTs) / 1000);
         });
 
         // Nettoyer sessionStorage quand on quitte définitivement la réception
@@ -501,5 +508,60 @@
     document.getElementById('btn-close').addEventListener('click', function (e) {
         if (!confirm('Fermer cet appel sans créer de mission ?')) e.preventDefault();
     });
+
+    // ---- Auto-save / restore form data across page navigations ----
+    (function () {
+        var KEY_FORM = 'predicop_call_form';
+        var TEXT_FIELDS = [
+            'Input.CallerName', 'Input.CallerPhone', 'Input.IncidentCategory',
+            'Input.IncidentDescription', 'Input.IncidentAddress', 'Input.IncidentAddressComplement',
+            'Input.ThirdParties', 'Input.InternalNotes',
+            'Input.IncidentLatitude', 'Input.IncidentLongitude'
+        ];
+
+        function saveForm() {
+            var data = {};
+            TEXT_FIELDS.forEach(function (name) {
+                var el = document.querySelector('[name="' + name + '"]');
+                if (el) data[name] = el.value;
+            });
+            var prio = document.querySelector('[name="Input.Priority"]:checked');
+            if (prio) data['Input.Priority'] = prio.value;
+            sessionStorage.setItem(KEY_FORM, JSON.stringify(data));
+        }
+
+        function restoreForm() {
+            var raw = sessionStorage.getItem(KEY_FORM);
+            if (!raw) return;
+            try {
+                var data = JSON.parse(raw);
+                TEXT_FIELDS.forEach(function (name) {
+                    if (!data[name]) return;
+                    var el = document.querySelector('[name="' + name + '"]');
+                    if (el) el.value = data[name];
+                });
+                if (data['Input.Priority']) {
+                    var r = document.querySelector('[name="Input.Priority"][value="' + data['Input.Priority'] + '"]');
+                    if (r) r.checked = true;
+                }
+            } catch (e) {}
+        }
+
+        // Restore on page load (after navigating back)
+        restoreForm();
+
+        // Save on every keystroke / selection change
+        var form = document.getElementById('call-form');
+        form.addEventListener('input', saveForm);
+        form.addEventListener('change', saveForm);
+
+        // Clear form cache on actions that end the call flow
+        ['btn-close', 'btn-save-logbook', 'btn-create'].forEach(function (id) {
+            var btn = document.getElementById(id);
+            if (btn) btn.addEventListener('click', function () {
+                sessionStorage.removeItem(KEY_FORM);
+            });
+        });
+    })();
     </script>
 }

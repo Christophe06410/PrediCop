@@ -17,7 +17,9 @@ namespace PrediCop.Api.Controllers;
 public class CallsController(
     AppDbContext db,
     IMissionService missionService,
-    IHubContext<PoliceHub> hubContext) : ControllerBase
+    IHubContext<PoliceHub> hubContext,
+    IFlowLogService flowLog,
+    ILogger<CallsController> logger) : ControllerBase
 {
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
     private Guid UserId => Guid.Parse(User.FindFirst("userId")!.Value);
@@ -45,16 +47,15 @@ public class CallsController(
 
         var totalCount = await query.CountAsync(ct);
 
-        var calls = await query
+        var callEntities = await query
             .OrderByDescending(c => c.ReceivedAt)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(c => MapToResponse(c))
             .ToListAsync(ct);
 
         return Ok(new PagedResult<CallResponse>
         {
-            Items = calls,
+            Items = callEntities.Select(MapToResponse).ToList(),
             TotalCount = totalCount,
             Page = page,
             PageSize = size
@@ -72,6 +73,8 @@ public class CallsController(
             .Include(c => c.Missions)
                 .ThenInclude(m => m.TrackingDocuments)
                 .ThenInclude(d => d.Entries)
+            .Include(c => c.Reports)
+                .ThenInclude(r => r.Author)
             .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == TenantId, ct);
 
         if (call is null)
@@ -101,6 +104,7 @@ public class CallsController(
             OperatorId = UserId,
             Status = request.Status ?? CallStatus.Open,
             Priority = request.Priority,
+            CallDurationSeconds = request.CallDurationSeconds,
         };
 
         db.Calls.Add(call);
@@ -198,7 +202,27 @@ public class CallsController(
                 await hubContext.Clients
                     .Group($"vehicle_{proposedAssignment.VehicleId}")
                     .SendAsync("MissionProposed", proposedAssignment, ct);
+                logger.LogInformation("[CreateMission] Auto-dispatch : MissionProposed → groupe vehicle_{VehicleId} pour mission {MissionId}",
+                    proposedAssignment.VehicleId, mission.Id);
+                flowLog.Log("Server", "Information", "Dispatch",
+                    $"Auto-dispatch : MissionProposed → vehicle_{proposedAssignment.VehicleId} ({proposedAssignment.VehicleCallSign}) pour {mission.Reference}",
+                    TenantId, null, $"missionId={mission.Id};assignmentId={proposedAssignment.Id}");
             }
+            else
+            {
+                logger.LogInformation("[CreateMission] Aucun véhicule proposé automatiquement pour la mission {MissionId} (reste en attente de dispatch manuel)",
+                    mission.Id);
+                flowLog.Log("Server", "Warning", "Dispatch",
+                    $"Auto-dispatch : aucun véhicule proposé pour {mission.Reference} (dispatch manuel requis)",
+                    TenantId, null, $"missionId={mission.Id}");
+            }
+
+            // Notifier les opérateurs du tenant pour rafraîchir la liste des missions / équipages en temps réel.
+            await hubContext.Clients
+                .Group($"operators_{TenantId}")
+                .SendAsync("MissionStatusChanged", response, ct);
+            logger.LogInformation("[CreateMission] MissionStatusChanged → groupe operators_{TenantId} pour mission {MissionId}",
+                TenantId, mission.Id);
 
             return CreatedAtAction("GetMission", "Missions", new { id = mission.Id }, response);
         }
@@ -239,6 +263,7 @@ public class CallsController(
         InternalNotes = c.InternalNotes,
         OperatorId = c.OperatorId,
         OperatorName = c.Operator?.FullName ?? string.Empty,
+        CallDurationSeconds = c.CallDurationSeconds,
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt
     };
@@ -250,7 +275,49 @@ public class CallsController(
             .OrderBy(m => m.CreatedAt)
             .Select(MapMissionToResponse)
             .ToList();
+        response.Reports = c.Reports
+            .Where(r => !r.IsDeleted)
+            .OrderBy(r => r.CreatedAt)
+            .Select(MapReportToResponse)
+            .ToList();
         return response;
+    }
+
+    private static CallReportResponse MapReportToResponse(CallReport r) => new()
+    {
+        Id = r.Id,
+        CallId = r.CallId,
+        CallReference = r.Call?.Reference ?? string.Empty,
+        Type = r.Type.ToString(),
+        TypeLabel = r.Type switch
+        {
+            ReportType.Information     => "Rapport d'information",
+            ReportType.Intervention    => "Rapport d'intervention",
+            ReportType.CustodyTransfer => "Rapport de mise à disposition",
+            ReportType.FormalRecord    => "Procès-verbal",
+            _                          => r.Type.ToString()
+        },
+        Title = r.Title,
+        Body = r.Body,
+        AuthorId = r.AuthorId,
+        AuthorName = r.Author?.FullName ?? string.Empty,
+        Recipients = (int)r.Recipients,
+        RecipientLabels = GetRecipientLabels(r.Recipients),
+        IsDraft = r.IsDraft,
+        FinalizedAt = r.FinalizedAt,
+        CreatedAt = r.CreatedAt,
+        UpdatedAt = r.UpdatedAt,
+    };
+
+    private static string[] GetRecipientLabels(ReportRecipient recipients)
+    {
+        var labels = new List<string>();
+        if (recipients.HasFlag(ReportRecipient.Mayor))      labels.Add("Maire");
+        if (recipients.HasFlag(ReportRecipient.Prosecutor)) labels.Add("Procureur");
+        if (recipients.HasFlag(ReportRecipient.Prefecture)) labels.Add("Préfecture");
+        if (recipients.HasFlag(ReportRecipient.Hierarchy))  labels.Add("Hiérarchie");
+        if (recipients.HasFlag(ReportRecipient.Department)) labels.Add("Service");
+        return [.. labels];
     }
 
     private static MissionResponse MapMissionToResponse(Mission m) => new()

@@ -1,0 +1,8 @@
+{
+  "name": "predicop-backoffice",
+  "private": true,
+  "dependencies": {
+    "tinymce": "^7",
+    "tinymce-i18n": "*"
+  }
+}

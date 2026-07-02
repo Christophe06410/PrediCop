@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@inject IConfiguration Configuration
+@inject IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8" />
@@ -130,6 +132,8 @@
                             @if (User.IsInRole("Admin"))
                             {
                                 <li><hr class="dropdown-divider" /></li>
+                                <li><a class="dropdown-item" asp-page="/Admin/ReportTemplates/Index"><i class="fa-solid fa-file-code me-2"></i>Masques de rapports</a></li>
+                                <li><hr class="dropdown-divider" /></li>
                                 <li><a class="dropdown-item" asp-page="/Admin/Audit/Index"><i class="fa-solid fa-clipboard-list me-2"></i>Journal d'audit</a></li>
                                 <li><a class="dropdown-item" asp-page="/Admin/RgpdRequests/Index"><i class="fa-solid fa-shield-halved me-2"></i>Demandes RGPD</a></li>
                                 <li><a class="dropdown-item" asp-page="/Admin/Settings"><i class="fa-solid fa-sliders me-2"></i>Paramètres</a></li>
@@ -175,7 +179,7 @@
                                 </li>
                                 <li><hr class="dropdown-divider" /></li>
                                 <li>
-                                    <form asp-page="/Account/Logout" method="post" class="d-inline w-100">
+                                    <form id="logout-form" asp-page="/Account/Logout" method="post" class="d-inline w-100">
                                         <button type="submit" class="dropdown-item text-danger">
                                             <i class="fa-solid fa-right-from-bracket me-2"></i>Se déconnecter
                                         </button>
@@ -189,10 +193,34 @@
         </div>
     </nav>
 
-    <!-- Timer bar partiel si en cours d'appel -->
-    @if (ViewData["ActiveCall"] != null)
+    <!-- Timer bar appel en cours — visibilité gérée côté client via sessionStorage -->
+    @if (!ViewContext.HttpContext.Request.Path.StartsWithSegments("/Calls/Receive"))
     {
+        @if (TempData["ClearCallTimer"] != null)
+        {
+            <script>(['predicop_call_start','predicop_call_end','predicop_call_form']).forEach(function(k){sessionStorage.removeItem(k);});</script>
+        }
         @await Html.PartialAsync("_CallTimer")
+    }
+
+    <!-- Messages flash (succès / erreur) issus des handlers Razor Pages -->
+    @if (TempData["SuccessMessage"] is string successMsg)
+    {
+        <div class="container-fluid pt-2 pb-0">
+            <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
+                <i class="fa-solid fa-circle-check me-2"></i>@successMsg
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMsg)
+    {
+        <div class="container-fluid pt-2 pb-0">
+            <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>@errorMsg
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
+        </div>
     }
 
     <!-- Contenu principal -->
@@ -314,9 +342,12 @@
             toast.show();
         }
 
-        // ---- SignalR connection ----
+        // ---- SignalR connection (API hub, authentifié par JWT) ----
+        var _apiHubUrl = '@(Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7229")' + '/hubs/police';
+        var _signalRToken = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") ?? ""));
+
         var connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/police')
+            .withUrl(_apiHubUrl, { accessTokenFactory: function () { return _signalRToken; } })
             .withAutomaticReconnect()
             .build();
 
@@ -330,6 +361,10 @@
         });
 
         connection.on('MissionStatusChanged', function (data) {
+            // Rediffuse en évènement DOM pour que les pages (Missions, Détails) se rafraîchissent.
+            try { window.dispatchEvent(new CustomEvent('predicop:mission-changed', { detail: data })); } catch (e) {}
+            console.debug('[PrediCop] MissionStatusChanged', data && data.reference, data && data.status);
+
             if (data.status === 'Completed') {
                 var body = '✅ Mission ' + (data.reference || '') + ' — TERMINÉE';
                 document.getElementById('mission-completed-toast-body').textContent = body;
@@ -344,9 +379,24 @@
             }
         });
 
-        connection.start().catch(function (err) {
-            console.warn('[PrediCop] SignalR connection failed:', err);
-        });
+        connection.start()
+            .then(function () {
+                connection.invoke('JoinOperatorGroup').catch(function () {});
+            })
+            .catch(function (err) {
+                console.warn('[PrediCop] SignalR connection failed:', err);
+            });
+
+        // Effacer la session d'appel en cours lors de la déconnexion
+        // (sessionStorage survit à un logout/login dans le même onglet)
+        var logoutForm = document.getElementById('logout-form');
+        if (logoutForm) {
+            logoutForm.addEventListener('submit', function () {
+                ['predicop_call_start', 'predicop_call_end', 'predicop_call_form'].forEach(function (k) {
+                    sessionStorage.removeItem(k);
+                });
+            });
+        }
     })();
     </script>
 </body>

@@ -34,8 +34,14 @@
 		<ApplicationId>com.predicop.mobile</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.09</ApplicationDisplayVersion>
+		<ApplicationDisplayVersion>1.0.9</ApplicationDisplayVersion>
 		<ApplicationVersion>109</ApplicationVersion>
+		<!-- Version NuGet/assembly explicite et IDENTIQUE sur tous les TFM.
+		     Sans ça, le head Windows dérive PackageVersion d'ApplicationDisplayVersion (1.09)
+		     tandis qu'Android/iOS gardent 1.0.0 → erreur VS « PackageVersion was expected to
+		     have a single value across all target frameworks ». -->
+		<Version>1.0.9</Version>
+		<PackageVersion>1.0.9</PackageVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>

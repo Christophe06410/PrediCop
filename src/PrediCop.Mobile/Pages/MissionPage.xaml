@@ -57,11 +57,11 @@
 
                 <!-- Notification de mission proposée -->
                 <Frame IsVisible="{Binding ShowMissionProposal}"
-                       BackgroundColor="#dc2626" CornerRadius="16" Padding="16"
+                       BackgroundColor="{Binding ProposalFrameColor}" CornerRadius="16" Padding="16"
                        HasShadow="True">
                     <VerticalStackLayout Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
-                            <Label Grid.Column="0" Text="NOUVELLE MISSION" TextColor="White"
+                            <Label Grid.Column="0" Text="{Binding ProposalTitle}" TextColor="White"
                                    FontAttributes="Bold" FontSize="18" VerticalOptions="Center"/>
                             <Label Grid.Column="1"
                                    Text="{Binding ProposalPriorityEmoji}"
@@ -73,7 +73,9 @@
                         <Label Text="{Binding ProposalAddress}" TextColor="White" FontSize="16"/>
                         <Label Text="{Binding ProposalDescription}" TextColor="#fca5a5" FontSize="14"/>
                         <Label Text="{Binding ProposalDistance}" TextColor="#fca5a5" FontSize="12"/>
-                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <!-- Boutons Accept/Refuser : uniquement pour les propositions formelles -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12"
+                              IsVisible="{Binding IsFormalProposal}">
                             <Button Grid.Column="0" Text="Accepter"
                                     BackgroundColor="#16a34a" TextColor="White"
                                     CornerRadius="10"
@@ -82,8 +84,14 @@
                                     BackgroundColor="#374151" TextColor="White"
                                     CornerRadius="10" Clicked="OnRefuseMission"/>
                         </Grid>
+                        <!-- Proposition non encore attribuée : un seul bouton Fermer -->
+                        <Button Text="Fermer"
+                                IsVisible="{Binding IsSoftProposal}"
+                                BackgroundColor="#374151" TextColor="White"
+                                CornerRadius="10"
+                                Command="{Binding DismissSoftProposalCommand}"/>
                         <Button Text="Voir les details complets"
-                                BackgroundColor="#991b1b" TextColor="White"
+                                BackgroundColor="#7c3a3a" TextColor="White"
                                 CornerRadius="8" FontSize="13"
                                 Clicked="OnViewMissionDetails"/>
                     </VerticalStackLayout>
@@ -131,56 +139,33 @@
                                     CornerRadius="8" FontSize="14" FontAttributes="Bold"
                                     Clicked="OnCompleteMission"/>
                         </Grid>
-
-                        <!-- Upload vidéo -->
-                        <Frame BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
-                            <VerticalStackLayout Spacing="8">
-                                <Label Text="Joindre une vidéo" TextColor="#aab0c0" FontSize="13"/>
-                                <Button Text="Sélectionner une vidéo"
-                                        BackgroundColor="#374151" TextColor="White"
-                                        CornerRadius="8" FontSize="13"
-                                        Command="{Binding UploadVideoCommand}"
-                                        IsEnabled="{Binding IsNotUploading}"/>
-                                <ProgressBar Progress="{Binding UploadProgress}"
-                                             IsVisible="{Binding IsUploading}"
-                                             ProgressColor="#2563eb"/>
-                                <Label Text="{Binding UploadStatus}"
-                                       TextColor="#93c5fd" FontSize="12"
-                                       IsVisible="{Binding HasUploadStatus}"/>
-                            </VerticalStackLayout>
-                        </Frame>
-
-                        <!-- Upload photo -->
-                        <Frame BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
-                            <VerticalStackLayout Spacing="8">
-                                <Label Text="Joindre une photo" TextColor="#aab0c0" FontSize="13"/>
-                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                    <Button Grid.Column="0" Text="Prendre une photo"
-                                            BackgroundColor="#374151" TextColor="White"
-                                            CornerRadius="8" FontSize="12"
-                                            Command="{Binding CapturePhotoCommand}"/>
-                                    <Button Grid.Column="1" Text="Depuis galerie"
-                                            BackgroundColor="#374151" TextColor="White"
-                                            CornerRadius="8" FontSize="12"
-                                            Command="{Binding PickPhotoCommand}"/>
-                                </Grid>
-                                <Label Text="{Binding PhotoStatus}"
-                                       TextColor="#93c5fd" FontSize="12"
-                                       IsVisible="{Binding HasPhotoStatus}"/>
-                            </VerticalStackLayout>
-                        </Frame>
                     </VerticalStackLayout>
                 </Frame>
 
                 <!-- Aucune mission -->
                 <Frame IsVisible="{Binding ShowNoMission}"
-                       BackgroundColor="#243050" CornerRadius="16" Padding="32">
-                    <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
+                       BackgroundColor="#243050" CornerRadius="16" Padding="24">
+                    <VerticalStackLayout Spacing="12">
                         <Label Text="En attente de mission" TextColor="#6b7a99"
                                FontSize="16" HorizontalTextAlignment="Center"/>
                         <Label Text="Restez disponible pour recevoir des missions."
                                TextColor="#4a5568" FontSize="13"
                                HorizontalTextAlignment="Center"/>
+
+                        <!-- Avertissement véhicule bloqué en OnMission sans mission visible -->
+                        <Frame IsVisible="{Binding IsVehicleStuck}"
+                               BackgroundColor="#7f1d1d" CornerRadius="10"
+                               Padding="14,10" HasShadow="False">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="⚠️ Votre véhicule est marqué EN MISSION sur le serveur mais aucune mission n'est détectée. Le Back Office ne peut pas dispatcher."
+                                       TextColor="#fca5a5" FontSize="12"
+                                       HorizontalTextAlignment="Center"/>
+                                <Button Text="Libérer le véhicule"
+                                        BackgroundColor="#dc2626" TextColor="White"
+                                        CornerRadius="8" FontSize="13"
+                                        Command="{Binding ReleaseStickyVehicleCommand}"/>
+                            </VerticalStackLayout>
+                        </Frame>
                     </VerticalStackLayout>
                 </Frame>
 

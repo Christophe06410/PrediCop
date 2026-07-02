@@ -145,7 +145,7 @@ public class LoginModel(IHttpClientFactory httpClientFactory, ILogger<LoginModel
             // Use the anonymous client: no JWT session required on the login page
             var client = httpClientFactory.CreateClient("PrediCopApiAnon");
             var tenants = await client.GetFromJsonAsync<List<TenantSummaryDto>>("/api/auth/tenants", HttpJsonOptions);
-            Tenants = tenants ?? [];
+            Tenants = (tenants ?? []).Where(t => t.Slug != "predicop").ToList();
         }
         catch (Exception ex)
         {

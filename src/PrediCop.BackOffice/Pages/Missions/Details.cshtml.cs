@@ -98,20 +98,40 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
 
     public async Task<IActionResult> OnPostDispatchAsync(Guid id)
     {
+        logger.LogInformation("[BO Dispatch] Début dispatch mission {MissionId}", id);
         try
         {
             var client = httpClientFactory.CreateClient("PrediCopApi");
-            var response = await client.PostAsJsonAsync($"/api/missions/{id}/propose", (object?)null);
+            logger.LogInformation("[BO Dispatch] Appel API POST /api/missions/{MissionId}/propose", id);
+            var response = await client.PostAsync($"/api/missions/{id}/propose", null);
+            logger.LogInformation("[BO Dispatch] Réponse API : {StatusCode}", (int)response.StatusCode);
 
             if (response.IsSuccessStatusCode)
-                TempData["SuccessMessage"] = "Mission proposée au prochain véhicule disponible.";
+            {
+                var assignment = await response.Content.ReadFromJsonAsync<MissionAssignmentDto>(JsonOpts);
+                var isResent = response.Headers.Contains("X-Dispatch-Resent");
+                TempData["SuccessMessage"] = isResent
+                    ? $"Notification renvoyée au véhicule {assignment?.VehicleCallSign}. L'équipage doit recevoir l'alerte."
+                    : (!string.IsNullOrEmpty(assignment?.VehicleCallSign)
+                        ? $"Mission proposée au véhicule {assignment.VehicleCallSign}."
+                        : "Mission proposée au prochain véhicule disponible.");
+            }
             else
             {
                 var body = await response.Content.ReadAsStringAsync();
                 logger.LogWarning("Dispatch failed {Status}: {Body}", (int)response.StatusCode, body);
 
                 if ((int)response.StatusCode == 503)
-                    TempData["ErrorMessage"] = "Aucun véhicule disponible.";
+                {
+                    // Fournir un diagnostic du statut des véhicules pour aider l'opérateur
+                    var vehicles = await client.GetFromJsonAsync<List<VehicleDto>>("/api/vehicles", JsonOpts) ?? [];
+                    var available = vehicles.Count(v => v.Status == "Available");
+                    var offline = vehicles.Count(v => v.Status == "Offline");
+                    var onMission = vehicles.Count(v => v.Status == "OnMission");
+                    TempData["ErrorMessage"] = available == 0
+                        ? $"Aucun véhicule disponible. ({offline} hors ligne, {onMission} en mission). L'appli mobile doit être connectée et un véhicule sélectionné."
+                        : $"Tous les véhicules disponibles ont déjà été proposés pour cette mission. ({available} dispo, {onMission} en mission)";
+                }
                 else
                     TempData["ErrorMessage"] = $"Erreur lors du dispatch ({(int)response.StatusCode}).";
             }

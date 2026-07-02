@@ -19,9 +19,12 @@ public class MissionsController(
     IMissionService missionService,
     IHubContext<PoliceHub> hubContext,
     IEmailService emailService,
-    IPushNotificationService pushService) : ControllerBase
+    IPushNotificationService pushService,
+    IFlowLogService flowLog,
+    ILogger<MissionsController> logger) : ControllerBase
 {
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
+    private Guid? CurrentUserId => Guid.TryParse(User.FindFirst("userId")?.Value, out var u) ? u : null;
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<MissionResponse>>> GetMissions(
@@ -30,6 +33,8 @@ public class MissionsController(
         [FromQuery] MissionStatus? status = null,
         [FromQuery] Guid? vehicleId = null,
         [FromQuery] DateTime? date = null,
+        [FromQuery] DateTime? dateFrom = null,
+        [FromQuery] DateTime? dateTo = null,
         CancellationToken ct = default)
     {
         var query = db.Missions
@@ -50,6 +55,22 @@ public class MissionsController(
                 query = query.Where(m => m.CompletedAt.HasValue && m.CompletedAt.Value.Date == day);
             else
                 query = query.Where(m => m.CreatedAt.Date == day);
+        }
+
+        // Plage UTC explicite (prioritaire sur date) — permet au mobile d'envoyer la plage locale convertie en UTC
+        if (dateFrom.HasValue)
+        {
+            if (status.HasValue && status.Value == MissionStatus.Completed)
+                query = query.Where(m => m.CompletedAt >= dateFrom);
+            else
+                query = query.Where(m => m.CreatedAt >= dateFrom);
+        }
+        if (dateTo.HasValue)
+        {
+            if (status.HasValue && status.Value == MissionStatus.Completed)
+                query = query.Where(m => m.CompletedAt < dateTo);
+            else
+                query = query.Where(m => m.CreatedAt < dateTo);
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -119,12 +140,12 @@ public class MissionsController(
                 && (m.Status == MissionStatus.Pending
                     || m.Status == MissionStatus.InProgress));
 
-        // When the JWT carries a vehicleId (mobile officer), restrict to:
-        //   (a) missions where this vehicle has a Proposed/Accepted/InProgress assignment, OR
-        //   (b) Pending missions (no vehicle assigned yet) when this vehicle is Available —
-        //       so the mobile can see and act on newly-created missions even before dispatch.
+        // Restrict to vehicle-specific view only for patrol roles (PatrolLeader / PatrolAgent).
+        // BackOffice operators/managers also carry a vehicleId claim (from VehicleOfficer records)
+        // but should see all tenant missions, not just those for their vehicle.
+        var isPatrolRole = User.IsInRole("PatrolLeader") || User.IsInRole("PatrolAgent");
         var vehicleIdClaim = User.FindFirst("vehicleId")?.Value;
-        if (Guid.TryParse(vehicleIdClaim, out var vehicleId))
+        if (isPatrolRole && Guid.TryParse(vehicleIdClaim, out var vehicleId))
         {
             var vehicle = await db.PatrolVehicles
                 .AsNoTracking()
@@ -133,11 +154,12 @@ public class MissionsController(
             var isAvailable = vehicle?.Status == VehicleStatus.Available;
 
             baseQuery = baseQuery.Where(m =>
-                // (a) missions already assigned to this vehicle
+                // (a) missions already assigned to this vehicle (any active assignment status)
                 m.Assignments.Any(a =>
                     a.VehicleId == vehicleId &&
                     (a.Status == MissionStatus.Proposed ||
-                     a.Status == MissionStatus.Accepted))
+                     a.Status == MissionStatus.Accepted ||
+                     a.Status == MissionStatus.InProgress))
                 ||
                 // (b) unassigned Pending missions visible to available vehicles
                 (isAvailable
@@ -190,8 +212,32 @@ public class MissionsController(
         if (mission is null)
             return Problem(title: "Mission non trouvée", statusCode: 404);
 
+        flowLog.Log("Server", "Information", "Dispatch",
+            $"Propose demandé pour mission {mission.Reference}", TenantId, CurrentUserId, $"missionId={id}");
+
         try
         {
+            // Si une proposition est déjà en attente, re-notifier le véhicule plutôt que d'en créer une nouvelle
+            var existingProposal = await db.MissionAssignments
+                .Include(a => a.Vehicle)
+                .FirstOrDefaultAsync(a => a.MissionId == id && a.Status == MissionStatus.Proposed, ct);
+
+            if (existingProposal is not null)
+            {
+                var existingResponse = MapAssignmentToResponse(existingProposal);
+                await hubContext.Clients
+                    .Group($"vehicle_{existingProposal.VehicleId}")
+                    .SendAsync("MissionProposed", existingResponse, ct);
+                logger.LogInformation("[Propose] Re-notification MissionProposed → groupe vehicle_{VehicleId} pour mission {MissionId}",
+                    existingProposal.VehicleId, id);
+                flowLog.Log("Server", "Information", "Dispatch",
+                    $"Re-notification MissionProposed → vehicle_{existingProposal.VehicleId} ({existingProposal.Vehicle?.CallSign})",
+                    TenantId, CurrentUserId, $"missionId={id};assignmentId={existingProposal.Id}");
+                await NotifyOperatorsOfProposalAsync(id, ct);
+                Response.Headers.Append("X-Dispatch-Resent", "true");
+                return Ok(existingResponse);
+            }
+
             var assignment = await missionService.ProposeToNextVehicleAsync(id, ct);
 
             await db.Entry(assignment).Reference(a => a.Vehicle).LoadAsync(ct);
@@ -201,12 +247,21 @@ public class MissionsController(
             await hubContext.Clients
                 .Group($"vehicle_{assignment.VehicleId}")
                 .SendAsync("MissionProposed", assignmentResponse, ct);
+            logger.LogInformation("[Propose] MissionProposed → groupe vehicle_{VehicleId} pour mission {MissionId} (assignment {AssignmentId})",
+                assignment.VehicleId, id, assignment.Id);
+            flowLog.Log("Server", "Information", "Dispatch",
+                $"MissionProposed → vehicle_{assignment.VehicleId} ({assignment.Vehicle?.CallSign}), dist={assignment.DistanceAtProposal:F1}km",
+                TenantId, CurrentUserId, $"missionId={id};assignmentId={assignment.Id}");
+
+            await NotifyOperatorsOfProposalAsync(id, ct);
 
             return Ok(assignmentResponse);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No available vehicle"))
         {
             // Dispatch épuisé — plus aucun véhicule disponible pour cette mission
+            flowLog.Log("Server", "Warning", "Dispatch",
+                $"Aucun véhicule dispatchable pour {mission.Reference} : {ex.Message}", TenantId, CurrentUserId, $"missionId={id}");
             try
             {
                 var subject = $"[PrediCop] ⚠️ Mission {mission.Reference} sans véhicule disponible";
@@ -720,6 +775,13 @@ public class MissionsController(
         CancellationReason = m.Status == MissionStatus.Cancelled ? m.CompletionReport : null,
         CreatedAt = m.CreatedAt,
         UpdatedAt = m.UpdatedAt,
+        AssignedVehicleCallSign = m.Assignments
+            .Where(a => a.Status == MissionStatus.Accepted
+                     || a.Status == MissionStatus.InProgress
+                     || a.Status == MissionStatus.Proposed)
+            .OrderByDescending(a => a.ProposedAt)
+            .Select(a => a.Vehicle?.CallSign)
+            .FirstOrDefault(cs => !string.IsNullOrEmpty(cs)),
         Assignments = m.Assignments.Select(MapAssignmentToResponse).ToList(),
         Intervenants = m.Intervenants.OrderBy(i => i.Order).Select(MapIntervenantToResponse).ToList(),
         Media = m.MediaAttachments.OrderByDescending(ma => ma.RecordedAt).Select(MapMediaToResponse).ToList(),
@@ -771,6 +833,28 @@ public class MissionsController(
         RefusalReason = a.RefusalReason,
         DistanceAtProposal = a.DistanceAtProposal
     };
+
+    /// <summary>
+    /// Recharge la mission et pousse <c>MissionStatusChanged</c> au groupe des opérateurs du tenant
+    /// pour que la liste des missions / équipages du Back Office se rafraîchisse en temps réel.
+    /// </summary>
+    private async Task NotifyOperatorsOfProposalAsync(Guid missionId, CancellationToken ct)
+    {
+        var mission = await db.Missions
+            .Include(m => m.Call)
+            .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
+            .FirstOrDefaultAsync(m => m.Id == missionId && m.TenantId == TenantId, ct);
+
+        if (mission is null) return;
+
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("MissionStatusChanged", MapToResponse(mission), ct);
+        logger.LogInformation("[Propose] MissionStatusChanged → groupe operators_{TenantId} pour mission {MissionId}",
+            TenantId, missionId);
+        flowLog.Log("Server", "Information", "Dispatch",
+            $"MissionStatusChanged → operators_{TenantId} (rafraîchissement BO)", TenantId, CurrentUserId, $"missionId={missionId}");
+    }
 
     private Task BroadcastMissionStatusToVehiclesAsync(MissionResponse mission, CancellationToken ct)
     {

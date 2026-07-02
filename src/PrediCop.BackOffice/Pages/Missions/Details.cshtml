@@ -84,13 +84,13 @@
                             {
                                 <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@assignedVehicleId"
                                    class="badge bg-dark fs-6 py-2 px-3 text-decoration-none">
-                                    <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
+                                    <i class="fa-solid fa-users-shield me-2"></i>Équipage : @mission.AssignedVehicleCallSign
                                 </a>
                             }
                             else
                             {
                                 <span class="badge bg-dark fs-6 py-2 px-3">
-                                    <i class="fa-solid fa-car me-2"></i>Véhicule assigné : @mission.AssignedVehicleCallSign
+                                    <i class="fa-solid fa-users-shield me-2"></i>Équipage : @mission.AssignedVehicleCallSign
                                 </span>
                             }
                         }
@@ -303,7 +303,7 @@
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-file-lines me-2 text-primary"></i>Rapport & détails complémentaires
+                    <i class="fa-solid fa-file-lines me-2 text-primary"></i>Notes & détails complémentaires
                 </h6>
                 <button class="btn btn-sm btn-outline-primary" type="button"
                         data-bs-toggle="collapse" data-bs-target="#collapseRapport">
@@ -574,7 +574,7 @@
                 <h6 class="mb-0 fw-semibold">
                     <i class="fa-solid fa-timeline me-2 text-warning"></i>Timeline des propositions de patrouilles
                 </h6>
-                <button class="btn btn-sm btn-outline-warning" type="button"
+                <button class="btn btn-sm btn-warning" type="button"
                         data-bs-toggle="collapse" data-bs-target="#collapseAddPatrouille">
                     <i class="fa-solid fa-plus me-1"></i>Ajouter une patrouille
                 </button>
@@ -585,7 +585,7 @@
                     <div class="card card-body bg-light border-warning border-opacity-25">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Patrouille (véhicule)</label>
+                                <label class="form-label small fw-semibold">Patrouille</label>
                                 <select id="patrol_vehicleId" class="form-select form-select-sm">
                                     <option value="">Sélectionner…</option>
                                     @foreach (var v in Model.AvailableVehicles)
@@ -632,7 +632,7 @@
                                                 <div>
                                                     <strong class="d-block">
                                                         <span class="badge bg-secondary me-1">#@a.ProposalOrder</span>
-                                                        Véhicule <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@a.VehicleId" class="text-decoration-none">@a.VehicleCallSign</a>
+                                                        Patrouille <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@a.VehicleId" class="text-decoration-none">@a.VehicleCallSign</a>
                                                     </strong>
                                                     <small class="text-muted">
                                                         Proposé à @a.ProposedAt.ToLocalTime().ToString("HH:mm:ss")
@@ -664,7 +664,7 @@
                 else
                 {
                     <div class="text-center text-muted py-3">
-                        <i class="fa-solid fa-inbox me-2"></i>Aucune proposition de véhicule enregistrée.
+                        <i class="fa-solid fa-inbox me-2"></i>Aucune patrouille proposée.
                     </div>
                 }
             </div>
@@ -950,6 +950,20 @@
     function openMedia(mediaId) {
         window.open(`/api/proxy/media/${mediaId}/file`, '_blank');
     }
+
+    // ---- Rafraîchissement temps réel (SignalR via _Layout) ----
+    // Recharge la page quand CETTE mission change (nouvelle proposition, acceptation, refus…).
+    (function () {
+        var _missionId = '@mission.Id';
+        var _reloadTimer = null;
+        window.addEventListener('predicop:mission-changed', function (e) {
+            var d = e && e.detail;
+            var changedId = d && (d.id || d.missionId);
+            if (!changedId || String(changedId).toLowerCase() !== _missionId.toLowerCase()) return;
+            clearTimeout(_reloadTimer);
+            _reloadTimer = setTimeout(function () { window.location.reload(); }, 500);
+        });
+    })();
 
     // ---- Patrouilles ----
     async function addPatrouille(missionId) {

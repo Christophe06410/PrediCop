@@ -4,4 +4,5 @@ namespace PrediCop.Mobile.Services;
 public class NoopAlertSoundService : IAlertSoundService
 {
     public void PlayAlert() { }
+    public void StopAlert() { }
 }

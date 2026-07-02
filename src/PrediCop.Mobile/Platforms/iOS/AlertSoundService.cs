@@ -16,4 +16,9 @@ public class AlertSoundService : IAlertSoundService
             try { new SystemSound(NotificationSoundId).PlaySystemSound(); } catch { }
         }
     }
+
+    public void StopAlert()
+    {
+        // iOS SystemSound plays a short one-shot tone — it stops naturally, no explicit stop API.
+    }
 }

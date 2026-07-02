@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PrediCop.Core.Entities;
 using PrediCop.Core.Enums;
 using PrediCop.Core.Interfaces;
@@ -6,7 +7,11 @@ using PrediCop.Infrastructure.Data;
 
 namespace PrediCop.Infrastructure.Services;
 
-public class MissionService(AppDbContext context, IGpsService gpsService, IPushNotificationService pushService) : IMissionService
+public class MissionService(
+    AppDbContext context,
+    IGpsService gpsService,
+    IPushNotificationService pushService,
+    ILogger<MissionService> logger) : IMissionService
 {
     public async Task<Mission> CreateMissionFromCallAsync(Guid callId, CancellationToken ct = default)
     {
@@ -35,9 +40,9 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
             : CallStatus.MissionCreated;
         await context.SaveChangesAsync(ct);
 
-        // Auto-dispatch; if no vehicle available yet, mission stays Pending for manual dispatch
+        // Auto-dispatch: si aucun véhicule disponible, la mission reste Pending pour dispatch manuel
         try { await ProposeToNextVehicleAsync(mission.Id, ct); }
-        catch (InvalidOperationException) { }
+        catch (Exception ex) { logger.LogInformation("Auto-dispatch skipped for {MissionId}: {Reason}", mission.Id, ex.Message); }
 
         return mission;
     }
@@ -53,24 +58,39 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
             .Select(a => a.VehicleId)
             .ToHashSet();
 
-        var nearby = await gpsService.FindNearbyAvailableVehiclesAsync(
-            mission.TargetLatitude, mission.TargetLongitude, 5, ct);
+        var nearby = (await gpsService.FindNearbyAvailableVehiclesAsync(
+            mission.TargetLatitude, mission.TargetLongitude, mission.TenantId, 5, ct)).ToList();
 
+        // Un véhicule n'est "bloqué" que s'il a une assignation active (Proposed/Accepted/InProgress)
+        // sur une mission ELLE-MÊME encore active. Sans le filtre sur le statut de la mission parente,
+        // toute assignation Accepted/InProgress laissée par une mission terminée bloquait le véhicule
+        // à vie (CompleteMissionAsync ne repassait pas l'assignation en Completed).
         var blockedVehicleIds = await context.MissionAssignments
             .Where(a => a.MissionId != missionId
                 && (a.Status == MissionStatus.Proposed
                     || a.Status == MissionStatus.Accepted
-                    || a.Status == MissionStatus.InProgress))
+                    || a.Status == MissionStatus.InProgress)
+                && a.Mission.Status != MissionStatus.Completed
+                && a.Mission.Status != MissionStatus.Cancelled)
             .Select(a => a.VehicleId)
             .Distinct()
             .ToListAsync(ct);
+
+        logger.LogInformation(
+            "Dispatch {MissionId}: {NearbyCount} Available vehicle(s) for tenant, {BlockedCount} blocked on other missions, {AlreadyCount} already proposed to this mission",
+            missionId, nearby.Count, blockedVehicleIds.Count, alreadyProposedVehicleIds.Count);
 
         var next = nearby.FirstOrDefault(v =>
             !alreadyProposedVehicleIds.Contains(v.VehicleId)
             && !blockedVehicleIds.Contains(v.VehicleId));
 
         if (next == default)
+        {
+            logger.LogWarning(
+                "Dispatch {MissionId}: no candidate vehicle — nearby={Near}, blocked={Blocked}, already={Already}",
+                missionId, nearby.Count, blockedVehicleIds.Count, alreadyProposedVehicleIds.Count);
             throw new InvalidOperationException("No available vehicle found for this mission.");
+        }
 
         var order = mission.Assignments.Count + 1;
 
@@ -89,6 +109,9 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
         // La mission reste Pending jusqu'à acceptation
 
         await context.SaveChangesAsync(ct);
+
+        logger.LogInformation("Dispatch {MissionId}: proposed to vehicle {VehicleId} (order={Order}, distance={Dist:F1}km)",
+            missionId, next.VehicleId, order, next.Distance);
 
         // Envoyer un push aux agents actifs du véhicule proposé
         var deviceTokens = await context.VehicleOfficers
@@ -167,6 +190,15 @@ public class MissionService(AppDbContext context, IGpsService gpsService, IPushN
             .Select(a => a.VehicleId)
             .Distinct()
             .ToList();
+
+        // Clôturer les assignations actives : sans ça elles restaient en Accepted et
+        // bloquaient le véhicule pour tout dispatch futur (voir blockedVehicleIds).
+        foreach (var assignment in mission.Assignments.Where(a =>
+                     a.Status == MissionStatus.Accepted || a.Status == MissionStatus.InProgress))
+        {
+            assignment.Status = MissionStatus.Completed;
+            assignment.RespondedAt ??= DateTime.UtcNow;
+        }
 
         foreach (var vehicleId in activeVehicleIds)
         {

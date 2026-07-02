@@ -25,12 +25,14 @@ public partial class LoginViewModel(
     [ObservableProperty] private bool hasError;
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool isLoadingTenants;
+    [ObservableProperty] private bool tenantsLoadFailed;
     [ObservableProperty] private ObservableCollection<TenantItem> tenants = [];
     [ObservableProperty] private TenantItem? selectedTenant;
 
     public async Task LoadTenantsAsync()
     {
         IsLoadingTenants = true;
+        TenantsLoadFailed = false;
         try
         {
             var list = await auth.GetTenantsAsync();
@@ -39,6 +41,7 @@ public partial class LoginViewModel(
 
             if (Tenants.Count == 0)
             {
+                TenantsLoadFailed = true;
                 ErrorMessage = "Aucune ville disponible. Vérifiez la connexion au serveur.";
                 HasError = true;
             }
@@ -52,8 +55,15 @@ public partial class LoginViewModel(
             SelectedTenant = Tenants.FirstOrDefault(t => t.Slug == "predicop") ?? Tenants.FirstOrDefault();
 #endif
         }
+        catch
+        {
+            TenantsLoadFailed = true;
+        }
         finally { IsLoadingTenants = false; }
     }
+
+    [RelayCommand]
+    private Task RefreshTenantsAsync() => LoadTenantsAsync();
 
     /// <summary>
     /// Appelé après login et à la reprise de session persistée.
@@ -64,22 +74,25 @@ public partial class LoginViewModel(
     {
         if (auth.Token == null || auth.CurrentUser == null) return;
 
-        // Charger les feature flags du tenant
-        await features.LoadAsync();
+        var role = auth.CurrentUser.Role;
+        bool isOfficer      = string.Equals(role, "Officer",      StringComparison.OrdinalIgnoreCase);
+        bool isPatrolLeader = string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
+        bool isPatrolAgent  = string.Equals(role, "PatrolAgent",  StringComparison.OrdinalIgnoreCase);
+        bool isPatrolRole   = isOfficer || isPatrolLeader || isPatrolAgent;
 
-        // Ajuster les onglets visibles selon rôle + module
+        // Features et SignalR en parallèle — SignalR ne dépend pas des feature flags
+        var featuresTask = features.LoadAsync();
+        var signalRTask  = isPatrolRole && auth.VehicleId.HasValue && !signalR.IsConnected
+            ? signalR.ConnectAsync(auth.Token, auth.VehicleId.Value).ContinueWith(_ => { })
+            : Task.CompletedTask;
+
+        try { await Task.WhenAll(featuresTask, signalRTask); } catch { }
+
+        // BuildTabs nécessite les features chargées
         if (Shell.Current is AppShell shell)
             shell.BuildTabs(auth.CurrentUser.Role, features.Current.ModuleVerbalisationEnabled);
 
-        var role = auth.CurrentUser.Role;
-        bool isOfficer = string.Equals(role, "Officer", StringComparison.OrdinalIgnoreCase);
-        bool isPatrolLeader = string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
-        bool isPatrolAgent = string.Equals(role, "PatrolAgent", StringComparison.OrdinalIgnoreCase);
-        bool isPatrolRole = isOfficer || isPatrolLeader || isPatrolAgent;
-
-        if (isPatrolRole && auth.VehicleId.HasValue && !signalR.IsConnected)
-            try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
-
+        // GPS nécessite GpsTrackingEnabled — démarre après features
         if (features.Current.GpsTrackingEnabled)
         {
             if (isOfficer && auth.VehicleId.HasValue)

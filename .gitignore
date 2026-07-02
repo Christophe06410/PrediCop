@@ -21,6 +21,10 @@ packages/
 .idea/
 .vscode/
 
+## Node / npm
+node_modules/
+src/PrediCop.BackOffice/wwwroot/lib/tinymce/
+
 ## Secrets
 appsettings.*.json
 !appsettings.Development.json

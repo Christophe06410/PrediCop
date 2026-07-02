@@ -20,4 +20,22 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
 
+  <Target Name="InstallAndCopyTinyMCE" BeforeTargets="Build"
+          Inputs="package.json"
+          Outputs="wwwroot\lib\tinymce\tinymce.min.js">
+    <Message Text="npm install (TinyMCE)..." Importance="high" />
+    <Exec Command="npm install --prefer-offline" WorkingDirectory="$(ProjectDir)" />
+    <ItemGroup>
+      <TinyMCEFiles Include="$(ProjectDir)node_modules\tinymce\**\*.*" />
+      <TinyMCELangs Include="$(ProjectDir)node_modules\tinymce-i18n\langs7\fr_FR.js" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TinyMCEFiles)"
+          DestinationFiles="@(TinyMCEFiles->'$(ProjectDir)wwwroot\lib\tinymce\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(TinyMCELangs)"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\tinymce\langs\"
+          SkipUnchangedFiles="true" />
+    <Message Text="TinyMCE copié dans wwwroot/lib/tinymce" Importance="high" />
+  </Target>
+
 </Project>

@@ -70,7 +70,7 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         if (Call is null) return;
 
         HasActiveMission = Call.Missions.Any(m =>
-            m.Status is "Proposed" or "Accepted" or "InProgress");
+            m.Status is "Pending" or "Proposed" or "Accepted" or "InProgress");
 
         CanReopen = Call.Missions.Any() && !HasActiveMission;
     }

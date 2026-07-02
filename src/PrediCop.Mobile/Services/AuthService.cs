@@ -111,9 +111,9 @@ public class AuthService
         _api.SetAuthToken(Token);
         _media.SetAuthToken(Token);
 
-        // SharedPreferences.commit() is synchronous disk I/O — do it off the main thread
+        // SharedPreferences.commit() is synchronous disk I/O — await so token is saved before returning
         var t = Token; var vid = VehicleId.Value.ToString(); var cs = VehicleCallSign;
-        _ = Task.Run(() =>
+        await Task.Run(() =>
         {
             Preferences.Set(TokenKey, t);
             Preferences.Set(VehicleIdKey, vid);

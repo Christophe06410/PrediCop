@@ -12,9 +12,12 @@ public partial class MissionPage : ContentPage
     private readonly LocalDbService _localDb;
     private readonly IConnectivityService _connectivity;
     private readonly SyncService _syncService;
+    private readonly MissionAlertService? _missionAlert;
+    private readonly MediaUploadService? _media;
 
     public MissionPage(MissionViewModel vm, ApiService api,
-        LocalDbService localDb, IConnectivityService connectivity, SyncService syncService)
+        LocalDbService localDb, IConnectivityService connectivity, SyncService syncService,
+        MissionAlertService missionAlert, MediaUploadService media)
     {
         InitializeComponent();
         ViewModel = vm;
@@ -23,11 +26,15 @@ public partial class MissionPage : ContentPage
         _localDb = localDb;
         _connectivity = connectivity;
         _syncService = syncService;
+        _missionAlert = missionAlert;
+        _media = media;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        // Sur la page missions, le bandeau global n'est pas nécessaire — l'UI de la page suffit.
+        _missionAlert?.Dismiss();
         // Le VM est singleton et écoute déjà SignalR en continu — on rafraîchit juste
         // l'état visible quand la page (re)devient visible.
         ViewModel.LoadCurrentMissionCommand.Execute(null);
@@ -49,7 +56,7 @@ public partial class MissionPage : ContentPage
     private async void OnViewMissionDetails(object sender, EventArgs e)
     {
         if (ViewModel.CurrentMissionId is not { } missionId) return;
-        await Navigation.PushAsync(new MissionDetailPage(missionId, _api, _localDb, _connectivity, _syncService));
+        await Navigation.PushAsync(new MissionDetailPage(missionId, _api, _localDb, _connectivity, _syncService, _media));
     }
 
     private async void OnViewHistoryClicked(object sender, EventArgs e)

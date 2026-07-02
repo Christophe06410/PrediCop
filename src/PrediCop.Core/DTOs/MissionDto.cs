@@ -91,6 +91,7 @@ public class MissionResponse
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string? AssignedVehicleCallSign { get; set; }
     public List<MissionAssignmentResponse> Assignments { get; set; } = [];
     public List<MissionIntervenantResponse> Intervenants { get; set; } = [];
     public List<MediaAttachmentResponse> Media { get; set; } = [];

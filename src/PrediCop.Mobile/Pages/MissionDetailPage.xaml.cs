@@ -12,11 +12,13 @@ public partial class MissionDetailPage : ContentPage
     private readonly LocalDbService _localDb;
     private readonly IConnectivityService _connectivity;
     private readonly SyncService _syncService;
+    private readonly MediaUploadService? _media;
     private readonly MissionDetailViewModel _vm;
     private readonly Guid _missionId;
 
     public MissionDetailPage(Guid missionId, ApiService api, LocalDbService localDb,
-        IConnectivityService connectivity, SyncService syncService)
+        IConnectivityService connectivity, SyncService syncService,
+        MediaUploadService? media = null)
     {
         InitializeComponent();
         _missionId = missionId;
@@ -24,6 +26,7 @@ public partial class MissionDetailPage : ContentPage
         _localDb = localDb;
         _connectivity = connectivity;
         _syncService = syncService;
+        _media = media;
         _vm = new MissionDetailViewModel { MissionId = missionId };
         BindingContext = _vm;
 
@@ -303,7 +306,12 @@ public partial class MissionDetailPage : ContentPage
 
     private async void OnComplete(object sender, EventArgs e)
     {
-        var notes = NotesEditor.Text ?? "";
+        var notes = (NotesEditor.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(notes))
+        {
+            await DisplayAlert("Rapport requis", "Veuillez saisir un rapport avant de clôturer la mission.", "OK");
+            return;
+        }
 
         if (!_connectivity.IsConnected)
         {
@@ -340,6 +348,53 @@ public partial class MissionDetailPage : ContentPage
         if (string.IsNullOrWhiteSpace(phone)) return;
         try { PhoneDialer.Default.Open(phone); }
         catch { /* plateforme non supportée */ }
+    }
+
+    private async void OnUploadVideo(object sender, EventArgs e)
+    {
+        if (_media == null || _vm.IsUploading) return;
+        _vm.IsUploading = true;
+        _vm.UploadStatus = "Envoi en cours...";
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                _vm.UploadProgress = p;
+                _vm.UploadStatus = $"Envoi: {p:P0}";
+            });
+            var ok = await _media.PickAndUploadAsync(_missionId, progress: progress);
+            _vm.UploadStatus = ok ? "Vidéo envoyée ✓" : "";
+        }
+        catch (InvalidOperationException ex) { _vm.UploadStatus = ex.Message; }
+        catch { _vm.UploadStatus = "Erreur lors de l'envoi."; }
+        finally { _vm.IsUploading = false; _vm.UploadProgress = 0; }
+    }
+
+    private async void OnCapturePhoto(object sender, EventArgs e)
+    {
+        if (_media == null) return;
+        _vm.PhotoStatus = "Prise de photo...";
+        try
+        {
+            var ok = await _media.CaptureAndUploadPhotoAsync(_missionId);
+            _vm.PhotoStatus = ok ? "Photo envoyée ✓" : "";
+        }
+        catch (InvalidOperationException ex) { _vm.PhotoStatus = ex.Message; }
+        catch { _vm.PhotoStatus = "Erreur lors de l'envoi."; }
+    }
+
+    private async void OnPickPhoto(object sender, EventArgs e)
+    {
+        if (_media == null) return;
+        _vm.PhotoStatus = "Envoi en cours...";
+        try
+        {
+            var progress = new Progress<double>(p => _vm.PhotoStatus = $"Envoi: {p:P0}");
+            var ok = await _media.PickAndUploadPhotoAsync(_missionId, progress: progress);
+            _vm.PhotoStatus = ok ? "Photo envoyée ✓" : "";
+        }
+        catch (InvalidOperationException ex) { _vm.PhotoStatus = ex.Message; }
+        catch { _vm.PhotoStatus = "Erreur lors de l'envoi."; }
     }
 
     private async void OnSaveReport(object sender, EventArgs e)

@@ -12,41 +12,98 @@ public partial class MissionViewModel : ObservableObject
     private readonly MediaUploadService _mediaUpload;
     private readonly AuthService _auth;
     private readonly IAlertSoundService _alertSound;
+    private readonly MissionAlertService _missionAlert;
+    private readonly SignalRService _signalR;
     private Guid? _currentMissionId;
     private Guid? _currentAssignmentId;
+    // Données sauvegardées de la proposition courante pour pouvoir basculer en actif sans re-fetch
+    private string _proposalReference = "";
+    private double _proposalLat, _proposalLng;
+    // Missions non formellement attribuées que l'équipage a explicitement fermées
+    private readonly HashSet<Guid> _dismissedSoftProposalIds = [];
 
     public MissionViewModel(ApiService api, MediaUploadService mediaUpload, AuthService auth,
-        SignalRService signalR, IAlertSoundService alertSound)
+        SignalRService signalR, IAlertSoundService alertSound, MissionAlertService missionAlert)
     {
         _api = api;
         _mediaUpload = mediaUpload;
         _auth = auth;
         _alertSound = alertSound;
+        _missionAlert = missionAlert;
+        _signalR = signalR;
 
         // Singleton : on s'abonne une seule fois, le VM survit aux changements d'onglet.
         signalR.MissionProposed += OnSignalRMissionProposed;
         signalR.MissionStatusChanged += OnSignalRMissionStatusChanged;
+        signalR.Reconnected += (_, _) => MainThread.BeginInvokeOnMainThread(async () =>
+            await LoadCurrentMissionAsync());
+
+        // Filet de sécurité : quand le temps réel (SignalR) est indisponible, on poll l'API
+        // pour ne pas rater une mission proposée pendant la coupure.
+        _ = StartRealtimeFallbackAsync();
+    }
+
+    /// <summary>
+    /// Polling de secours : tant que SignalR n'est pas connecté, rafraîchit la mission courante
+    /// toutes les 15 s. Inactif quand le temps réel fonctionne (les push suffisent).
+    /// </summary>
+    private async Task StartRealtimeFallbackAsync()
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        while (await timer.WaitForNextTickAsync())
+        {
+            if (_signalR.IsConnected) continue;              // temps réel OK → rien à faire
+            if (string.IsNullOrEmpty(_auth.Token)) continue; // pas connecté → pas d'appel API
+            await MainThread.InvokeOnMainThreadAsync(LoadCurrentMissionAsync);
+        }
     }
 
     private void OnSignalRMissionProposed(object? sender, MissionProposedArgs e)
     {
         MainThread.BeginInvokeOnMainThread(async () =>
         {
+#if DEBUG
+            MobileLogger.Log("MissionProposed", "SignalR event received");
+#endif
             await LoadCurrentMissionAsync();
+
             if (AppPreferences.AlertSoundEnabled)
             {
                 try { _alertSound.PlayAlert(); } catch { }
-                try { Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(600)); } catch { }
+                try { Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(800)); } catch { }
             }
-            // Naviguer automatiquement vers l'onglet Missions pour que l'utilisateur
-            // voie immédiatement la proposition, où qu'il soit dans l'app.
-            try { await Shell.Current.GoToAsync("//main/missions"); } catch { }
+
+            // Bannière uniquement si l'utilisateur n'est pas déjà sur la page missions
+            var location = Shell.Current.CurrentState.Location.ToString();
+            var showBanner = !location.Contains("missions");
+#if DEBUG
+            MobileLogger.Log("MissionAlert", $"location={location}, showBanner={showBanner}, showProposal={ShowMissionProposal}");
+#endif
+            if (showBanner)
+            {
+                var (title, address) = ShowMissionProposal
+                    ? ("NOUVELLE MISSION À ACCEPTER", ProposalAddress)
+                    : ("MISSION ASSIGNÉE", ActiveMissionAddress);
+#if DEBUG
+                MobileLogger.Log("MissionAlert", $"Show called: {title} / {address}");
+#endif
+                _missionAlert.Show(title, address);
+            }
         });
     }
 
     private void OnSignalRMissionStatusChanged(object? sender, string e)
     {
-        MainThread.BeginInvokeOnMainThread(async () => await LoadCurrentMissionAsync());
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            await LoadCurrentMissionAsync();
+            // Si plus aucune proposition en attente → la mission a été acceptée/refusée/annulée
+            if (!ShowMissionProposal)
+            {
+                _alertSound.StopAlert();
+                _missionAlert.Dismiss();
+            }
+        });
     }
 
     // Status bar
@@ -65,6 +122,16 @@ public partial class MissionViewModel : ObservableObject
     [ObservableProperty] private string proposalAddress = "";
     [ObservableProperty] private string proposalDescription = "";
     [ObservableProperty] private string proposalDistance = "";
+
+    // Formal vs. soft proposal
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSoftProposal))]
+    [NotifyPropertyChangedFor(nameof(ProposalTitle))]
+    [NotifyPropertyChangedFor(nameof(ProposalFrameColor))]
+    private bool isFormalProposal;
+    public bool IsSoftProposal => !IsFormalProposal;
+    public string ProposalTitle => IsFormalProposal ? "NOUVELLE MISSION" : "EN ATTENTE DE DISPATCH";
+    public Color ProposalFrameColor => IsFormalProposal ? Color.FromArgb("#dc2626") : Color.FromArgb("#92400e");
 
     // Active mission
     [ObservableProperty] private string activeMissionRef = "";
@@ -149,6 +216,9 @@ public partial class MissionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasPhotoStatus))]
     private string photoStatus = "";
 
+    /// <summary>Vrai si le véhicule est marqué OnMission sur le serveur sans mission visible — état fantôme.</summary>
+    [ObservableProperty] private bool isVehicleStuck;
+
     public bool IsNotUploading => !IsUploading;
     public bool HasUploadStatus => !string.IsNullOrEmpty(UploadStatus);
     public bool HasPhotoStatus => !string.IsNullOrEmpty(PhotoStatus);
@@ -184,6 +254,8 @@ public partial class MissionViewModel : ObservableObject
 
                 if (proposed.Mission != null && proposed.Assignment != null)
                 {
+                    // Dispatch formel : si l'équipage avait fermé cette mission en soft, l'enlever de la liste des ignorées
+                    _dismissedSoftProposalIds.Remove(proposed.Mission.Id);
                     SetMissionProposal(new MissionInfo(
                         proposed.Mission.Id, proposed.Assignment.Id, proposed.Mission.Reference,
                         proposed.Mission.TargetAddress, proposed.Mission.BriefingText, proposed.Mission.BriefingText,
@@ -193,18 +265,71 @@ public partial class MissionViewModel : ObservableObject
                 else
                 {
                     var m = missions[0];
-                    SetActiveMission(new MissionInfo(
-                        m.Id, null, m.Reference,
-                        m.TargetAddress, "", m.BriefingText,
-                        0, m.TargetLatitude, m.TargetLongitude,
-                        m.Priority));
+                    var myVehicleId = _auth.VehicleId;
+
+                    var hasAcceptedAssignment = myVehicleId.HasValue
+                        && m.Assignments.Any(a =>
+                            a.VehicleId == myVehicleId.Value
+                            && a.Status is "Accepted" or "InProgress");
+
+                    if (hasAcceptedAssignment)
+                    {
+                        SetActiveMission(new MissionInfo(
+                            m.Id, null, m.Reference,
+                            m.TargetAddress, "", m.BriefingText,
+                            0, m.TargetLatitude, m.TargetLongitude,
+                            m.Priority));
+                    }
+                    else
+                    {
+                        // Pas de proposition formelle pour ce véhicule → rien à afficher.
+                        // La mission sera visible uniquement quand le BO dispatche formellement
+                        // et que le SignalR envoie MissionProposed avec un AssignmentId.
+                        SetNoMission();
+                    }
                 }
             }
             else
                 SetNoMission();
         }
         catch { SetNoMission(); }
+
+        // Si aucune mission visible, vérifie si le véhicule est bloqué OnMission côté serveur
+        if (ShowNoMission)
+            _ = CheckVehicleStuckAsync();
+        else
+            IsVehicleStuck = false;
     }
+
+    private async Task CheckVehicleStuckAsync()
+    {
+        if (!_auth.VehicleId.HasValue) { IsVehicleStuck = false; return; }
+        try
+        {
+            var v = await _api.GetAsync<VehicleStatusDto>($"api/vehicles/{_auth.VehicleId}");
+            IsVehicleStuck = v?.Status == "OnMission";
+        }
+        catch { IsVehicleStuck = false; }
+    }
+
+    [RelayCommand]
+    private async Task ReleaseStickyVehicleAsync()
+    {
+        if (!_auth.VehicleId.HasValue) return;
+        try
+        {
+            await _api.PostAsync($"api/vehicles/{_auth.VehicleId}/release", null);
+            IsVehicleStuck = false;
+            await LoadCurrentMissionAsync();
+        }
+        catch
+        {
+            WeakReferenceMessenger.Default.Send(
+                new AlertMessage("Erreur", "Impossible de libérer le véhicule."));
+        }
+    }
+
+    private class VehicleStatusDto { public string Status { get; set; } = ""; }
 
     // Private DTOs matching API JSON
     private class ApiMissionDto
@@ -222,8 +347,8 @@ public partial class MissionViewModel : ObservableObject
     private class ApiAssignmentDto
     {
         public Guid Id { get; set; }
+        public Guid VehicleId { get; set; }
         public string Status { get; set; } = "";
-        // Assignment is pending a response from this vehicle
         public bool IsPending => Status is "Proposed";
     }
 
@@ -231,10 +356,14 @@ public partial class MissionViewModel : ObservableObject
     {
         _currentAssignmentId = mission.AssignmentId;
         _currentMissionId = mission.MissionId;
+        _proposalReference = mission.Reference;
+        _proposalLat = mission.Latitude;
+        _proposalLng = mission.Longitude;
         ProposalAddress = mission.Address;
         ProposalDescription = mission.Description;
         ProposalDistance = $"Distance estimée: {mission.DistanceKm:F1} km";
         ProposalPriority = mission.Priority;
+        IsFormalProposal = mission.AssignmentId.HasValue;
         ShowMissionProposal = true;
         ShowActiveMission = false;
         ShowNoMission = false;
@@ -285,20 +414,51 @@ public partial class MissionViewModel : ObservableObject
 
     private void SetNoMission()
     {
+        _alertSound.StopAlert();
         ShowNoMission = true;
         ShowMissionProposal = false;
         ShowActiveMission = false;
+        IsFormalProposal = false;
+        _currentMissionId = null;
+        _currentAssignmentId = null;
+    }
+
+    [RelayCommand]
+    private void DismissSoftProposal()
+    {
+        if (_currentMissionId.HasValue)
+            _dismissedSoftProposalIds.Add(_currentMissionId.Value);
+        SetNoMission();
     }
 
     [RelayCommand]
     private async Task AcceptMissionAsync()
     {
-        if (_currentMissionId == null || _currentAssignmentId == null) return;
+        if (_currentMissionId == null || _currentAssignmentId == null) { SetNoMission(); return; }
+
+        // Stopper la sonnerie immédiatement — avant même la réponse serveur
+        _alertSound.StopAlert();
+
+        // Captures avant l'await (les champs peuvent changer si un autre event arrive)
+        var missionId  = _currentMissionId.Value;
+        var reference  = _proposalReference;
+        var address    = ProposalAddress;
+        var briefing   = ProposalDescription;
+        var priority   = ProposalPriority;
+        var lat        = _proposalLat;
+        var lng        = _proposalLng;
+
         try
         {
             await _api.PostAsync(
                 $"api/missions/{_currentMissionId}/assignments/{_currentAssignmentId}/accept", null);
-            await LoadCurrentMissionAsync();
+
+            // Basculer en "mission active" directement sur le main thread avec les données
+            // déjà connues — évite un LoadCurrentMissionAsync depuis un thread pool qui peut
+            // interférer avec le MissionStatusChanged SignalR arrivant au même moment.
+            await MainThread.InvokeOnMainThreadAsync(() =>
+                SetActiveMission(new MissionInfo(missionId, null, reference,
+                    address, briefing, briefing, 0, lat, lng, priority)));
         }
         catch
         {
@@ -309,7 +469,8 @@ public partial class MissionViewModel : ObservableObject
 
     public async Task RefuseMissionAsync(string reasonCode, string reason)
     {
-        if (_currentMissionId == null || _currentAssignmentId == null) return;
+        if (_currentMissionId == null || _currentAssignmentId == null) { SetNoMission(); return; }
+        _alertSound.StopAlert();
         try
         {
             await _api.PostAsync(

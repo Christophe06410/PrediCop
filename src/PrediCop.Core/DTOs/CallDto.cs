@@ -20,6 +20,8 @@ public class CreateCallRequest
     public CallPriority Priority { get; set; } = CallPriority.Routine;
     /// <summary>Null = defaults to Open. Pass Closed for logbook-only entries, Draft for drafts.</summary>
     public CallStatus? Status { get; set; }
+    /// <summary>Durée de l'appel en secondes (de Décrocher à Raccrocher). Null si l'opérateur n'a pas utilisé le timer.</summary>
+    public int? CallDurationSeconds { get; set; }
 }
 
 public class UpdateCallRequest
@@ -58,9 +60,11 @@ public class CallResponse
     public string? InternalNotes { get; set; }
     public Guid OperatorId { get; set; }
     public string OperatorName { get; set; } = string.Empty;
+    public int? CallDurationSeconds { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public List<MissionResponse> Missions { get; set; } = [];
+    public List<CallReportResponse> Reports { get; set; } = [];
 }
 
 public class CloseCallRequest

@@ -1,0 +1,104 @@
+@page "{type}"
+@model PrediCop.BackOffice.Pages.Admin.ReportTemplates.EditModel
+@{
+    ViewData["Title"] = $"Masque — {Model.TypeLabel}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="Index">Masques de rapports</a></li>
+            <li class="breadcrumb-item active">@Model.TypeLabel</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-file-code me-2 text-primary"></i>@Model.TypeLabel
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Ce masque est chargé par défaut quand un agent clique sur « Charger le masque »
+                    lors de la rédaction d'un rapport de ce type.
+                </p>
+                <form method="post" id="templateForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.DefaultTitle" class="form-label fw-semibold">Titre suggéré</label>
+                        <input asp-for="Input.DefaultTitle" class="form-control" />
+                        <span asp-validation-for="Input.DefaultTitle" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Corps du masque</label>
+                        <textarea asp-for="Input.Body" id="Input_Body" data-val="false"></textarea>
+                        <span asp-validation-for="Input.Body" class="text-danger small" id="bodyError"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary">Annuler</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/lib/tinymce/tinymce.min.js"></script>
+<script>
+tinymce.init({
+    selector: '#Input_Body',
+    base_url: '/lib/tinymce',
+    suffix: '.min',
+    language: 'fr_FR',
+    height: 600,
+    menubar: 'file edit view insert format tools',
+    plugins: 'lists link image table searchreplace fullscreen wordcount',
+    toolbar:
+        'undo redo | fontfamily fontsize | ' +
+        'bold italic underline strikethrough | forecolor backcolor | ' +
+        'alignleft aligncenter alignright alignjustify | ' +
+        'bullist numlist | outdent indent | ' +
+        'image link table | searchreplace | fullscreen',
+    font_family_formats:
+        'Arial=arial,helvetica,sans-serif;' +
+        'Calibri=calibri,sans-serif;' +
+        'Courier New=courier new,courier,monospace;' +
+        'Georgia=georgia,palatino;' +
+        'Times New Roman=times new roman,times;' +
+        'Verdana=verdana,geneva;',
+    font_size_formats: '8pt 9pt 10pt 11pt 12pt 14pt 16pt 18pt 24pt 36pt',
+    content_style: `
+        body { font-family: Arial, sans-serif; font-size: 11pt; margin: 1.5em 2em; line-height: 1.6; }
+        p { margin: 0.4em 0; }
+    `,
+    file_picker_types: 'image',
+    images_upload_handler: function(blobInfo) {
+        return Promise.resolve('data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64());
+    },
+    automatic_uploads: false,
+    branding: false,
+    promotion: false,
+});
+
+document.getElementById('templateForm').addEventListener('submit', function (e) {
+    tinymce.triggerSave();
+    const body = tinymce.get('Input_Body')?.getContent({ format: 'text' }).trim();
+    if (!body) {
+        e.preventDefault();
+        document.getElementById('bodyError').textContent = 'Le corps du masque est obligatoire.';
+        tinymce.get('Input_Body')?.focus();
+    }
+});
+</script>
+}

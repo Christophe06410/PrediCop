@@ -76,6 +76,21 @@ public partial class MissionDetailViewModel : ObservableObject
     private ObservableCollection<AssignmentSummaryVm> assignments = [];
     public bool HasAssignments => Assignments.Count > 0;
 
+    // Upload médias
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotUploading))]
+    private bool isUploading;
+    [ObservableProperty] private double uploadProgress;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUploadStatus))]
+    private string uploadStatus = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPhotoStatus))]
+    private string photoStatus = "";
+    public bool IsNotUploading => !IsUploading;
+    public bool HasUploadStatus => !string.IsNullOrEmpty(UploadStatus);
+    public bool HasPhotoStatus => !string.IsNullOrEmpty(PhotoStatus);
+
     [ObservableProperty] private bool isOffline;
     [ObservableProperty] private bool showEditReport;
 

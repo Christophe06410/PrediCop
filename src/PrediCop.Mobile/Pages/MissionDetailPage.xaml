@@ -7,6 +7,7 @@
 
     <Shell.NavBarIsVisible>True</Shell.NavBarIsVisible>
     <Shell.TitleColor>White</Shell.TitleColor>
+    <Shell.ForegroundColor>White</Shell.ForegroundColor>
     <Shell.BackgroundColor>#243050</Shell.BackgroundColor>
 
     <ScrollView>
@@ -207,6 +208,46 @@
                             FontAttributes="Bold" FontSize="16"
                             HorizontalOptions="Fill"
                             Clicked="OnComplete"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Upload vidéo (mission en cours) -->
+            <Frame IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Joindre une vidéo" TextColor="#aab0c0" FontSize="13"/>
+                    <Button Text="Sélectionner une vidéo"
+                            BackgroundColor="#374151" TextColor="White"
+                            CornerRadius="8" FontSize="13"
+                            Clicked="OnUploadVideo"
+                            IsEnabled="{Binding IsNotUploading}"/>
+                    <ProgressBar Progress="{Binding UploadProgress}"
+                                 IsVisible="{Binding IsUploading}"
+                                 ProgressColor="#2563eb"/>
+                    <Label Text="{Binding UploadStatus}"
+                           TextColor="#93c5fd" FontSize="12"
+                           IsVisible="{Binding HasUploadStatus}"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Upload photo (mission en cours) -->
+            <Frame IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Joindre une photo" TextColor="#aab0c0" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Grid.Column="0" Text="Prendre une photo"
+                                BackgroundColor="#374151" TextColor="White"
+                                CornerRadius="8" FontSize="12"
+                                Clicked="OnCapturePhoto"/>
+                        <Button Grid.Column="1" Text="Depuis galerie"
+                                BackgroundColor="#374151" TextColor="White"
+                                CornerRadius="8" FontSize="12"
+                                Clicked="OnPickPhoto"/>
+                    </Grid>
+                    <Label Text="{Binding PhotoStatus}"
+                           TextColor="#93c5fd" FontSize="12"
+                           IsVisible="{Binding HasPhotoStatus}"/>
                 </VerticalStackLayout>
             </Frame>
 

@@ -22,8 +22,7 @@
                     HeightRequest="36"
                     IsVisible="False"
                     Clicked="OnBackToPatrolClicked"/>
-            <!-- spacer -->
-            <BoxView Grid.Column="1" Color="Transparent"/>
+            <!-- spacer : Grid.Column="1" ColumnDefinition="*" assure déjà le remplissage -->
             <Label Grid.Column="2"
                    Text="Couleur des rues"
                    TextColor="#aab0c0"

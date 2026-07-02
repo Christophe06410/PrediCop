@@ -29,6 +29,11 @@ public static class InfrastructureExtensions
         services.AddSingleton<IEmailService, SmtpEmailService>();
         services.AddSingleton<IPushNotificationService, FcmPushNotificationService>();
 
+        // Journal technique des flux (serveur + mobile). La file est ici ; le writer en tâche de
+        // fond est enregistré côté hôte (API) car Infrastructure ne référence pas Microsoft.Extensions.Hosting.
+        services.AddSingleton<FlowLogService>();
+        services.AddSingleton<IFlowLogService>(sp => sp.GetRequiredService<FlowLogService>());
+
         return services;
     }
 }

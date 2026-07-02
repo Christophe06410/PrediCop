@@ -137,6 +137,10 @@ public class VehiclesController(
         if (vehicle is null)
             return Problem(title: "Véhicule non trouvé", statusCode: 404);
 
+        // Reprise après coupure réseau : si le véhicule était retombé Offline, le remettre Available
+        if (vehicle.Status == VehicleStatus.Offline)
+            vehicle.Status = VehicleStatus.Available;
+
         await gpsService.UpdateVehiclePositionAsync(id, request.Latitude, request.Longitude, ct);
 
         var positionUpdate = new VehiclePositionUpdate
@@ -242,7 +246,7 @@ public class VehiclesController(
         [FromQuery] int count = 5,
         CancellationToken ct = default)
     {
-        var nearby = await gpsService.FindNearbyAvailableVehiclesAsync(lat, lng, count, ct);
+        var nearby = await gpsService.FindNearbyAvailableVehiclesAsync(lat, lng, TenantId, count, ct);
 
         var vehicleIds = nearby.Select(n => n.VehicleId).ToList();
         var vehicles = await db.PatrolVehicles
@@ -259,6 +263,61 @@ public class VehiclesController(
         }).ToList();
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Libère un véhicule bloqué en statut OnMission sans assignment actif.
+    /// Ferme les assignments orphelins et remet le véhicule en Available.
+    /// Safe to call even if already Available (no-op in that case).
+    /// </summary>
+    [HttpPost("{id:guid}/release")]
+    public async Task<ActionResult<VehicleResponse>> ReleaseStuck(Guid id, CancellationToken ct)
+    {
+        var vehicle = await db.PatrolVehicles
+            .Include(v => v.Officers.Where(o => o.IsActive)).ThenInclude(o => o.User)
+            .FirstOrDefaultAsync(v => v.Id == id && v.TenantId == TenantId, ct);
+
+        if (vehicle is null)
+            return Problem(title: "Véhicule non trouvé", statusCode: 404);
+
+        // Fermer les assignments actifs orphelins de ce véhicule
+        var staleItems = await db.MissionAssignments
+            .Where(a => a.VehicleId == id &&
+                        (a.Status == MissionStatus.Proposed ||
+                         a.Status == MissionStatus.Accepted ||
+                         a.Status == MissionStatus.InProgress))
+            .Select(a => new { a.Id, a.MissionId })
+            .ToListAsync(ct);
+
+        foreach (var item in staleItems)
+        {
+            await db.MissionAssignments
+                .Where(a => a.Id == item.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(a => a.Status, MissionStatus.Refused)
+                    .SetProperty(a => a.RefusalReason, "Libéré par l'équipage")
+                    .SetProperty(a => a.RespondedAt, DateTime.UtcNow), ct);
+        }
+
+        // Remettre en Pending les missions InProgress sans autre assignment actif
+        var missionIds = staleItems.Select(s => s.MissionId).Distinct();
+        foreach (var missionId in missionIds)
+        {
+            var stillActive = await db.MissionAssignments
+                .AnyAsync(a => a.MissionId == missionId &&
+                               (a.Status == MissionStatus.Proposed ||
+                                a.Status == MissionStatus.Accepted ||
+                                a.Status == MissionStatus.InProgress), ct);
+            if (!stillActive)
+                await db.Missions
+                    .Where(m => m.Id == missionId && m.Status == MissionStatus.InProgress)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, MissionStatus.Pending), ct);
+        }
+
+        vehicle.Status = VehicleStatus.Available;
+        await db.SaveChangesAsync(ct);
+
+        return Ok(MapToResponse(vehicle));
     }
 
     [HttpPost("{id:guid}/sos")]

@@ -21,7 +21,25 @@ public class CallDto
     public string? InternalNotes { get; set; }
     public string? Notes { get; set; }
     public string OperatorName { get; set; } = string.Empty;
+    public int? CallDurationSeconds { get; set; }
     public List<MissionDto> Missions { get; set; } = [];
+    public List<ReportDto> Reports { get; set; } = [];
+}
+
+public class ReportDto
+{
+    public Guid Id { get; set; }
+    public Guid CallId { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string TypeLabel { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+    public int Recipients { get; set; }
+    public string[] RecipientLabels { get; set; } = [];
+    public bool IsDraft { get; set; }
+    public DateTime? FinalizedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class EditCallDto
@@ -100,4 +118,7 @@ public class CreateCallDto
 
     [Display(Name = "Priorité")]
     public string Priority { get; set; } = "Routine";
+
+    /// <summary>Durée de l'appel en secondes, mesurée par le timer du navigateur (Décrocher → Raccrocher).</summary>
+    public int? CallDurationSeconds { get; set; }
 }

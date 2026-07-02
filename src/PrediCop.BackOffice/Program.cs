@@ -138,6 +138,18 @@ proxy.MapPost("/missions/{id:guid}/force-assign", async (
     await r.Content.CopyToAsync(ctx.Response.Body, ct);
 });
 
+proxy.MapPost("/missions/{id:guid}/crew", async (
+    Guid id, HttpContext ctx, IHttpClientFactory factory, CancellationToken ct) =>
+{
+    var client = factory.CreateClient("PrediCopApi");
+    using var body = new StreamContent(ctx.Request.Body);
+    body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+    var r = await client.PostAsync($"/api/missions/{id}/crew", body, ct);
+    ctx.Response.StatusCode = (int)r.StatusCode;
+    ctx.Response.ContentType = r.Content.Headers.ContentType?.ToString() ?? "application/json";
+    await r.Content.CopyToAsync(ctx.Response.Body, ct);
+});
+
 proxy.MapPost("/media", async (
     HttpContext ctx, IHttpClientFactory factory, CancellationToken ct) =>
 {

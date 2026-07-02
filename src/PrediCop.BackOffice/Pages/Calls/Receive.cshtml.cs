@@ -66,10 +66,15 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
             var missionResponse = await client.PostAsJsonAsync(
                 $"/api/calls/{created.Id}/create-mission", (object?)null);
 
+            TempData["ClearCallTimer"] = true;
+
             if (missionResponse.IsSuccessStatusCode)
             {
+                var mission = await missionResponse.Content.ReadFromJsonAsync<MissionDto>();
                 TempData["SuccessMessage"] =
                     $"Main courante {created.Reference} enregistrée et mission créée avec succès.";
+                if (mission?.Id != Guid.Empty)
+                    return RedirectToPage("/Missions/Details", new { id = mission!.Id });
             }
             else
             {
@@ -218,6 +223,7 @@ public class ReceiveModel(IHttpClientFactory httpClientFactory, ILogger<ReceiveM
 
     public IActionResult OnPostCloseAsync()
     {
+        TempData["ClearCallTimer"] = true;
         TempData["InfoMessage"] = "Main courante fermée sans suite.";
         return RedirectToPage("/Calls/Index");
     }

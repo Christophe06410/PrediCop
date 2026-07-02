@@ -30,6 +30,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<VehicleOfficer> VehicleOfficers => Set<VehicleOfficer>();
     public DbSet<Call> Calls => Set<Call>();
     public DbSet<Mission> Missions => Set<Mission>();
+    public DbSet<CallReport> CallReports => Set<CallReport>();
+    public DbSet<ReportTemplate> ReportTemplates => Set<ReportTemplate>();
     public DbSet<MissionAssignment> MissionAssignments => Set<MissionAssignment>();
     public DbSet<MissionIntervenant> MissionIntervenants => Set<MissionIntervenant>();
     public DbSet<Street> Streets => Set<Street>();
@@ -68,6 +70,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     // ---- Télémétrie mobile ----
     public DbSet<MobileErrorLog> MobileErrorLogs => Set<MobileErrorLog>();
+
+    // ---- Journal technique des flux (serveur + mobile) ----
+    public DbSet<FlowLog> FlowLogs => Set<FlowLog>();
 
     // Force Kind=Utc on all DateTime values read from SQL Server.
     // SQL Server datetime2 has no timezone info; EF Core returns Kind=Unspecified,
@@ -122,6 +127,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FlowLog>(e =>
+        {
+            e.ToTable("FlowLogs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Source).HasMaxLength(20);
+            e.Property(x => x.Level).HasMaxLength(20);
+            e.Property(x => x.Category).HasMaxLength(100);
+            e.Property(x => x.Message).HasMaxLength(4000);
+            e.Property(x => x.Context).HasMaxLength(1000);
+            e.HasIndex(x => x.Timestamp);
+        });
 
         // Filtre global IsDeleted uniquement sur TenantEntity (pas sur BaseEntity ni AuditLog)
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PrediCop.Mobile.Views.AppHeader">
 
-    <Grid RowDefinitions="*,2" BackgroundColor="#0d1421">
+    <Grid RowDefinitions="Auto,2,Auto,Auto" BackgroundColor="#0d1421">
 
         <!-- Contenu principal du header -->
         <Grid Grid.Row="0" Padding="16,10,20,10"
@@ -39,13 +39,13 @@
                        CharacterSpacing="0.5"/>
             </VerticalStackLayout>
 
-            <!-- Indicateur de connexion -->
+            <!-- Indicateur de connexion temps réel (SignalR) -->
             <HorizontalStackLayout Grid.Column="2" VerticalOptions="Center" Spacing="5">
-                <Ellipse Fill="#22c55e"
+                <Ellipse x:Name="StatusDot" Fill="#facc15"
                          WidthRequest="7" HeightRequest="7"
                          VerticalOptions="Center"/>
-                <Label Text="EN LIGNE"
-                       TextColor="#22c55e"
+                <Label x:Name="StatusLabel" Text="CONNEXION…"
+                       TextColor="#facc15"
                        FontSize="9" FontAttributes="Bold"
                        CharacterSpacing="0.5"
                        VerticalOptions="Center"/>
@@ -55,6 +55,50 @@
 
         <!-- Ligne accent bleue en bas -->
         <BoxView Grid.Row="1" BackgroundColor="#2563eb" Opacity="0.7"/>
+
+        <!-- Bandeau mode dégradé : réseau OK mais temps réel indisponible -->
+        <Grid x:Name="DegradedBanner" Grid.Row="2"
+              BackgroundColor="#78350f" Padding="12,5"
+              ColumnDefinitions="Auto,*"
+              IsVisible="False">
+            <Label Grid.Column="0" Text="⚠️" FontSize="13"
+                   VerticalOptions="Center" Margin="0,0,8,0"/>
+            <Label Grid.Column="1" x:Name="DegradedLabel"
+                   Text="Mode dégradé : notifications temps réel indisponibles"
+                   TextColor="#fcd34d" FontSize="11"
+                   VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+        </Grid>
+
+        <!-- Bannière alerte mission — visible sur tous les écrans -->
+        <Grid x:Name="MissionBanner" Grid.Row="3"
+              BackgroundColor="#c41c1c" Padding="12,8,8,8"
+              ColumnDefinitions="Auto,*,Auto,Auto"
+              IsVisible="False">
+            <Label Grid.Column="0" Text="🚨" FontSize="20"
+                   VerticalOptions="Center" Margin="0,0,8,0"/>
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                <Label x:Name="AlertTitleLabel"
+                       TextColor="White" FontAttributes="Bold" FontSize="13"
+                       LineBreakMode="TailTruncation"/>
+                <Label x:Name="AlertAddressLabel"
+                       TextColor="#fca5a5" FontSize="11"
+                       LineBreakMode="TailTruncation"/>
+            </VerticalStackLayout>
+            <Button Grid.Column="2" x:Name="GoToMissionsButton"
+                    Text="Voir →"
+                    BackgroundColor="#7f1d1d" TextColor="White"
+                    CornerRadius="8" Padding="10,2"
+                    FontSize="12" HeightRequest="30"
+                    Margin="6,0,4,0" VerticalOptions="Center"
+                    Clicked="OnGoToMissionsClicked"/>
+            <Label Grid.Column="3"
+                   Text="✕" TextColor="White" FontSize="18"
+                   Padding="8,0,6,0" VerticalOptions="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnDismissAlertTapped"/>
+                </Label.GestureRecognizers>
+            </Label>
+        </Grid>
 
     </Grid>
 

@@ -1,0 +1,191 @@
+@page
+@model PrediCop.BackOffice.Pages.Calls.Reports.CreateModel
+@{
+    ViewData["Title"] = "Nouveau rapport";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-page="/Calls/Index">Mains courantes</a></li>
+            <li class="breadcrumb-item">
+                <a asp-page="/Calls/Details" asp-route-id="@Model.CallId">@Model.CallReference</a>
+            </li>
+            <li class="breadcrumb-item active">Nouveau rapport</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fa-solid fa-file-pen me-2 text-primary"></i>Rédiger un rapport
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post" id="reportForm">
+                    <input type="hidden" asp-for="CallId" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label asp-for="Input.Type" class="form-label fw-semibold">Type de rapport</label>
+                            <select asp-for="Input.Type" class="form-select" id="reportType">
+                                <option value="Information">Rapport d'information</option>
+                                <option value="Intervention">Rapport d'intervention</option>
+                                <option value="CustodyTransfer">Rapport de mise à disposition</option>
+                                <option value="FormalRecord">Procès-verbal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label asp-for="Input.Title" class="form-label fw-semibold">Titre</label>
+                            <input asp-for="Input.Title" class="form-control" id="reportTitle" />
+                            <span asp-validation-for="Input.Title" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Destinataires -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Destinataires</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" asp-for="Input.RecipientMayor" id="recipMayor" />
+                                <label class="form-check-label" for="recipMayor">Maire</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" asp-for="Input.RecipientProsecutor" id="recipProc" />
+                                <label class="form-check-label" for="recipProc">Procureur</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" asp-for="Input.RecipientPrefecture" id="recipPref" />
+                                <label class="form-check-label" for="recipPref">Préfecture</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" asp-for="Input.RecipientHierarchy" id="recipHier" />
+                                <label class="form-check-label" for="recipHier">Hiérarchie</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" asp-for="Input.RecipientDepartment" id="recipDept" />
+                                <label class="form-check-label" for="recipDept">Service</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Corps (TinyMCE) -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-semibold mb-0">Corps du rapport</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTemplate">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Charger le masque
+                            </button>
+                        </div>
+                        <textarea asp-for="Input.Body" id="Input_Body" data-val="false"></textarea>
+                        <span asp-validation-for="Input.Body" class="text-danger small" id="bodyError"></span>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" asp-for="Input.IsDraft" id="isDraft" checked />
+                            <label class="form-check-label" for="isDraft">
+                                Enregistrer comme brouillon
+                                <small class="text-muted">(décocher pour finaliser)</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="btnSubmit">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>Enregistrer
+                        </button>
+                        <a asp-page="/Calls/Details" asp-route-id="@Model.CallId" class="btn btn-outline-secondary">
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/lib/tinymce/tinymce.min.js"></script>
+<script>
+const TEMPLATES_DATA = @Html.Raw(Model.TemplatesJson);
+const TEMPLATES = Object.fromEntries(Object.entries(TEMPLATES_DATA).map(([k, v]) => [k, v.body]));
+const TITLES    = Object.fromEntries(Object.entries(TEMPLATES_DATA).map(([k, v]) => [k, v.defaultTitle]));
+
+tinymce.init({
+    selector: '#Input_Body',
+    base_url: '/lib/tinymce',
+    suffix: '.min',
+    language: 'fr_FR',
+    height: 580,
+    menubar: 'file edit view insert format tools',
+    plugins: 'lists link image table searchreplace fullscreen wordcount autoresize',
+    toolbar:
+        'undo redo | fontfamily fontsize | ' +
+        'bold italic underline strikethrough | forecolor backcolor | ' +
+        'alignleft aligncenter alignright alignjustify | ' +
+        'bullist numlist | outdent indent | ' +
+        'image link table | searchreplace | fullscreen',
+    font_family_formats:
+        'Arial=arial,helvetica,sans-serif;' +
+        'Calibri=calibri,sans-serif;' +
+        'Courier New=courier new,courier,monospace;' +
+        'Georgia=georgia,palatino;' +
+        'Times New Roman=times new roman,times;' +
+        'Verdana=verdana,geneva;',
+    font_size_formats: '8pt 9pt 10pt 11pt 12pt 14pt 16pt 18pt 24pt 36pt',
+    content_style: `
+        body { font-family: Arial, sans-serif; font-size: 11pt; margin: 1.5em 2em; line-height: 1.6; }
+        p { margin: 0.4em 0; }
+        strong { font-weight: bold; }
+    `,
+    file_picker_types: 'image',
+    images_upload_handler: function(blobInfo) {
+        return Promise.resolve('data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64());
+    },
+    automatic_uploads: false,
+    branding: false,
+    promotion: false,
+    resize: true,
+});
+
+const typeSelect  = document.getElementById('reportType');
+const titleInput  = document.getElementById('reportTitle');
+const btnTemplate = document.getElementById('btnTemplate');
+const form        = document.getElementById('reportForm');
+
+typeSelect.addEventListener('change', function () {
+    if (!titleInput.value || Object.values(TITLES).includes(titleInput.value)) {
+        titleInput.value = TITLES[this.value] ?? '';
+    }
+});
+
+btnTemplate.addEventListener('click', function () {
+    const tpl = TEMPLATES[typeSelect.value];
+    if (!tpl) return;
+    const editor = tinymce.get('Input_Body');
+    if (!editor) return;
+    if (!editor.getContent() || confirm('Remplacer le contenu actuel par le masque ?')) {
+        editor.setContent(tpl);
+    }
+});
+
+form.addEventListener('submit', function (e) {
+    tinymce.triggerSave();
+    const body = tinymce.get('Input_Body')?.getContent({ format: 'text' }).trim();
+    if (!body) {
+        e.preventDefault();
+        document.getElementById('bodyError').textContent = 'Le corps du rapport est obligatoire.';
+        tinymce.get('Input_Body')?.focus();
+    }
+});
+
+// Init titre si vide au chargement
+if (!titleInput.value) titleInput.value = TITLES[typeSelect.value] ?? '';
+</script>
+}

@@ -23,7 +23,7 @@ public class AuthController(AppDbContext db, IConfiguration configuration, ITotp
     public async Task<ActionResult<List<TenantSummaryDto>>> GetTenants(CancellationToken ct)
     {
         var tenants = await db.Tenants
-            .Where(t => t.IsActive && t.Slug != "predicop")
+            .Where(t => t.IsActive)
             .OrderBy(t => t.Name)
             .Select(t => new TenantSummaryDto { Id = t.Id, Name = t.Name, Slug = t.Slug })
             .ToListAsync(ct);
@@ -310,6 +310,13 @@ public class AuthController(AppDbContext db, IConfiguration configuration, ITotp
                 UserId = userId,
                 IsActive = true
             });
+        }
+
+        // Passer le véhicule en Available dès la prise de service (sauf s'il est déjà sur une mission)
+        if (vehicle.Status == VehicleStatus.Offline)
+        {
+            vehicle.Status = VehicleStatus.Available;
+            vehicle.SessionStartedAt = DateTime.UtcNow;
         }
 
         await db.SaveChangesAsync(ct);

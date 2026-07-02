@@ -23,8 +23,12 @@ public class Call : TenantEntity
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
 
+    /// <summary>Durée de l'appel téléphonique en secondes (de Décrocher à Raccrocher). Null si non mesurée.</summary>
+    public int? CallDurationSeconds { get; set; }
+
     public Guid OperatorId { get; set; }
     public User Operator { get; set; } = null!;
 
     public ICollection<Mission> Missions { get; set; } = [];
+    public ICollection<CallReport> Reports { get; set; } = [];
 }

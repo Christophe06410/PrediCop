@@ -7,4 +7,6 @@ namespace PrediCop.Mobile.Services;
 public interface IAlertSoundService
 {
     void PlayAlert();
+    /// <summary>Stop the alert immediately (acceptance, refusal, or mission reassigned).</summary>
+    void StopAlert();
 }

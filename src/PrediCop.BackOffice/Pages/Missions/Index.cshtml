@@ -37,7 +37,7 @@
                         <th data-col="1">Référence</th>
                         <th data-col="2">Statut</th>
                         <th data-col="3">Adresse cible</th>
-                        <th data-col="4">Véhicule assigné</th>
+                        <th data-col="4">Équipage</th>
                         <th data-col="5">Créée le</th>
                         <th data-col="6">Durée</th>
                         <th class="text-end">Actions</th>
@@ -218,19 +218,45 @@
 
 @section Scripts {
     <script>
-    // Auto-refresh toutes les 30 secondes
+    // Auto-refresh toutes les 30 secondes (filet de sécurité) + rafraîchissement temps réel via SignalR.
     var refreshInterval = setInterval(refreshData, 30000);
     var lastRefreshTime = new Date();
+    var _refreshing = false;
 
+    // Rafraîchit réellement le contenu des tableaux en re-récupérant la page et en
+    // remplaçant les <tbody>. (Auparavant la réponse était récupérée puis ignorée.)
     function refreshData() {
-        fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(() => {
+        if (_refreshing) return;
+        _refreshing = true;
+        var icon = document.getElementById('refresh-icon');
+        if (icon) icon.classList.add('fa-spin');
+        return fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var tables = document.querySelectorAll('table');
+                var newTables = doc.querySelectorAll('table');
+                for (var i = 0; i < tables.length && i < newTables.length; i++) {
+                    var oldBody = tables[i].querySelector('tbody');
+                    var newBody = newTables[i].querySelector('tbody');
+                    if (oldBody && newBody) oldBody.innerHTML = newBody.innerHTML;
+                }
                 lastRefreshTime = new Date();
                 document.getElementById('last-refresh').textContent = 'à ' + lastRefreshTime.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-                // En production: mettre à jour le tableau via SignalR ou fetch JSON
             })
-            .catch(() => {});
+            .catch(function () {})
+            .finally(function () {
+                _refreshing = false;
+                if (icon) icon.classList.remove('fa-spin');
+            });
     }
+
+    // Rafraîchissement immédiat quand l'API notifie un changement (proposition, acceptation, refus…).
+    var _missionChangeTimer = null;
+    window.addEventListener('predicop:mission-changed', function () {
+        clearTimeout(_missionChangeTimer);
+        _missionChangeTimer = setTimeout(refreshData, 400); // léger debounce
+    });
 
     document.getElementById('btn-refresh').addEventListener('click', function () {
         window.location.reload();

@@ -85,6 +85,9 @@ builder.Services.AddHostedService<StreetRiskBackgroundService>();
 // ---- Mission alert ----
 builder.Services.AddHostedService<MissionAlertBackgroundService>();
 
+// ---- Journal technique des flux (serveur + mobile) ----
+builder.Services.AddHostedService<PrediCop.Api.Services.FlowLogBackgroundService>();
+
 // ---- Geofencing ----
 builder.Services.AddHostedService<GeofencingBackgroundService>();
 

@@ -47,7 +47,12 @@ public partial class MissionHistoryPage : ContentPage
 
         try
         {
-            var url = $"api/missions?status=Completed&date={_currentDay:yyyy-MM-dd}&size=100";
+            // Convertir la journée locale en plage UTC pour éviter le décalage horaire
+            var localStart = new DateTime(_currentDay.Year, _currentDay.Month, _currentDay.Day,
+                0, 0, 0, DateTimeKind.Local);
+            var utcFrom = localStart.ToUniversalTime();
+            var utcTo = localStart.AddDays(1).ToUniversalTime();
+            var url = $"api/missions?status=Completed&dateFrom={utcFrom:yyyy-MM-ddTHH:mm:ss}Z&dateTo={utcTo:yyyy-MM-ddTHH:mm:ss}Z&size=100";
             var result = await _api.GetAsync<PagedResult<ApiMissionDto>>(url);
 
             _items = (result?.Items ?? [])

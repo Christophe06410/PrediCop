@@ -270,10 +270,10 @@ public partial class MapPage : ContentPage
         await Shell.Current.GoToAsync("//main/patrol");
     }
 
-    private async void OnStreetsColorToggled(object? sender, ToggledEventArgs e)
+    private void OnStreetsColorToggled(object? sender, ToggledEventArgs e)
     {
         if (_mapReady)
-            await MapWebView.EvaluateJavaScriptAsync($"setStreetsVisible({(e.Value ? "true" : "false")})");
+            _ = MapWebView.EvaluateJavaScriptAsync($"setStreetsVisible({(e.Value ? "true" : "false")})");
     }
 
     private const string MapScript = """
@@ -351,13 +351,20 @@ function applyOsmGeometry(segments) {
 
 function setStreetsVisible(show) {
   streetsVisible = show;
-  Object.keys(streetPolylines).forEach(function(key) {
-    var entry = streetPolylines[key];
-    if (!entry || !entry.layers) return;
-    entry.layers.forEach(function(poly) {
-      poly.setStyle({ opacity: show ? 0.9 : 0 });
-    });
-  });
+  var keys = Object.keys(streetPolylines);
+  var i = 0;
+  var CHUNK = 8;
+  (function processChunk() {
+    var end = Math.min(i + CHUNK, keys.length);
+    for (; i < end; i++) {
+      var entry = streetPolylines[keys[i]];
+      if (!entry || !entry.layers) continue;
+      entry.layers.forEach(function(poly) {
+        poly.setStyle({ opacity: show ? 0.9 : 0 });
+      });
+    }
+    if (i < keys.length) requestAnimationFrame(processChunk);
+  })();
 }
 
 function setCenter(lat, lng, zoom) {
