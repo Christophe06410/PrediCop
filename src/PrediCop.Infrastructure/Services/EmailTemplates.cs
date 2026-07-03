@@ -84,6 +84,78 @@ public static class EmailTemplates
         return WrapInLayout(tenantName, content);
     }
 
+    // ── Template : bilan hebdomadaire des habilitations ──────────────────────
+
+    public static string HabilitationsExpiration(
+        string tenantName,
+        IReadOnlyList<(string AgentFullName, string BadgeNumber, string TypeLabel, string Reference, DateTime ExpiresAt, bool IsExpired)> items)
+    {
+        static string Row(string agent, string badge, string type, string reference, DateTime expires, bool expired)
+        {
+            var color = expired ? "#991b1b" : "#92400e";
+            var bg    = expired ? "#fef2f2" : "#fffbeb";
+            var days  = (int)(expires - DateTime.UtcNow).TotalDays;
+            var daysLabel = expired
+                ? $"Expirée depuis {-days} jour(s)"
+                : $"Dans {days} jour(s)";
+
+            return $"""
+                <tr style="background:{bg};">
+                  <td style="padding:9px 12px;font-weight:bold;color:{color};border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(agent)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(badge)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(type)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(reference)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{expires:dd/MM/yyyy}</td>
+                  <td style="padding:9px 12px;font-weight:bold;color:{color};border-bottom:1px solid #fde68a;">{daysLabel}</td>
+                </tr>
+                """;
+        }
+
+        var rows = string.Join("\n", items.Select(i =>
+            Row(i.AgentFullName, i.BadgeNumber, i.TypeLabel, i.Reference, i.ExpiresAt, i.IsExpired)));
+
+        var expiredCount  = items.Count(i => i.IsExpired);
+        var expiringCount = items.Count(i => !i.IsExpired);
+
+        var summary = new List<string>();
+        if (expiredCount  > 0) summary.Add($"<strong style='color:#dc2626;'>{expiredCount} expirée(s)</strong>");
+        if (expiringCount > 0) summary.Add($"<strong style='color:#d97706;'>{expiringCount} à renouveler dans 30 jours</strong>");
+
+        var content = $"""
+            <h2 style="color:#1a2035;font-size:20px;margin:0 0 8px;">
+                &#128196; Bilan hebdomadaire des habilitations
+            </h2>
+            <p style="color:#475569;margin:0 0 24px;font-size:14px;">
+                Ce rapport recense les habilitations des agents nécessitant votre attention :
+                {string.Join(" — ", summary)}.
+            </p>
+
+            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px;">
+              <thead>
+                <tr style="background:#1a2035;">
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Agent</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Badge</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Type</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Référence</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Expiration</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Délai</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows}
+              </tbody>
+            </table>
+
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:0 4px 4px 0;">
+              <p style="margin:0;font-size:13px;color:#1e40af;">
+                Connectez-vous au back-office PrediCop → <em>Admin / Habilitations</em> pour mettre à jour ces certifications.
+              </p>
+            </div>
+            """;
+
+        return WrapInLayout(tenantName, content);
+    }
+
     // ── Template : mission sans véhicule accepteur ────────────────────────────
 
     public static string MissionSansVehicule(

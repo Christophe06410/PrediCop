@@ -79,6 +79,35 @@
     </div>
 </div>
 
+@if (Model.HasQualificationAlert)
+{
+    <div class="alert alert-warning d-flex align-items-start gap-3 mb-4 shadow-sm" role="alert">
+        <i class="fa-solid fa-id-card fa-lg mt-1 text-warning flex-shrink-0"></i>
+        <div class="flex-grow-1">
+            <div class="fw-semibold mb-1">Habilitations agents à traiter</div>
+            <div class="d-flex flex-wrap gap-3">
+                @if (Model.ExpiredQualificationsCount > 0)
+                {
+                    <span class="badge bg-danger fs-6 fw-normal px-3 py-2">
+                        <i class="fa-solid fa-circle-xmark me-1"></i>
+                        @Model.ExpiredQualificationsCount expirée(s)
+                    </span>
+                }
+                @if (Model.ExpiringQualificationsCount > 0)
+                {
+                    <span class="badge bg-warning text-dark fs-6 fw-normal px-3 py-2">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        @Model.ExpiringQualificationsCount expire(nt) dans 30 jours
+                    </span>
+                }
+            </div>
+        </div>
+        <a asp-page="/Admin/Qualifications/Index" class="btn btn-sm btn-outline-warning flex-shrink-0">
+            <i class="fa-solid fa-arrow-right me-1"></i>Gérer
+        </a>
+    </div>
+}
+
 <div class="row g-3 mb-4">
     <!-- Graphique missions par heure -->
     <div class="col-lg-8">

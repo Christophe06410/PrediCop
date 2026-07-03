@@ -10,7 +10,7 @@ namespace PrediCop.Infrastructure.Services;
 public class MissionService(
     AppDbContext context,
     IGpsService gpsService,
-    IPushNotificationService pushService,
+    INotificationCoordinator notificationCoordinator,
     ILogger<MissionService> logger) : IMissionService
 {
     public async Task<Mission> CreateMissionFromCallAsync(Guid callId, CancellationToken ct = default)
@@ -113,29 +113,12 @@ public class MissionService(
         logger.LogInformation("Dispatch {MissionId}: proposed to vehicle {VehicleId} (order={Order}, distance={Dist:F1}km)",
             missionId, next.VehicleId, order, next.Distance);
 
-        // Envoyer un push aux agents actifs du véhicule proposé
-        var deviceTokens = await context.VehicleOfficers
-            .Where(vo => vo.VehicleId == next.VehicleId && vo.IsActive)
-            .Include(vo => vo.User)
-            .Select(vo => vo.User.DeviceToken)
-            .Where(t => t != null)
-            .Cast<string>()
-            .ToListAsync(ct);
-
-        if (deviceTokens.Count > 0)
-        {
-            await pushService.SendToDevicesAsync(
-                deviceTokens,
-                title: mission.Priority >= CallPriority.Critique ? $"🚨 {mission.Priority.ToString().ToUpper()} — Mission {mission.Reference}" : $"Nouvelle mission {mission.Reference}",
-                body: $"Mission {mission.Reference} — {mission.TargetAddress}",
-                data: new Dictionary<string, string>
-                {
-                    { "missionId", mission.Id.ToString() },
-                    { "type", "mission_proposed" },
-                    { "priority", ((int)mission.Priority).ToString() }
-                },
-                ct: ct);
-        }
+        var title = mission.Priority >= CallPriority.Critique
+            ? $"🚨 {mission.Priority.ToString().ToUpper()} — Mission {mission.Reference}"
+            : $"Nouvelle mission {mission.Reference}";
+        await notificationCoordinator.NotifyMissionProposedAsync(
+            assignment.Id, assignment.VehicleId,
+            title, $"Mission {mission.Reference} — {mission.TargetAddress}", ct);
 
         return assignment;
     }
@@ -307,28 +290,12 @@ public class MissionService(
         vehicle.Status = VehicleStatus.OnMission;
         await context.SaveChangesAsync(ct);
 
-        // Push notification à l'équipage ajouté
-        var deviceTokens = vehicle.Officers
-            .Where(o => o.IsActive && !string.IsNullOrWhiteSpace(o.User?.DeviceToken))
-            .Select(o => o.User!.DeviceToken!)
-            .ToList();
-
-        if (deviceTokens.Count > 0)
-        {
-            await pushService.SendToDevicesAsync(
-                deviceTokens,
-                title: mission.Priority >= CallPriority.Critique
-                    ? $"🚨 {mission.Priority.ToString().ToUpper()} — Renfort mission {mission.Reference}"
-                    : $"Renfort mission {mission.Reference}",
-                body: $"Vous êtes ajouté en renfort — {mission.TargetAddress}",
-                data: new Dictionary<string, string>
-                {
-                    { "missionId", mission.Id.ToString() },
-                    { "type", "mission_proposed" },
-                    { "priority", ((int)mission.Priority).ToString() }
-                },
-                ct: ct);
-        }
+        var reinforcementTitle = mission.Priority >= CallPriority.Critique
+            ? $"🚨 {mission.Priority.ToString().ToUpper()} — Renfort mission {mission.Reference}"
+            : $"Renfort mission {mission.Reference}";
+        await notificationCoordinator.NotifyMissionProposedAsync(
+            assignment.Id, vehicleId,
+            reinforcementTitle, $"Vous êtes ajouté en renfort — {mission.TargetAddress}", ct);
 
         return assignment;
     }

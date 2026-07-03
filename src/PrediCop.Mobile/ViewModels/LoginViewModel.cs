@@ -11,6 +11,7 @@ public partial class LoginViewModel(
     TenantFeaturesService features,
     SignalRService signalR,
     GpsTrackingService gps,
+    PushNotificationService push,
     ILogger<LoginViewModel> log) : ObservableObject
 {
 #if DEBUG
@@ -91,6 +92,9 @@ public partial class LoginViewModel(
         // BuildTabs nécessite les features chargées
         if (Shell.Current is AppShell shell)
             shell.BuildTabs(auth.CurrentUser.Role, features.Current.ModuleVerbalisationEnabled);
+
+        // Push notifications — enregistre le device token FCM (best-effort, ne bloque pas)
+        _ = push.RegisterAsync();
 
         // GPS nécessite GpsTrackingEnabled — démarre après features
         if (features.Current.GpsTrackingEnabled)

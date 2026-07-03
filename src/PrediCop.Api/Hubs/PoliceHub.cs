@@ -9,7 +9,7 @@ using PrediCop.Infrastructure.Data;
 namespace PrediCop.Api.Hubs;
 
 [Authorize]
-public class PoliceHub(AppDbContext db, ILogger<PoliceHub> logger, IFlowLogService flowLog) : Hub
+public class PoliceHub(AppDbContext db, ILogger<PoliceHub> logger, IFlowLogService flowLog, INotificationCoordinator notificationCoordinator) : Hub
 {
     private Guid? TenantId => Guid.TryParse(Context.User?.FindFirst("tenantId")?.Value, out var t) ? t : null;
     private Guid? UserId => Guid.TryParse(Context.User?.FindFirst("userId")?.Value, out var u) ? u : null;
@@ -92,8 +92,18 @@ public class PoliceHub(AppDbContext db, ILogger<PoliceHub> logger, IFlowLogServi
         await base.OnDisconnectedAsync(exception);
     }
 
+    /// <summary>
+    /// Client -> Serveur : acquittement de réception d'une notification MissionProposed.
+    /// Annule le timer Firebase de 15s côté serveur.
+    /// </summary>
+    public Task AckMissionNotification(Guid assignmentId)
+    {
+        notificationCoordinator.Ack(assignmentId);
+        return Task.CompletedTask;
+    }
+
     // --- Méthodes Serveur -> Client (noms des méthodes attendus côté client) ---
-    // MissionProposed(MissionAssignmentResponse)   — nouveau appel vers une voiture
+    // MissionProposed({ assignmentId })             — nouveau appel vers une voiture
     // VehiclePositionUpdated(VehiclePositionUpdate) — GPS update
     // MissionStatusChanged(MissionResponse)         — changement de statut
     // StreetRiskUpdated(StreetResponse)             — mise à jour risque rue

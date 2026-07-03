@@ -25,9 +25,9 @@ public class SmtpEmailService(
 
     public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(_smtpHost))
+        if (string.IsNullOrWhiteSpace(_smtpHost) || string.IsNullOrWhiteSpace(_smtpPassword))
         {
-            logger.LogWarning("EmailSettings:SmtpHost est vide — envoi email désactivé. Destinataire: {To}, Sujet: {Subject}", to, subject);
+            logger.LogWarning("EmailSettings non configurés (SmtpPassword vide) — envoi email désactivé. Destinataire: {To}, Sujet: {Subject}", to, subject);
             return;
         }
 
@@ -46,9 +46,9 @@ public class SmtpEmailService(
 
     public async Task SendToManagersAsync(Guid tenantId, string subject, string htmlBody, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(_smtpHost))
+        if (string.IsNullOrWhiteSpace(_smtpHost) || string.IsNullOrWhiteSpace(_smtpPassword))
         {
-            logger.LogWarning("EmailSettings:SmtpHost est vide — envoi email désactivé. TenantId: {TenantId}, Sujet: {Subject}", tenantId, subject);
+            logger.LogWarning("EmailSettings non configurés (SmtpPassword vide) — envoi email désactivé. TenantId: {TenantId}, Sujet: {Subject}", tenantId, subject);
             return;
         }
 

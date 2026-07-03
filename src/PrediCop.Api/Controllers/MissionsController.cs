@@ -19,7 +19,7 @@ public class MissionsController(
     IMissionService missionService,
     IHubContext<PoliceHub> hubContext,
     IEmailService emailService,
-    IPushNotificationService pushService,
+    INotificationCoordinator notificationCoordinator,
     IFlowLogService flowLog,
     ILogger<MissionsController> logger) : ControllerBase
 {
@@ -225,9 +225,12 @@ public class MissionsController(
             if (existingProposal is not null)
             {
                 var existingResponse = MapAssignmentToResponse(existingProposal);
-                await hubContext.Clients
-                    .Group($"vehicle_{existingProposal.VehicleId}")
-                    .SendAsync("MissionProposed", existingResponse, ct);
+                var existingTitle = mission.Priority >= CallPriority.Critique
+                    ? $"🚨 {mission.Priority.ToString().ToUpper()} — Mission {mission.Reference}"
+                    : $"Nouvelle mission {mission.Reference}";
+                await notificationCoordinator.NotifyMissionProposedAsync(
+                    existingProposal.Id, existingProposal.VehicleId,
+                    existingTitle, $"Mission {mission.Reference} — {mission.TargetAddress}", ct);
                 logger.LogInformation("[Propose] Re-notification MissionProposed → groupe vehicle_{VehicleId} pour mission {MissionId}",
                     existingProposal.VehicleId, id);
                 flowLog.Log("Server", "Information", "Dispatch",
@@ -244,9 +247,7 @@ public class MissionsController(
 
             var assignmentResponse = MapAssignmentToResponse(assignment);
 
-            await hubContext.Clients
-                .Group($"vehicle_{assignment.VehicleId}")
-                .SendAsync("MissionProposed", assignmentResponse, ct);
+            // MissionProposed + ack/Firebase fallback gérés par NotificationCoordinatorService via MissionService
             logger.LogInformation("[Propose] MissionProposed → groupe vehicle_{VehicleId} pour mission {MissionId} (assignment {AssignmentId})",
                 assignment.VehicleId, id, assignment.Id);
             flowLog.Log("Server", "Information", "Dispatch",
@@ -663,42 +664,16 @@ public class MissionsController(
 
         var missionResponse = MapToResponse(mission);
 
-        // 9. Push notification à l'équipage
-        var deviceTokens = vehicle.Officers
-            .Where(o => o.IsActive && !string.IsNullOrWhiteSpace(o.User?.DeviceToken))
-            .Select(o => o.User!.DeviceToken!)
-            .ToList();
-
-        if (deviceTokens.Any())
-        {
-            try
-            {
-                await pushService.SendToDevicesAsync(
-                    deviceTokens,
-                    "🚨 MISSION FORCÉE - Priorité absolue",
-                    $"Mission {mission.Reference} — {mission.TargetAddress}",
-                    new Dictionary<string, string>
-                    {
-                        ["missionId"] = mission.Id.ToString(),
-                        ["type"] = "ForceAssign"
-                    },
-                    ct);
-            }
-            catch (Exception)
-            {
-                // Le push ne doit pas faire échouer l'action principale
-            }
-        }
+        // 9. Notification véhicule : SignalR immédiat + Firebase fallback si pas d'ack en 15s
+        await notificationCoordinator.NotifyMissionProposedAsync(
+            newAssignment.Id, vehicle.Id,
+            "🚨 MISSION FORCÉE - Priorité absolue",
+            $"Mission {mission.Reference} — {mission.TargetAddress}", ct);
 
         // 10. SignalR — opérateurs
         await hubContext.Clients
             .Group($"operators_{TenantId}")
             .SendAsync("MissionStatusChanged", missionResponse, ct);
-
-        // 11. SignalR — tablette véhicule
-        await hubContext.Clients
-            .Group($"vehicle_{vehicle.Id}")
-            .SendAsync("MissionProposed", MapAssignmentToResponse(newAssignment), ct);
 
         return Ok(missionResponse);
     }
@@ -733,10 +708,7 @@ public class MissionsController(
                     .SendAsync("MissionStatusChanged", MapToResponse(mission), ct);
             }
 
-            // Notifier le véhicule ajouté
-            await hubContext.Clients
-                .Group($"vehicle_{request.VehicleId}")
-                .SendAsync("MissionProposed", assignmentResponse, ct);
+            // MissionProposed + ack/Firebase fallback gérés par NotificationCoordinatorService via MissionService
 
             return Ok(assignmentResponse);
         }

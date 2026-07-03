@@ -1,7 +1,9 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.View;
+using Plugin.Firebase.CloudMessaging;
 
 namespace PrediCop.Mobile;
 
@@ -14,6 +16,21 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnCreate(savedInstanceState);
         ApplyFullScreen();
+        // App lancée via un tap sur notification (app était tuée)
+        HandleFirebaseIntent(Intent);
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        // App ramenée au premier plan via un tap sur notification
+        HandleFirebaseIntent(intent);
+    }
+
+    private static void HandleFirebaseIntent(Intent? intent)
+    {
+        if (intent is null) return;
+        FirebaseCloudMessagingImplementation.OnNewIntent(intent);
     }
 
     public override void OnWindowFocusChanged(bool hasFocus)

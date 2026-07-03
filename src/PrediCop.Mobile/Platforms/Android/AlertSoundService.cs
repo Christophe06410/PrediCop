@@ -22,9 +22,9 @@ public class AlertSoundService : IAlertSoundService
             if (_ringtone == null) return;
 
             // Stream ALARM : joue même en mode silencieux/vibreur
-            var attrs = new Android.Media.AudioAttributes.Builder()
-                .SetUsage(Android.Media.AudioUsageKind.Alarm)
-                .SetContentType(Android.Media.AudioContentType.Sonification)
+            var attrs = new global::Android.Media.AudioAttributes.Builder()
+                .SetUsage(global::Android.Media.AudioUsageKind.Alarm)
+                .SetContentType(global::Android.Media.AudioContentType.Sonification)
                 .Build()!;
             _ringtone.AudioAttributes = attrs;
 

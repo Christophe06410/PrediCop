@@ -75,6 +75,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IConnectivityService, ConnectivityService>();
         builder.Services.AddSingleton<SyncService>();
 
+        // Push notifications Firebase (Android + iOS)
+        builder.Services.AddSingleton<PushNotificationService>();
+
         // Plugin.BLE — BLE beacon vehicle auto-detection
         builder.Services.AddSingleton<IBluetoothLE>(CrossBluetoothLE.Current);
         builder.Services.AddSingleton<IAdapter>(CrossBluetoothLE.Current.Adapter);

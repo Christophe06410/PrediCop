@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121870831014",
+    "project_id": "predicop-06",
+    "storage_bucket": "predicop-06.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121870831014:android:6b2be3bf1abf16afc5d367",
+        "android_client_info": {
+          "package_name": "com.predicop.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4CBWVttWELdpBbrsUQtev9BAfmPVjp4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -87,10 +87,13 @@ public class SignalRService : IAsyncDisposable
             .WithAutomaticReconnect(new InfiniteRetryPolicy())
             .Build();
 
-        _connection.On<object>("MissionProposed", data =>
+        _connection.On<System.Text.Json.JsonElement>("MissionProposed", data =>
         {
             Log("Event reçu : MissionProposed");
-            MissionProposed?.Invoke(this, new MissionProposedArgs(data));
+            var assignmentId = data.TryGetProperty("assignmentId", out var el)
+                ? el.GetGuid()
+                : Guid.Empty;
+            MissionProposed?.Invoke(this, new MissionProposedArgs(assignmentId));
         });
 
         _connection.On<object>("MissionStatusChanged", data =>
@@ -172,6 +175,23 @@ public class SignalRService : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Envoie un ack au serveur pour annuler le timer Firebase de 15s.
+    /// Fire-and-forget sûr : les exceptions sont swallowées.
+    /// </summary>
+    public async Task AckMissionNotificationAsync(Guid assignmentId)
+    {
+        try
+        {
+            if (_connection?.State == HubConnectionState.Connected && assignmentId != Guid.Empty)
+                await _connection.InvokeAsync("AckMissionNotification", assignmentId);
+        }
+        catch (Exception ex)
+        {
+            Log($"AckMissionNotification échec : {ex.Message}");
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         _manualStop = true;
@@ -184,7 +204,7 @@ public class SignalRService : IAsyncDisposable
 /// <summary>État de la connexion temps réel (SignalR), indépendant de l'accès réseau REST.</summary>
 public enum SignalRStatus { Disconnected, Connecting, Reconnecting, Connected }
 
-public record MissionProposedArgs(object Data);
+public record MissionProposedArgs(Guid AssignmentId);
 public record StreetRiskArgs(object Data);
 
 /// <summary>Reconnexion sans limite de temps (le défaut SignalR abandonne après ~30s).</summary>

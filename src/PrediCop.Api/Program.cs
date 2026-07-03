@@ -85,11 +85,18 @@ builder.Services.AddHostedService<StreetRiskBackgroundService>();
 // ---- Mission alert ----
 builder.Services.AddHostedService<MissionAlertBackgroundService>();
 
+// ---- Bilan hebdo habilitations (lundi matin) ----
+builder.Services.AddHostedService<QualificationExpiryBackgroundService>();
+
 // ---- Journal technique des flux (serveur + mobile) ----
 builder.Services.AddHostedService<PrediCop.Api.Services.FlowLogBackgroundService>();
 
 // ---- Geofencing ----
 builder.Services.AddHostedService<GeofencingBackgroundService>();
+
+// ---- Notification coordinator (SignalR premier, Firebase fallback 15s) ----
+builder.Services.AddSingleton<PrediCop.Core.Interfaces.INotificationCoordinator,
+    PrediCop.Api.Services.NotificationCoordinatorService>();
 
 // ---- SignalR ----
 builder.Services.AddSignalR();

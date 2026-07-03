@@ -9,6 +9,14 @@ public class AppDelegate : MauiUIApplicationDelegate
 {
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
+    public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+    {
+        var result = base.FinishedLaunching(application, launchOptions);
+        // Déclenche la demande d'autorisation APNs (dialog système au premier lancement)
+        UIApplication.SharedApplication.RegisterForRemoteNotifications();
+        return result;
+    }
+
     public override void OnActivated(UIApplication application)
     {
         base.OnActivated(application);

@@ -60,6 +60,10 @@ public partial class MissionViewModel : ObservableObject
 
     private void OnSignalRMissionProposed(object? sender, MissionProposedArgs e)
     {
+        // Ack immédiat → annule le timer Firebase côté serveur
+        if (e.AssignmentId != Guid.Empty)
+            _ = _signalR.AckMissionNotificationAsync(e.AssignmentId);
+
         MainThread.BeginInvokeOnMainThread(async () =>
         {
 #if DEBUG
