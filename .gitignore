@@ -29,3 +29,4 @@ src/PrediCop.BackOffice/wwwroot/lib/tinymce/
 appsettings.*.json
 !appsettings.Development.json
 secrets.json
+firebase-service-account.json
