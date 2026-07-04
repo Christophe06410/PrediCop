@@ -23,6 +23,10 @@ public class MissionDto
     public string? CompletionReport { get; set; }
     public string? CancellationReason { get; set; }
     public string? AssignedVehicleCallSign { get; set; }
+    public string? AssignedVehicleIndicatif { get; set; }
+    public string? AssignedVehicleLicensePlate { get; set; }
+    public string? AssignedVehiclePatrolType { get; set; }
+    public List<string> AssignedVehicleOfficerNames { get; set; } = [];
     public Guid? AssignedVehicleId { get; set; }
     public List<MissionAssignmentDto> Assignments { get; set; } = [];
     public List<MissionIntervenantDto> Intervenants { get; set; } = [];
@@ -85,6 +89,7 @@ public class MissionAssignmentDto
     public Guid Id { get; set; }
     public Guid VehicleId { get; set; }
     public string VehicleCallSign { get; set; } = string.Empty;
+    public string? VehicleIndicatif { get; set; }
     public int ProposalOrder { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime ProposedAt { get; set; }

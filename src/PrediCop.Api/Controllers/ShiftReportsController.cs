@@ -30,7 +30,7 @@ public class ShiftReportsController(IShiftReportService shiftReportService) : Co
 
     /// <summary>Génère et sauvegarde un rapport de vacation.</summary>
     [HttpPost]
-    [Authorize(Roles = "Officer,Manager")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
     public async Task<ActionResult<ShiftReportResponse>> Create(
         [FromBody] CreateShiftReportRequest request,
         CancellationToken ct)
@@ -57,13 +57,32 @@ public class ShiftReportsController(IShiftReportService shiftReportService) : Co
         return Ok(report);
     }
 
+    /// <summary>L'agent génère son propre rapport de vacation à partir de son affectation véhicule.</summary>
+    [HttpPost("my")]
+    public async Task<ActionResult<ShiftReportResponse>> CreateMine(
+        [FromBody] CreateMyShiftReportRequest request,
+        CancellationToken ct)
+    {
+        var agentId = Guid.Parse(User.FindFirst("userId")!.Value);
+        try
+        {
+            var report = await shiftReportService.GenerateForAgentAsync(agentId, request, TenantId, ct);
+            return CreatedAtAction(nameof(GetById), new { id = report.Id }, report);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(title: ex.Message, statusCode: 400);
+        }
+    }
+
     /// <summary>Signe électroniquement un rapport de vacation.</summary>
     [HttpPost("{id:guid}/sign")]
     public async Task<IActionResult> Sign(Guid id, CancellationToken ct)
     {
+        var signerUserId = Guid.Parse(User.FindFirst("userId")!.Value);
         try
         {
-            await shiftReportService.SignAsync(id, TenantId, ct);
+            await shiftReportService.SignAsync(id, TenantId, signerUserId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)

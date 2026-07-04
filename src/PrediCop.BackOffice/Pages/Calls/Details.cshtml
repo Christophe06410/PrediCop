@@ -167,6 +167,20 @@
                             <tbody>
                                 @foreach (var m in call.Missions.OrderByDescending(x => x.CreatedAt))
                                 {
+                                    var reopenVehicleId = m.Assignments
+                                        .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                                    var reopenLabel = m.AssignedVehicleIndicatif ?? m.AssignedVehicleCallSign;
+                                    var reopenIcon = m.AssignedVehiclePatrolType switch {
+                                        "Motorcycle" => "fa-motorcycle",
+                                        "Bicycle"    => "fa-person-biking",
+                                        "Pedestrian" => "fa-person-walking",
+                                        _            => "fa-car"
+                                    };
+                                    var reopenTooltipParts = new System.Collections.Generic.List<string>();
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign)) reopenTooltipParts.Add(m.AssignedVehicleCallSign);
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleLicensePlate)) reopenTooltipParts.Add(m.AssignedVehicleLicensePlate);
+                                    if (m.AssignedVehicleOfficerNames.Any()) reopenTooltipParts.Add(string.Join(", ", m.AssignedVehicleOfficerNames));
+                                    var reopenTooltip = string.Join(" | ", reopenTooltipParts);
                                     <tr class="text-muted">
                                         <td class="fw-semibold">
                                             <a asp-page="/Missions/Details" asp-route-id="@m.Id" class="text-decoration-none fw-semibold">@m.Reference</a>
@@ -175,18 +189,18 @@
                                             @await Html.PartialAsync("_StatusBadge", (object)m.Status)
                                         </td>
                                         <td>
-                                            @{
-                                                var reopenVehicleId = m.Assignments
-                                                    .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
-                                            }
-                                            @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign) && reopenVehicleId.HasValue)
+                                            @if (!string.IsNullOrEmpty(reopenLabel) && reopenVehicleId.HasValue)
                                             {
                                                 <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@reopenVehicleId"
-                                                   class="badge bg-secondary text-decoration-none">@m.AssignedVehicleCallSign</a>
+                                                   class="badge bg-secondary text-decoration-none" title="@reopenTooltip">
+                                                    <i class="fa-solid @reopenIcon me-1"></i>@reopenLabel
+                                                </a>
                                             }
-                                            else if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign))
+                                            else if (!string.IsNullOrEmpty(reopenLabel))
                                             {
-                                                <span class="badge bg-secondary">@m.AssignedVehicleCallSign</span>
+                                                <span class="badge bg-secondary" title="@reopenTooltip">
+                                                    <i class="fa-solid @reopenIcon me-1"></i>@reopenLabel
+                                                </span>
                                             }
                                             else
                                             {
@@ -237,7 +251,7 @@
                                     <th>Référence</th>
                                     <th>Statut</th>
                                     <th>Adresse cible</th>
-                                    <th>Véhicule assigné</th>
+                                    <th>Unité</th>
                                     <th>Créée le</th>
                                     <th>Acceptée le</th>
                                     <th>Terminée le</th>
@@ -247,6 +261,20 @@
                             <tbody>
                                 @foreach (var mission in call.Missions)
                                 {
+                                    var assocVehicleId = mission.Assignments
+                                        .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                                    var assocLabel = mission.AssignedVehicleIndicatif ?? mission.AssignedVehicleCallSign;
+                                    var assocIcon = mission.AssignedVehiclePatrolType switch {
+                                        "Motorcycle" => "fa-motorcycle",
+                                        "Bicycle"    => "fa-person-biking",
+                                        "Pedestrian" => "fa-person-walking",
+                                        _            => "fa-car"
+                                    };
+                                    var assocTooltipParts = new System.Collections.Generic.List<string>();
+                                    if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign)) assocTooltipParts.Add(mission.AssignedVehicleCallSign);
+                                    if (!string.IsNullOrEmpty(mission.AssignedVehicleLicensePlate)) assocTooltipParts.Add(mission.AssignedVehicleLicensePlate);
+                                    if (mission.AssignedVehicleOfficerNames.Any()) assocTooltipParts.Add(string.Join(", ", mission.AssignedVehicleOfficerNames));
+                                    var assocTooltip = string.Join(" | ", assocTooltipParts);
                                     <tr>
                                         <td class="fw-semibold">
                                             <a asp-page="/Missions/Details" asp-route-id="@mission.Id" class="text-decoration-none fw-semibold">@mission.Reference</a>
@@ -256,18 +284,18 @@
                                         </td>
                                         <td>@mission.TargetAddress</td>
                                         <td>
-                                            @{
-                                                var assocVehicleId = mission.Assignments
-                                                    .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
-                                            }
-                                            @if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign) && assocVehicleId.HasValue)
+                                            @if (!string.IsNullOrEmpty(assocLabel) && assocVehicleId.HasValue)
                                             {
                                                 <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@assocVehicleId"
-                                                   class="badge bg-dark text-decoration-none">@mission.AssignedVehicleCallSign</a>
+                                                   class="badge bg-dark text-decoration-none" title="@assocTooltip">
+                                                    <i class="fa-solid @assocIcon me-1"></i>@assocLabel
+                                                </a>
                                             }
-                                            else if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign))
+                                            else if (!string.IsNullOrEmpty(assocLabel))
                                             {
-                                                <span class="badge bg-dark">@mission.AssignedVehicleCallSign</span>
+                                                <span class="badge bg-dark" title="@assocTooltip">
+                                                    <i class="fa-solid @assocIcon me-1"></i>@assocLabel
+                                                </span>
                                             }
                                             else
                                             {

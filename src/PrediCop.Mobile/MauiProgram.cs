@@ -93,6 +93,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfileViewModel>();
         builder.Services.AddTransient<BeaconPairingViewModel>();
         builder.Services.AddTransient<TicketingViewModel>();
+        builder.Services.AddTransient<ShiftReportViewModel>();
 
         // Pages
         builder.Services.AddTransient<LoginPage>();
@@ -103,6 +104,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ProfilePage>();
         builder.Services.AddTransient<BeaconPairingPage>();
         builder.Services.AddTransient<TicketingPage>();
+        builder.Services.AddTransient<ShiftReportPage>();
         // MissionDetailPage is instantiated manually (missionId is a runtime parameter)
 
 #if DEBUG

@@ -18,23 +18,26 @@ public class IndexModel : PageModel
     }
 
     public List<CrewSheetEntryDto> Crews { get; set; } = [];
+    public List<AvailableAgentDto> AvailableAgents { get; set; } = [];
     public DateTime LoadedAt { get; set; }
     public string? ErrorMessage { get; set; }
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
     {
         LoadedAt = DateTime.Now;
+        var client = _httpClientFactory.CreateClient("PrediCopApi");
         try
         {
-            var client = _httpClientFactory.CreateClient("PrediCopApi");
-            var result = await client.GetFromJsonAsync<List<CrewSheetEntryDto>>("/api/vehicles/crew-sheet", ct);
-            Crews = result ?? [];
+            var crewTask   = client.GetFromJsonAsync<List<CrewSheetEntryDto>>("/api/vehicles/crew-sheet?includeOffline=true", ct);
+            var agentTask  = client.GetFromJsonAsync<List<AvailableAgentDto>>("/api/patrol/available-agents", ct);
+            await Task.WhenAll(crewTask, agentTask);
+            Crews           = crewTask.IsCompletedSuccessfully  ? crewTask.Result  ?? [] : [];
+            AvailableAgents = agentTask.IsCompletedSuccessfully ? agentTask.Result ?? [] : [];
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Impossible de charger la fiche équipages depuis l'API.");
             ErrorMessage = "Impossible de charger les équipages. Vérifiez que l'API est démarrée.";
-            Crews = [];
         }
 
         return Page();
@@ -46,6 +49,8 @@ public class CrewSheetEntryDto
     public Guid VehicleId { get; set; }
     public string CallSign { get; set; } = string.Empty;
     public string LicensePlate { get; set; } = string.Empty;
+    public string? Indicatif { get; set; }
+    public DateTime? SessionStartedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public double? LastLatitude { get; set; }
     public double? LastLongitude { get; set; }
@@ -68,4 +73,12 @@ public class ActiveMissionDto
     public string Priority { get; set; } = string.Empty;
     public string TargetAddress { get; set; } = string.Empty;
     public DateTime? AcceptedAt { get; set; }
+}
+
+public class AvailableAgentDto
+{
+    public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string BadgeNumber { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
 }

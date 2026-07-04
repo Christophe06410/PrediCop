@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.RiskEvents;
@@ -10,7 +11,7 @@ namespace PrediCop.BackOffice.Pages.Admin.RiskEvents;
 public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel> logger) : PageModel
 {
     private static readonly JsonSerializerOptions JsonOpts =
-        new() { PropertyNameCaseInsensitive = true };
+        ApiJsonOptions.Default;
 
     public List<RiskEventItem> Events { get; set; } = [];
     public List<StreetItem> Streets { get; set; } = [];
@@ -93,6 +94,8 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         public DateTime ExpiresAt { get; set; }
         public string Source { get; set; } = "";
         public bool IsActive { get; set; }
+        public PrediCop.Core.Enums.RecurrenceType RecurrenceType { get; set; }
+        public DateTime? RecurrenceEndDate { get; set; }
     }
 
     public class StreetItem

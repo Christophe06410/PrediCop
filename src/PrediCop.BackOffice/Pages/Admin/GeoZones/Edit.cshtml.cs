@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.GeoZones;
@@ -10,7 +11,7 @@ namespace PrediCop.BackOffice.Pages.Admin.GeoZones;
 public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> logger) : PageModel
 {
     private static readonly JsonSerializerOptions JsonOpts =
-        new() { PropertyNameCaseInsensitive = true };
+        ApiJsonOptions.Default;
 
     [BindProperty] public string Name { get; set; } = "";
     [BindProperty] public string? Description { get; set; }

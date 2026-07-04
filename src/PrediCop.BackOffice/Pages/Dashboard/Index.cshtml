@@ -9,7 +9,7 @@
     var countsJson = JsonSerializer.Serialize(d.MissionsByHour.Select(h => h.Count));
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-2">
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-gauge me-2 text-primary"></i>Dashboard Manager
     </h4>
@@ -23,13 +23,70 @@
     </div>
 </div>
 
+<!-- Filtre de période -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <input type="hidden" name="Days" value="@Model.Days" />
+            <div class="col-auto">
+                <label class="form-label small fw-semibold mb-1">
+                    <i class="fa-solid fa-calendar-day me-1 text-secondary"></i>Début
+                </label>
+                <input type="datetime-local" name="DateFrom" class="form-control form-control-sm"
+                       value="@Model.DateFromInput" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small fw-semibold mb-1">
+                    <i class="fa-solid fa-calendar-check me-1 text-secondary"></i>Fin
+                </label>
+                <input type="datetime-local" name="DateTo" class="form-control form-control-sm"
+                       value="@Model.DateToInput" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-filter me-1"></i>Appliquer
+                </button>
+                <a asp-page="/Dashboard/Index" asp-route-Days="@Model.Days"
+                   class="btn btn-outline-secondary btn-sm ms-1"
+                   title="Réinitialiser à aujourd'hui">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Aujourd'hui
+                </a>
+            </div>
+            <div class="col-auto text-muted small align-self-center">
+                <i class="fa-solid fa-circle-info me-1"></i>
+                Appels &amp; missions : @((Model.DateFrom ?? DateTime.Today).ToString("dd/MM HH:mm")) – @((Model.DateTo ?? DateTime.Now).ToString("dd/MM HH:mm"))
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Onglets dashboard -->
+<ul class="nav nav-tabs mb-0" id="dashboardTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab">
+            <i class="fa-solid fa-gauge me-1"></i>Vue d'ensemble
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-evolution-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-evolution" type="button" role="tab">
+            <i class="fa-solid fa-chart-line me-1"></i>Évolution
+            <span class="badge bg-primary ms-1" id="tab-days-badge">@Model.Days j</span>
+        </button>
+    </li>
+</ul>
+<div class="tab-content border border-top-0 rounded-bottom p-0 mb-4">
+
+<div class="tab-pane fade show active p-3" id="tab-overview">
+
 <!-- KPI Cards -->
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
         <div class="card shadow-sm kpi-card border-start border-4 border-primary">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="text-muted small fw-semibold text-uppercase">Mains courantes aujourd'hui</div>
+                    <div class="text-muted small fw-semibold text-uppercase">Mains courantes (période)</div>
                     <div class="kpi-value text-primary">@d.CallsToday</div>
                 </div>
                 <div class="kpi-icon text-primary">
@@ -108,13 +165,42 @@
     </div>
 }
 
+@if (Model.HasFleetAlert)
+{
+    <div class="alert alert-danger d-flex align-items-start gap-3 mb-4 shadow-sm" role="alert">
+        <i class="fa-solid fa-screwdriver-wrench fa-lg mt-1 text-danger flex-shrink-0"></i>
+        <div class="flex-grow-1">
+            <div class="fw-semibold mb-1">Entretiens véhicules à traiter</div>
+            <div class="d-flex flex-wrap gap-3">
+                @if (Model.FleetOverdueCount > 0)
+                {
+                    <span class="badge bg-danger fs-6 fw-normal px-3 py-2">
+                        <i class="fa-solid fa-circle-xmark me-1"></i>
+                        @Model.FleetOverdueCount en retard
+                    </span>
+                }
+                @if (Model.FleetUpcomingCount > 0)
+                {
+                    <span class="badge bg-warning text-dark fs-6 fw-normal px-3 py-2">
+                        <i class="fa-solid fa-calendar-exclamation me-1"></i>
+                        @Model.FleetUpcomingCount à planifier dans 30 jours
+                    </span>
+                }
+            </div>
+        </div>
+        <a asp-page="/Admin/Fleet/Index" class="btn btn-sm btn-outline-danger flex-shrink-0">
+            <i class="fa-solid fa-arrow-right me-1"></i>Gérer
+        </a>
+    </div>
+}
+
 <div class="row g-3 mb-4">
     <!-- Graphique missions par heure -->
     <div class="col-lg-8">
         <div class="card shadow-sm h-100">
             <div class="card-header">
                 <h6 class="mb-0 fw-semibold">
-                    <i class="fa-solid fa-chart-bar me-2 text-primary"></i>Missions par heure (aujourd'hui)
+                    <i class="fa-solid fa-chart-bar me-2 text-primary"></i>Missions par heure <small class="text-muted fw-normal">— sur la période sélectionnée</small>
                 </h6>
             </div>
             <div class="card-body">
@@ -241,24 +327,27 @@
     </div>
 </div>
 
+</div><!-- end tab-overview -->
+
+<div class="tab-pane fade p-3" id="tab-evolution">
 <!-- ===================== ÉVOLUTION TEMPORELLE ===================== -->
-<div class="card shadow-sm mt-4">
+<div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0 fw-semibold">
-            <i class="fa-solid fa-chart-line me-2 text-primary"></i>Évolution sur @Model.Days jours
-            <small class="text-muted fw-normal ms-2">(@ts.CurrentPeriod.PeriodLabel)</small>
+            <i class="fa-solid fa-chart-line me-2 text-primary"></i>Évolution sur <span id="ts-days-label">@Model.Days</span> jours
+            <small class="text-muted fw-normal ms-2" id="ts-period-label">(@ts.CurrentPeriod.PeriodLabel)</small>
         </h6>
         <!-- Sélecteur de période -->
         <div class="btn-group btn-group-sm" role="group">
-            <a asp-page="/Dashboard/Index" asp-route-days="7"
-               class="btn @(Model.Days == 7 ? "btn-primary" : "btn-outline-primary")">7j</a>
-            <a asp-page="/Dashboard/Index" asp-route-days="14"
-               class="btn @(Model.Days == 14 ? "btn-primary" : "btn-outline-primary")">14j</a>
-            <a asp-page="/Dashboard/Index" asp-route-days="30"
-               class="btn @(Model.Days == 30 ? "btn-primary" : "btn-outline-primary")">30j</a>
+            <button type="button" class="ts-btn btn @(Model.Days == 7 ? "btn-primary" : "btn-outline-primary")"
+                    data-days="7" onclick="loadTimeSeries(7)">7j</button>
+            <button type="button" class="ts-btn btn @(Model.Days == 14 ? "btn-primary" : "btn-outline-primary")"
+                    data-days="14" onclick="loadTimeSeries(14)">14j</button>
+            <button type="button" class="ts-btn btn @(Model.Days == 30 ? "btn-primary" : "btn-outline-primary")"
+                    data-days="30" onclick="loadTimeSeries(30)">30j</button>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body" id="ts-body">
         <!-- Cartes de comparaison -->
         <div class="row g-3 mb-4">
             <!-- Appels -->
@@ -429,9 +518,109 @@
         </div>
     </div>
 </div>
+</div><!-- end tab-evolution -->
+</div><!-- end tab-content -->
 
 @section Scripts {
     <script>
+    // ── TimeSeries AJAX ────────────────────────────────────────────────────────
+    function loadTimeSeries(days) {
+        document.querySelectorAll('.ts-btn').forEach(function(b) {
+            var d = parseInt(b.dataset.days);
+            b.classList.toggle('btn-primary', d === days);
+            b.classList.toggle('btn-outline-primary', d !== days);
+        });
+        document.getElementById('ts-days-label').textContent = days;
+        document.getElementById('ts-period-label').textContent = '';
+        var badge = document.getElementById('tab-days-badge');
+        if (badge) badge.textContent = days + ' j';
+
+        // Keep the form's hidden Days field in sync so date-filter form preserves the selection
+        var hiddenDays = document.querySelector('input[name="Days"]');
+        if (hiddenDays) hiddenDays.value = days;
+
+        // Update URL without reload so browser back/refresh keeps the period
+        var url = new URL(window.location.href);
+        url.searchParams.set('days', days);
+        history.replaceState({}, '', url.toString());
+
+        document.getElementById('ts-body').innerHTML =
+            '<div class="text-center py-5"><div class="spinner-border text-primary" role="status">' +
+            '<span class="visually-hidden">Chargement…</span></div></div>';
+
+        fetch('/Dashboard?handler=TimeSeries&days=' + days)
+            .then(function(r) { return r.json(); })
+            .then(function(ts) { renderTimeSeries(ts, days); })
+            .catch(function() {
+                document.getElementById('ts-body').innerHTML =
+                    '<div class="alert alert-danger m-3">Impossible de charger les données.</div>';
+            });
+    }
+
+    function deltaBadge(delta, badWhenUp) {
+        if (delta === null || delta === undefined)
+            return '<span class="badge bg-secondary-subtle text-secondary mt-1">nouveau</span>';
+        if (Math.abs(delta) < 0.05)
+            return '<span class="badge bg-secondary-subtle text-secondary mt-1">= stable</span>';
+        var isUp = delta > 0;
+        var isGood = badWhenUp ? !isUp : isUp;
+        var cls = isGood ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+        var icon = isUp ? 'fa-arrow-up' : 'fa-arrow-down';
+        return '<span class="badge ' + cls + ' mt-1"><i class="fa-solid ' + icon + ' me-1"></i>' +
+               Math.abs(delta).toFixed(1) + '%</span>';
+    }
+
+    function renderTimeSeries(ts, days) {
+        var cp = ts.currentPeriod || {}, pp = ts.previousPeriod || {};
+        if (cp.periodLabel) {
+            document.getElementById('ts-period-label').textContent = '(' + cp.periodLabel + ')';
+        }
+
+        var html = '<div class="row g-3 mb-4">';
+
+        html += '<div class="col-md-4"><div class="card border h-100"><div class="card-body text-center">' +
+            '<div class="text-muted small fw-semibold text-uppercase mb-1"><i class="fa-solid fa-phone me-1"></i>Appels</div>' +
+            '<div class="fs-2 fw-bold text-primary">' + (cp.totalCalls || 0) + '</div>' +
+            '<div class="text-muted small">vs ' + (pp.totalCalls || 0) + ' période précédente</div>' +
+            deltaBadge(cp.callsDeltaPercent, false) + '</div></div></div>';
+
+        html += '<div class="col-md-4"><div class="card border h-100"><div class="card-body text-center">' +
+            '<div class="text-muted small fw-semibold text-uppercase mb-1"><i class="fa-solid fa-flag-checkered me-1"></i>Missions complétées</div>' +
+            '<div class="fs-2 fw-bold text-success">' + (cp.completedMissions || 0) + '</div>' +
+            '<div class="text-muted small">vs ' + (pp.completedMissions || 0) + ' période précédente</div>' +
+            deltaBadge(cp.missionsDeltaPercent, false) + '</div></div></div>';
+
+        html += '<div class="col-md-4"><div class="card border h-100"><div class="card-body text-center">' +
+            '<div class="text-muted small fw-semibold text-uppercase mb-1"><i class="fa-solid fa-stopwatch me-1"></i>Temps de réponse moyen</div>' +
+            '<div class="fs-2 fw-bold text-info">' + (cp.averageResponseTimeMinutes || 0).toFixed(1) + ' min</div>' +
+            '<div class="text-muted small">vs ' + (pp.averageResponseTimeMinutes || 0).toFixed(1) + ' min période préc.</div>' +
+            deltaBadge(cp.responseTimeDeltaPercent, true) + '</div></div></div>';
+
+        html += '</div>';
+
+        html += '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">' +
+            '<thead class="table-dark"><tr>' +
+            '<th>Date</th><th class="text-center">Appels</th><th class="text-center">Missions</th>' +
+            '<th class="text-center">Complétées</th><th class="text-center">Tps réponse moy.</th>' +
+            '</tr></thead><tbody>';
+
+        var daysData = (ts.days || []).slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+        daysData.forEach(function(day) {
+            var d = new Date(day.date);
+            var dateStr = d.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+            html += '<tr>' +
+                '<td class="fw-semibold">' + dateStr + '</td>' +
+                '<td class="text-center">' + (day.calls > 0 ? '<span class="badge bg-primary">' + day.calls + '</span>' : '<span class="text-muted">0</span>') + '</td>' +
+                '<td class="text-center">' + day.missions + '</td>' +
+                '<td class="text-center">' + (day.completedMissions > 0 ? '<span class="badge bg-success">' + day.completedMissions + '</span>' : '<span class="text-muted">0</span>') + '</td>' +
+                '<td class="text-center">' + (day.averageResponseTimeMinutes > 0 ? '<span class="text-info fw-semibold">' + day.averageResponseTimeMinutes.toFixed(1) + ' min</span>' : '<span class="text-muted">—</span>') + '</td>' +
+                '</tr>';
+        });
+        html += '</tbody></table></div>';
+
+        document.getElementById('ts-body').innerHTML = html;
+    }
+    // ── Missions par heure (Bar chart) ─────────────────────────────────────────
     (function () {
         var ctx = document.getElementById('missionsChart').getContext('2d');
         new Chart(ctx, {

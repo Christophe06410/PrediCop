@@ -108,7 +108,22 @@
                                     <div class="text-muted" style="font-size:.75rem">@e.StreetDistrict</div>
                                 }
                             </td>
-                            <td class="fw-semibold">@e.Title</td>
+                            <td>
+                                <span class="fw-semibold">@e.Title</span>
+                                @if (e.RecurrenceType != PrediCop.Core.Enums.RecurrenceType.None)
+                                {
+                                    var label = e.RecurrenceType switch {
+                                        PrediCop.Core.Enums.RecurrenceType.Daily   => "Quotidien",
+                                        PrediCop.Core.Enums.RecurrenceType.Weekly  => "Hebdo",
+                                        PrediCop.Core.Enums.RecurrenceType.Monthly => "Mensuel",
+                                        PrediCop.Core.Enums.RecurrenceType.Yearly  => "Annuel",
+                                        _ => ""
+                                    };
+                                    <br/><span class="badge bg-info text-dark" title="Récurrence @label">
+                                        <i class="fa-solid fa-rotate me-1"></i>@label
+                                    </span>
+                                }
+                            </td>
                             <td class="text-muted small d-none d-lg-table-cell" style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                                 @(string.IsNullOrEmpty(e.Description) ? "—" : e.Description)
                             </td>

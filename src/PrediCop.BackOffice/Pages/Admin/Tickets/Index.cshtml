@@ -18,27 +18,12 @@
         <a href="/Admin/Tickets/Stats" class="btn btn-sm btn-outline-secondary">
             <i class="fa-solid fa-chart-bar me-1"></i>Statistiques détaillées
         </a>
-        <a href="/api/tickets/export?format=csv&dateFrom=@Model.DateFrom&dateTo=@Model.DateTo@(Model.AgentFilter.HasValue ? "&agentId=" + Model.AgentFilter : "")@(!string.IsNullOrWhiteSpace(Model.StatusFilter) ? "&status=" + Model.StatusFilter : "")"
-           class="btn btn-sm btn-outline-success" target="_blank">
-            <i class="fa-solid fa-file-csv me-1"></i>Exporter CSV
-        </a>
+        <button type="button" class="btn btn-sm btn-outline-success"
+                data-bs-toggle="modal" data-bs-target="#exportModal">
+            <i class="fa-solid fa-file-arrow-down me-1"></i>Exporter
+        </button>
     </div>
 </div>
-
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show py-2">
-        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show py-2">
-        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
 
 <!-- KPIs -->
 @if (Model.Stats is not null)
@@ -397,6 +382,34 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal export -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fa-solid fa-file-arrow-down me-2"></i>Format d'export</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-grid gap-2">
+                @{
+                    var baseExportUrl = $"/api/tickets/export?dateFrom={Model.DateFrom}&dateTo={Model.DateTo}" +
+                        (Model.AgentFilter.HasValue ? $"&agentId={Model.AgentFilter}" : "") +
+                        (!string.IsNullOrWhiteSpace(Model.StatusFilter) ? $"&status={Model.StatusFilter}" : "") +
+                        (!string.IsNullOrWhiteSpace(Model.PlateSearch) ? $"&plate={Uri.EscapeDataString(Model.PlateSearch)}" : "");
+                }
+                <a href="@(baseExportUrl)&format=csv" target="_blank"
+                   class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-file-csv me-2"></i>CSV
+                </a>
+                <a href="@(baseExportUrl)&format=xlsx" target="_blank"
+                   class="btn btn-outline-success" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-file-excel me-2"></i>Excel (XLSX)
+                </a>
+            </div>
         </div>
     </div>
 </div>

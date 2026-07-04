@@ -270,7 +270,7 @@ public class GeoZonesController(AppDbContext db, IHttpClientFactory httpClientFa
                     Name = way.Name,
                     City = zone.Name,
                     BaseRiskScore = 5,
-                    RiskGrowthRatePerHour = 1,
+                    RiskGrowthRatePerWeek = 1.0,
                     CurrentRiskScore = 5,
                     StartLatitude = way.First.Lat,
                     StartLongitude = way.First.Lon,

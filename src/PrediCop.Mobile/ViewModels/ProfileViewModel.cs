@@ -15,6 +15,7 @@ public partial class ProfileViewModel(
     [ObservableProperty] private string currentVehicle = "Aucun véhicule sélectionné";
     [ObservableProperty] private bool isLoadingVehicles;
     [ObservableProperty] private bool alertSoundEnabled = AppPreferences.AlertSoundEnabled;
+    [ObservableProperty] private bool isInPatrol;
 
     partial void OnAlertSoundEnabledChanged(bool value)
     {
@@ -32,6 +33,7 @@ public partial class ProfileViewModel(
         UserName = auth.CurrentUser.FullName;
         Badge = $"Rôle : {auth.CurrentUser.Role}";
         CurrentVehicle = auth.VehicleDisplayLabel ?? auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
+        IsInPatrol = auth.VehicleId.HasValue;
     }
 
     /// <summary>Si un véhicule est assigné mais que le label ne contient pas encore la plaque,
@@ -93,6 +95,7 @@ public partial class ProfileViewModel(
         if (!success) return false;
 
         CurrentVehicle = callSign;
+        IsInPatrol = true;
         auth.SetVehicleDisplayLabel(callSign);
 
         // SignalR + GPS se reconnectent en arrière-plan : ne pas bloquer l'UI
@@ -133,6 +136,24 @@ public partial class ProfileViewModel(
         var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (status != PermissionStatus.Granted)
             await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+    }
+
+    public async Task<bool> LeavePatrolAsync()
+    {
+        try
+        {
+            await api.PostAsync("api/patrol/leave", null);
+            gps.Stop();
+            auth.ClearVehicle();
+            CurrentVehicle = "Aucun véhicule sélectionné";
+            IsInPatrol = false;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProfileVM] LeavePatrolAsync ÉCHEC: {ex.Message}");
+            return false;
+        }
     }
 
     public void StopGps() => gps.Stop();

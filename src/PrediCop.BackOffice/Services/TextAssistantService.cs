@@ -1,11 +1,12 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Services;
 
 public class TextAssistantService(IHttpClientFactory httpClientFactory, IConfiguration config, ILogger<TextAssistantService> logger)
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOpts = ApiJsonOptions.Default;
 
     public async Task<string> CorrectSpellingAsync(string text, CancellationToken ct)
     {

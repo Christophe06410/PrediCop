@@ -13,7 +13,7 @@ public class VehicleDto
     public DateTime? LastPositionUpdate { get; set; }
     public List<string> OfficerNames { get; set; } = [];
     public string? BeaconUuid { get; set; }
-    public Guid? AssignedGeoZoneId { get; set; }
+    public List<Guid> AssignedGeoZoneIds { get; set; } = [];
     public string? Indicatif { get; set; }
     public string? PatrolType { get; set; }
     public DateTime? SessionStartedAt { get; set; }
@@ -37,6 +37,6 @@ public class EditVehicleDto
     [Display(Name = "UUID Beacon BLE")]
     public string? BeaconUuid { get; set; }
 
-    [Display(Name = "Zone de patrouille assignée")]
-    public Guid? AssignedGeoZoneId { get; set; }
+    [Display(Name = "Zones de patrouille assignées")]
+    public List<Guid> AssignedGeoZoneIds { get; set; } = [];
 }

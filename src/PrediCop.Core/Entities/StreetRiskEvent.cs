@@ -1,4 +1,6 @@
-﻿namespace PrediCop.Core.Entities;
+﻿using PrediCop.Core.Enums;
+
+namespace PrediCop.Core.Entities;
 
 public class StreetRiskEvent : TenantEntity
 {
@@ -11,4 +13,7 @@ public class StreetRiskEvent : TenantEntity
     public DateTime EventDate { get; set; }
     public DateTime ExpiresAt { get; set; }
     public string Source { get; set; } = string.Empty;
+
+    public RecurrenceType RecurrenceType { get; set; } = RecurrenceType.None;
+    public DateTime? RecurrenceEndDate { get; set; }
 }

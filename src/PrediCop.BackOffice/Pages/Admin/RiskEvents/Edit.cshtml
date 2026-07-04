@@ -17,14 +17,6 @@
     </a>
 </div>
 
-@if (TempData["ErrorMessage"] is string err)
-{
-    <div class="alert alert-danger alert-dismissible fade show">
-        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
 <div class="row justify-content-center">
     <div class="col-lg-7">
         <div class="card shadow-sm">
@@ -37,18 +29,23 @@
             <div class="card-body">
                 <form method="post" asp-route-id="@Model.EventId">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="StreetId" id="streetIdInput" />
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Rue <span class="text-danger">*</span></label>
-                        <select asp-for="StreetId" class="form-select" required>
-                            <option value="">— Sélectionner une rue —</option>
-                            @foreach (var s in Model.Streets)
-                            {
-                                <option value="@s.Id" selected="@(Model.StreetId == s.Id)">
-                                    @s.Name@(s.District != null ? $" — {s.District}" : "")
-                                </option>
-                            }
-                        </select>
+                        <div class="position-relative">
+                            <input type="text" id="streetSearch" class="form-control"
+                                   placeholder="Rechercher une rue par nom…"
+                                   value="@Model.StreetName"
+                                   autocomplete="off" />
+                            <div id="streetSuggestions" class="list-group shadow position-absolute w-100" style="z-index:1050;display:none;max-height:220px;overflow-y:auto;"></div>
+                        </div>
+                        @if (Model.StreetId != Guid.Empty)
+                        {
+                            <div class="form-text text-muted small">
+                                <i class="fa-solid fa-location-dot me-1"></i>Rue sélectionnée : <strong>@Model.StreetName</strong>
+                            </div>
+                        }
                     </div>
 
                     <div class="mb-3">
@@ -91,10 +88,39 @@
                         </div>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label asp-for="Source" class="form-label fw-semibold">Source</label>
                         <input asp-for="Source" class="form-control"
                                placeholder="Ex : Mairie, Préfecture, Signal citoyen..." />
+                    </div>
+
+                    <div class="card bg-light border-0 p-3 mb-4">
+                        <div class="fw-semibold mb-2">
+                            <i class="fa-solid fa-rotate me-2 text-primary"></i>Récurrence
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="RecurrenceType" class="form-label fw-semibold small">Fréquence</label>
+                            <select asp-for="RecurrenceType" id="recurrenceType" class="form-select"
+                                    onchange="toggleRecurrenceEnd()">
+                                <option value="0">Aucune (événement ponctuel)</option>
+                                <option value="1">Quotidienne</option>
+                                <option value="2">Hebdomadaire</option>
+                                <option value="3">Mensuelle</option>
+                                <option value="4">Annuelle</option>
+                            </select>
+                            <div class="form-text">
+                                La plage horaire entre <em>Date de l'événement</em> et <em>Date d'expiration</em>
+                                se répétera à la fréquence choisie.
+                            </div>
+                        </div>
+                        <div id="recurrenceEndGroup" style="display:none">
+                            <label asp-for="RecurrenceEndDate" class="form-label fw-semibold small">
+                                Fin de récurrence <span class="text-muted fw-normal">(optionnel)</span>
+                            </label>
+                            <input asp-for="RecurrenceEndDate" type="date" class="form-control"
+                                   value="@(Model.RecurrenceEndDate?.ToString("yyyy-MM-dd") ?? "")" />
+                            <div class="form-text">Laisser vide pour une récurrence sans fin.</div>
+                        </div>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -110,3 +136,73 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+function toggleRecurrenceEnd() {
+    const val = document.getElementById('recurrenceType').value;
+    document.getElementById('recurrenceEndGroup').style.display = val === '0' ? 'none' : '';
+}
+toggleRecurrenceEnd();
+</script>
+<script>
+(function () {
+    const searchInput  = document.getElementById('streetSearch');
+    const hiddenInput  = document.getElementById('streetIdInput');
+    const suggestions  = document.getElementById('streetSuggestions');
+    let debounce;
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = searchInput.value.trim();
+        if (q.length < 2) { suggestions.style.display = 'none'; return; }
+        debounce = setTimeout(() => fetchStreets(q), 250);
+    });
+
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim().length >= 2) fetchStreets(searchInput.value.trim());
+    });
+
+    document.addEventListener('click', e => {
+        if (!searchInput.contains(e.target) && !suggestions.contains(e.target))
+            suggestions.style.display = 'none';
+    });
+
+    async function fetchStreets(q) {
+        try {
+            const resp = await fetch(`/Admin/RiskEvents/Edit?handler=SearchStreets&q=${encodeURIComponent(q)}`);
+            if (!resp.ok) return;
+            const streets = await resp.json();
+            renderSuggestions(streets);
+        } catch { /* ignore */ }
+    }
+
+    function renderSuggestions(streets) {
+        suggestions.innerHTML = '';
+        if (!streets || streets.length === 0) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        streets.forEach(s => {
+            const label = s.name + (s.district ? ` — ${s.district}` : '');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action py-2 small';
+            btn.textContent = label;
+            btn.addEventListener('click', () => {
+                hiddenInput.value = s.id;
+                searchInput.value = label;
+                suggestions.style.display = 'none';
+            });
+            suggestions.appendChild(btn);
+        });
+        suggestions.style.display = 'block';
+    }
+
+    // Clear selection if user clears the search box
+    searchInput.addEventListener('change', () => {
+        if (!searchInput.value.trim()) hiddenInput.value = '';
+    });
+})();
+</script>
+}

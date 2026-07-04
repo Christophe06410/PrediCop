@@ -16,13 +16,16 @@ public class DashboardController(AppDbContext db) : ControllerBase
     private Guid TenantId => Guid.Parse(User.FindFirst("tenantId")!.Value);
 
     [HttpGet]
-    public async Task<IActionResult> GetCombined(CancellationToken ct)
+    public async Task<IActionResult> GetCombined(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        CancellationToken ct = default)
     {
         var today = DateTime.UtcNow.Date;
+        var periodFrom = from.HasValue ? DateTime.SpecifyKind(from.Value, DateTimeKind.Utc) : today;
+        var periodTo   = to.HasValue   ? DateTime.SpecifyKind(to.Value,   DateTimeKind.Utc) : today.AddDays(1).AddTicks(-1);
 
-        var callsToday = await db.Calls
-            .CountAsync(c => c.TenantId == TenantId && c.ReceivedAt.Date == today, ct);
-
+        // KPIs temps réel (non filtrés par période)
         var activeMissions = await db.Missions
             .CountAsync(m => m.TenantId == TenantId
                 && (m.Status == MissionStatus.Pending || m.Status == MissionStatus.InProgress), ct);
@@ -33,20 +36,27 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var vehiclesOnMission = await db.PatrolVehicles
             .CountAsync(v => v.TenantId == TenantId && v.Status == VehicleStatus.Busy, ct);
 
-        // Missions by hour (today)
-        var todayMissions = await db.Missions
-            .Where(m => m.TenantId == TenantId && m.CreatedAt.Date == today)
+        // KPIs période
+        var callsInPeriod = await db.Calls
+            .CountAsync(c => c.TenantId == TenantId
+                && c.ReceivedAt >= periodFrom && c.ReceivedAt <= periodTo, ct);
+
+        // Missions par heure (période)
+        var periodMissionHours = await db.Missions
+            .Where(m => m.TenantId == TenantId
+                && m.CreatedAt >= periodFrom && m.CreatedAt <= periodTo)
             .Select(m => m.CreatedAt.Hour)
             .ToListAsync(ct);
 
         var missionsByHour = Enumerable.Range(0, 24)
-            .Select(h => new { Hour = h, Count = todayMissions.Count(x => x == h) })
+            .Select(h => new { Hour = h, Count = periodMissionHours.Count(x => x == h) })
             .ToList();
 
-        // Top 5 vehicles (all time)
+        // Top 5 véhicules (période)
         var assignments = await db.MissionAssignments
             .Include(a => a.Vehicle)
-            .Where(a => a.Vehicle.TenantId == TenantId)
+            .Where(a => a.Vehicle.TenantId == TenantId
+                && a.ProposedAt >= periodFrom && a.ProposedAt <= periodTo)
             .ToListAsync(ct);
 
         var topVehicles = assignments
@@ -63,9 +73,10 @@ public class DashboardController(AppDbContext db) : ControllerBase
             .Take(5)
             .ToList();
 
-        // 10 dernières missions
+        // 10 dernières missions (période)
         var recentMissions = await db.Missions
-            .Where(m => m.TenantId == TenantId)
+            .Where(m => m.TenantId == TenantId
+                && m.CreatedAt >= periodFrom && m.CreatedAt <= periodTo)
             .Include(m => m.Assignments).ThenInclude(a => a.Vehicle)
             .OrderByDescending(m => m.CreatedAt)
             .Take(10)
@@ -91,7 +102,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
 
         return Ok(new
         {
-            CallsToday       = callsToday,
+            CallsToday       = callsInPeriod,
             ActiveMissions   = activeMissions,
             AvailableVehicles= availableVehicles,
             VehiclesOnMission= vehiclesOnMission,

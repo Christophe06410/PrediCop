@@ -8,7 +8,8 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a asp-page="/Missions/Index">Missions</a></li>
-            <li class="breadcrumb-item active">Rapport de vacation</li>
+            <li class="breadcrumb-item"><a asp-page="/Missions/ShiftReports">Vacations</a></li>
+            <li class="breadcrumb-item active">Nouveau rapport</li>
         </ol>
     </nav>
 </div>
@@ -104,18 +105,26 @@
                     <div class="d-flex gap-2 align-items-center">
                         @if (r.IsSigned)
                         {
-                            <span class="badge bg-success">
-                                <i class="fa-solid fa-signature me-1"></i>Signé le @r.SignedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            <span class="badge bg-success fs-6 py-2 px-3">
+                                <i class="fa-solid fa-signature me-1"></i>
+                                Signé par @(r.SignedByName ?? "—") le @r.SignedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                             </span>
                         }
-                        else
+                        else if (Model.CanSign)
                         {
                             <form method="post" asp-page-handler="Sign" asp-route-reportId="@r.Id" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-outline-success"
+                                <button type="submit" class="btn btn-sm btn-outline-success fw-semibold"
                                         onclick="return confirm('Signer électroniquement ce rapport ? Cette action est irréversible.')">
                                     <i class="fa-solid fa-signature me-1"></i>Signer
                                 </button>
                             </form>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-secondary disabled" disabled
+                                    title="Vous n'étiez pas affecté à ce véhicule lors de cette vacation">
+                                <i class="fa-solid fa-lock me-1"></i>Signature non autorisée
+                            </button>
                         }
                         <a asp-page="/Missions/ShiftReportExport" asp-route-id="@r.Id" target="_blank"
                            class="btn btn-sm btn-outline-danger">

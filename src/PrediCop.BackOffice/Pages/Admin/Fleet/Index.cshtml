@@ -165,8 +165,11 @@
 @if (Model.ActiveTab == "maintenances")
 {
     <div class="card shadow-sm">
-        <div class="card-header bg-white fw-semibold">
-            <i class="fa-solid fa-wrench me-2 text-primary"></i>Maintenances à venir et en retard
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="fa-solid fa-wrench me-2 text-primary"></i>Maintenances à venir et en retard</span>
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addMaintenanceModal">
+                <i class="fa-solid fa-plus me-1"></i>Planifier une maintenance
+            </button>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -353,3 +356,85 @@
         </div>
     </div>
 }
+
+<!-- Modal : Planifier une maintenance -->
+<div class="modal fade" id="addMaintenanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title fw-bold">
+                    <i class="fa-solid fa-wrench me-2 text-success"></i>Planifier une maintenance
+                </h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="CreateMaintenance">
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label fw-semibold small">Véhicule <span class="text-danger">*</span></label>
+                            <select name="vehicleId" class="form-select form-select-sm" required>
+                                <option value="">-- Choisir un véhicule --</option>
+                                @foreach (var v in Model.Vehicles)
+                                {
+                                    <option value="@v.Id">@v.CallSign (@v.LicensePlate)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label fw-semibold small">Type <span class="text-danger">*</span></label>
+                            <select name="type" class="form-select form-select-sm" required>
+                                <option value="Revision">Révision</option>
+                                <option value="ControleTechnique">Contrôle technique</option>
+                                <option value="Reparation">Réparation</option>
+                                <option value="Nettoyage">Nettoyage</option>
+                                <option value="Pneumatiques">Pneumatiques</option>
+                                <option value="Carrosserie">Carrosserie</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Date planifiée <span class="text-danger">*</span></label>
+                            <input type="date" name="scheduledDate" class="form-control form-control-sm" required
+                                   min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Km au service</label>
+                            <input type="number" name="kmAtService" class="form-control form-control-sm"
+                                   min="0" placeholder="Facultatif" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description <span class="text-danger">*</span></label>
+                        <input type="text" name="description" class="form-control form-control-sm" required
+                               placeholder="ex: Révision des 60 000 km" />
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Prestataire</label>
+                            <input type="text" name="providerName" class="form-control form-control-sm"
+                                   placeholder="ex: Garage Martin" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Coût estimé (€)</label>
+                            <input type="number" name="cost" class="form-control form-control-sm"
+                                   min="0" step="0.01" placeholder="Facultatif" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Notes</label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2"
+                                  placeholder="Notes facultatives…"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="fa-solid fa-calendar-plus me-1"></i>Planifier
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

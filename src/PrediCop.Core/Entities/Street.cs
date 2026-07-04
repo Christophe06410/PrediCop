@@ -17,7 +17,10 @@ public class Street : TenantEntity
     public string? GeoJson { get; set; }
 
     public int BaseRiskScore { get; set; } = 5;
-    public int RiskGrowthRatePerHour { get; set; } = 1;
+    public double RiskGrowthRatePerWeek { get; set; } = 1.0;
+    public double NightRiskGrowthRatePerWeek { get; set; } = 2.0;
+    public int NightStartHour { get; set; } = 22;
+    public int NightEndHour { get; set; } = 6;
     public int CurrentRiskScore { get; set; } = 5;
     public DateTime? LastPatrolledAt { get; set; }
     public int PatrolIntervalHours { get; set; } = 24;

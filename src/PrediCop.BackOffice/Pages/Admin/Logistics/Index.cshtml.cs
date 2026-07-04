@@ -101,6 +101,37 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostCreateEquipmentAsync(
+        string name, string category, string? description, string unit,
+        int? defaultLifespanMonths, string? referenceCode,
+        CancellationToken ct)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("PrediCopApi");
+            var body = new
+            {
+                name,
+                category,
+                description,
+                unit,
+                defaultLifespanMonths,
+                referenceCode
+            };
+            var response = await client.PostAsJsonAsync("/api/logistics/catalog", body, ct);
+            if (response.IsSuccessStatusCode)
+                TempData["SuccessMessage"] = $"Équipement « {name} » ajouté au catalogue.";
+            else
+                TempData["ErrorMessage"] = $"Erreur lors de l'ajout ({(int)response.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erreur création équipement catalogue.");
+            TempData["ErrorMessage"] = "Impossible de joindre le serveur.";
+        }
+        return RedirectToPage(new { ActiveTab = "catalog" });
+    }
+
     public async Task<IActionResult> OnPostReturnAsync(Guid id, CancellationToken ct)
     {
         try

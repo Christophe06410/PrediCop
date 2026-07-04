@@ -754,6 +754,13 @@ public class MissionsController(
             .OrderByDescending(a => a.ProposedAt)
             .Select(a => a.Vehicle?.CallSign)
             .FirstOrDefault(cs => !string.IsNullOrEmpty(cs)),
+        AssignedVehicleIndicatif = m.Assignments
+            .Where(a => a.Status == MissionStatus.Accepted
+                     || a.Status == MissionStatus.InProgress
+                     || a.Status == MissionStatus.Proposed)
+            .OrderByDescending(a => a.ProposedAt)
+            .Select(a => a.Vehicle?.Indicatif)
+            .FirstOrDefault(s => !string.IsNullOrEmpty(s)),
         Assignments = m.Assignments.Select(MapAssignmentToResponse).ToList(),
         Intervenants = m.Intervenants.OrderBy(i => i.Order).Select(MapIntervenantToResponse).ToList(),
         Media = m.MediaAttachments.OrderByDescending(ma => ma.RecordedAt).Select(MapMediaToResponse).ToList(),
@@ -797,6 +804,7 @@ public class MissionsController(
         MissionId = a.MissionId,
         VehicleId = a.VehicleId,
         VehicleCallSign = a.Vehicle?.CallSign ?? string.Empty,
+        VehicleIndicatif = a.Vehicle?.Indicatif,
         ProposalOrder = a.ProposalOrder,
         Status = a.Status,
         ProposedAt = a.ProposedAt,

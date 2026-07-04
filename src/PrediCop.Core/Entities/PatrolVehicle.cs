@@ -17,9 +17,8 @@ public class PatrolVehicle : TenantEntity
     /// <summary>UUID du beacon BLE installé dans le véhicule (optionnel).</summary>
     public string? BeaconUuid { get; set; }
 
-    /// <summary>Zone de patrouille assignée pour le géofencing (optionnel).</summary>
-    public Guid? AssignedGeoZoneId { get; set; }
-    public GeoZone? AssignedGeoZone { get; set; }
+    /// <summary>Zones de patrouille assignées pour le géofencing (plusieurs zones possibles).</summary>
+    public ICollection<GeoZone> AssignedGeoZones { get; set; } = [];
 
     // ---- Session de patrouille (renseignés à l'activation, remis à null à la désactivation) ----
 

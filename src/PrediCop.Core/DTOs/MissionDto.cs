@@ -92,6 +92,7 @@ public class MissionResponse
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string? AssignedVehicleCallSign { get; set; }
+    public string? AssignedVehicleIndicatif { get; set; }
     public List<MissionAssignmentResponse> Assignments { get; set; } = [];
     public List<MissionIntervenantResponse> Intervenants { get; set; } = [];
     public List<MediaAttachmentResponse> Media { get; set; } = [];
@@ -135,6 +136,7 @@ public class MissionAssignmentResponse
     public Guid MissionId { get; set; }
     public Guid VehicleId { get; set; }
     public string VehicleCallSign { get; set; } = string.Empty;
+    public string? VehicleIndicatif { get; set; }
     public int ProposalOrder { get; set; }
     public MissionStatus Status { get; set; }
     public DateTime ProposedAt { get; set; }

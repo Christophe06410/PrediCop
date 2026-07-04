@@ -339,12 +339,19 @@ public class CallsController(
         CompletionReport = m.CompletionReport,
         CreatedAt = m.CreatedAt,
         UpdatedAt = m.UpdatedAt,
+        AssignedVehicleIndicatif = m.Assignments
+            .Where(a => a.Status == MissionStatus.Accepted
+                     || a.Status == MissionStatus.InProgress
+                     || a.Status == MissionStatus.Proposed)
+            .Select(a => a.Vehicle?.Indicatif)
+            .FirstOrDefault(s => !string.IsNullOrEmpty(s)),
         Assignments = m.Assignments.Select(a => new MissionAssignmentResponse
         {
             Id = a.Id,
             MissionId = a.MissionId,
             VehicleId = a.VehicleId,
             VehicleCallSign = a.Vehicle?.CallSign ?? string.Empty,
+            VehicleIndicatif = a.Vehicle?.Indicatif,
             ProposalOrder = a.ProposalOrder,
             Status = a.Status,
             ProposedAt = a.ProposedAt,

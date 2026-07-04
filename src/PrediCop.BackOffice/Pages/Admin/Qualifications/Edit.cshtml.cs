@@ -26,10 +26,6 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
             try
             {
                 var client = httpClientFactory.CreateClient("PrediCopApi");
-                var qualifications = await client.GetFromJsonAsync<List<QualificationResponse>>(
-                    $"/api/qualifications?agentId=00000000-0000-0000-0000-000000000000", ct);
-
-                // Fetch by listing all and filtering — API doesn't have GET by id, so use list
                 var allQuals = await client.GetFromJsonAsync<List<QualificationResponse>>("/api/qualifications", ct);
                 var q = allQuals?.FirstOrDefault(x => x.Id == id.Value);
 

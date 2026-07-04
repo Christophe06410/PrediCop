@@ -23,4 +23,6 @@ public class ShiftReport : TenantEntity
 
     public bool IsSigned { get; set; }         // signature électronique
     public DateTime? SignedAt { get; set; }
+    public Guid? SignedByUserId { get; set; }
+    public string? SignedByName { get; set; }
 }

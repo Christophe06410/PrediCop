@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Map;
@@ -10,7 +11,7 @@ namespace PrediCop.BackOffice.Pages.Map;
 public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel> logger) : PageModel
 {
     private static readonly JsonSerializerOptions JsonOpts =
-        new() { PropertyNameCaseInsensitive = true };
+        ApiJsonOptions.Default;
 
     private static readonly JsonSerializerOptions SerializeOpts =
         new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

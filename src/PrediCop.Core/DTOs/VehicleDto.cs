@@ -74,7 +74,7 @@ public class VehicleResponse
     public DateTime? LastPositionUpdate { get; set; }
     public List<string> OfficerNames { get; set; } = [];
     public string? BeaconUuid { get; set; }
-    public Guid? AssignedGeoZoneId { get; set; }
+    public List<Guid> AssignedGeoZoneIds { get; set; } = [];
     public int Capacity { get; set; } = 2;
 
     // Session de patrouille
@@ -95,8 +95,8 @@ public class NearbyVehicleResponse
 
 public class AssignGeoZoneRequest
 {
-    /// <summary>Id de la zone à assigner. Null pour désaffecter.</summary>
-    public Guid? GeoZoneId { get; set; }
+    /// <summary>Liste complète des zones assignées (remplace l'existant). Vide pour désaffecter toutes les zones.</summary>
+    public List<Guid> GeoZoneIds { get; set; } = [];
 }
 
 public class VehicleSosResponse
@@ -113,6 +113,8 @@ public class CrewSheetEntryResponse
     public Guid VehicleId { get; set; }
     public string CallSign { get; set; } = string.Empty;
     public string LicensePlate { get; set; } = string.Empty;
+    public string? Indicatif { get; set; }
+    public DateTime? SessionStartedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public double? LastLatitude { get; set; }
     public double? LastLongitude { get; set; }

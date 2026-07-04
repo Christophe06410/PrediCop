@@ -126,6 +126,11 @@
                score > 20 ? '#eab308' : '#22c55e';
     }
 
+    // Épaisseur du trait selon le niveau de zoom (1 à 6)
+    function streetWeight() {
+        return Math.min(6, Math.max(1, map.getZoom() - 11));
+    }
+
     // Construit le contenu popup d'une rue
     function streetPopup(s) {
         var score = s.currentRiskScore || 0;
@@ -136,20 +141,29 @@
 
     // Map nom-rue (minuscules) → polyline Leaflet, pour pouvoir les remplacer après
     var streetPolylines = {};
+    // Tableau plat de toutes les polylines de rues (initiales + OSM) pour le zoom adaptatif
+    var allStreetPolylines = [];
 
     streets.forEach(function (s) {
         var score = s.currentRiskScore || 0;
         var color = streetColor(score);
         var pl = L.polyline(
             [[s.startLatitude, s.startLongitude], [s.endLatitude, s.endLongitude]],
-            { color: color, weight: 6, opacity: 0.85 }
+            { color: color, weight: streetWeight(), opacity: 0.85 }
         ).bindPopup(streetPopup(s)).addTo(map);
+        allStreetPolylines.push(pl);
 
         // Stocke sous le nom normalisé (plusieurs rues peuvent avoir le même nom ;
         // on garde un tableau pour toutes les gérer)
         var key = (s.name || '').toLowerCase().trim();
         if (!streetPolylines[key]) streetPolylines[key] = [];
         streetPolylines[key].push({ polyline: pl, street: s });
+    });
+
+    // Mise à jour de l'épaisseur à chaque changement de zoom
+    map.on('zoomend', function () {
+        var w = streetWeight();
+        allStreetPolylines.forEach(function (pl) { pl.setStyle({ weight: w }); });
     });
 
     // Centrer sur les rues si disponibles
@@ -207,8 +221,10 @@
                         var score = s.currentRiskScore || 0;
                         var color = streetColor(score);
 
-                        // Supprime l'ancienne ligne droite
+                        // Supprime l'ancienne ligne droite et la retire du tableau de suivi
                         map.removeLayer(entry.polyline);
+                        var idx = allStreetPolylines.indexOf(entry.polyline);
+                        if (idx !== -1) allStreetPolylines.splice(idx, 1);
 
                         // Ajoute une polyline par way OSM correspondant au nom
                         // (une rue peut avoir plusieurs segments OSM)
@@ -216,9 +232,10 @@
                             var coords = way.geometry.map(function (pt) {
                                 return [pt.lat, pt.lon];
                             });
-                            L.polyline(coords, { color: color, weight: 6, opacity: 0.85 })
-                             .bindPopup(streetPopup(s))
-                             .addTo(map);
+                            var newPl = L.polyline(coords, { color: color, weight: streetWeight(), opacity: 0.85 })
+                                .bindPopup(streetPopup(s))
+                                .addTo(map);
+                            allStreetPolylines.push(newPl);
                         });
                     });
                 });

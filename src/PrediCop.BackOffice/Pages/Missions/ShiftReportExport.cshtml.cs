@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Services;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Missions;
@@ -12,7 +13,7 @@ public class ShiftReportExportModel(
     IHttpClientFactory httpClientFactory,
     ILogger<ShiftReportExportModel> logger) : PageModel
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOpts = ApiJsonOptions.Default;
 
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken ct)
     {

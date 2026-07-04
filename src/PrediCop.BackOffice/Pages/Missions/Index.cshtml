@@ -82,17 +82,29 @@
                                 {
                                     var activeVehicleId = m.Assignments
                                         .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                                    var unitLabel = m.AssignedVehicleIndicatif ?? m.AssignedVehicleCallSign;
+                                    var unitIcon = m.AssignedVehiclePatrolType switch {
+                                        "Motorcycle" => "fa-motorcycle",
+                                        "Bicycle"    => "fa-person-biking",
+                                        "Pedestrian" => "fa-person-walking",
+                                        _            => "fa-car"
+                                    };
+                                    var tooltipParts = new System.Collections.Generic.List<string>();
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign)) tooltipParts.Add(m.AssignedVehicleCallSign);
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleLicensePlate)) tooltipParts.Add(m.AssignedVehicleLicensePlate);
+                                    if (m.AssignedVehicleOfficerNames.Any()) tooltipParts.Add(string.Join(", ", m.AssignedVehicleOfficerNames));
+                                    var unitTooltip = string.Join(" | ", tooltipParts);
                                     if (activeVehicleId.HasValue)
                                     {
                                         <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@activeVehicleId"
-                                           class="badge bg-dark fs-6 text-decoration-none">
-                                            <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
+                                           class="badge bg-dark fs-6 text-decoration-none" title="@unitTooltip">
+                                            <i class="fa-solid @unitIcon me-1"></i>@unitLabel
                                         </a>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-dark fs-6">
-                                            <i class="fa-solid fa-car me-1"></i>@m.AssignedVehicleCallSign
+                                        <span class="badge bg-dark fs-6" title="@unitTooltip">
+                                            <i class="fa-solid @unitIcon me-1"></i>@unitLabel
                                         </span>
                                     }
                                 }
@@ -139,7 +151,7 @@
             <span class="badge bg-success"><i class="fa-solid fa-play me-1"></i>En cours</span>
             <span class="badge bg-secondary"><i class="fa-solid fa-check me-1"></i>Terminée</span>
             <span class="badge bg-danger"><i class="fa-solid fa-times me-1"></i>Refusée</span>
-            <span class="badge bg-secondary"><i class="fa-solid fa-ban me-1"></i>Annulée</span>
+            <span class="badge bg-dark"><i class="fa-solid fa-ban me-1"></i>Annulée</span>
         </div>
     </div>
 </div>
@@ -159,7 +171,7 @@
                         <th data-col="0">Référence</th>
                         <th data-col="1">Statut</th>
                         <th data-col="2">Adresse</th>
-                        <th data-col="3">Véhicule</th>
+                        <th data-col="3">Unité</th>
                         <th data-col="4">Créée</th>
                         <th data-col="5">Terminée</th>
                         <th></th>
@@ -180,14 +192,35 @@
                                 @{
                                     var recentVehicleId = m.Assignments
                                         .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed" or "Completed")?.VehicleId;
+                                    var recentLabel = m.AssignedVehicleIndicatif ?? m.AssignedVehicleCallSign;
+                                    var recentIcon = m.AssignedVehiclePatrolType switch {
+                                        "Motorcycle" => "fa-motorcycle",
+                                        "Bicycle"    => "fa-person-biking",
+                                        "Pedestrian" => "fa-person-walking",
+                                        _            => "fa-car"
+                                    };
+                                    var recentTooltipParts = new System.Collections.Generic.List<string>();
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign)) recentTooltipParts.Add(m.AssignedVehicleCallSign);
+                                    if (!string.IsNullOrEmpty(m.AssignedVehicleLicensePlate)) recentTooltipParts.Add(m.AssignedVehicleLicensePlate);
+                                    if (m.AssignedVehicleOfficerNames.Any()) recentTooltipParts.Add(string.Join(", ", m.AssignedVehicleOfficerNames));
+                                    var recentTooltip = string.Join(" | ", recentTooltipParts);
                                 }
-                                @if (!string.IsNullOrEmpty(m.AssignedVehicleCallSign) && recentVehicleId.HasValue)
+                                @if (!string.IsNullOrEmpty(recentLabel) && recentVehicleId.HasValue)
                                 {
-                                    <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@recentVehicleId" class="text-decoration-none">@m.AssignedVehicleCallSign</a>
+                                    <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@recentVehicleId"
+                                       class="text-decoration-none" title="@recentTooltip">
+                                        <i class="fa-solid @recentIcon me-1 text-secondary"></i>@recentLabel
+                                    </a>
+                                }
+                                else if (!string.IsNullOrEmpty(recentLabel))
+                                {
+                                    <span title="@recentTooltip">
+                                        <i class="fa-solid @recentIcon me-1 text-secondary"></i>@recentLabel
+                                    </span>
                                 }
                                 else
                                 {
-                                    @(m.AssignedVehicleCallSign ?? "—")
+                                    <span class="text-muted">—</span>
                                 }
                             </td>
                             <td data-sort="@m.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss")">@m.CreatedAt.ToLocalTime().ToString("HH:mm")</td>

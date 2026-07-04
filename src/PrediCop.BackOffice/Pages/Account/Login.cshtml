@@ -101,6 +101,26 @@
 </div>
 
 <script>
+(function () {
+    const CITY_KEY = 'predicop_last_city';
+    const cityEl = document.getElementById('citySelect') || document.getElementById('cityInput');
+
+    // Restore last city on load
+    if (cityEl) {
+        const saved = localStorage.getItem(CITY_KEY);
+        if (saved) cityEl.value = saved;
+    }
+
+    // Save city on form submit
+    const form = document.querySelector('form');
+    if (form && cityEl) {
+        form.addEventListener('submit', function () {
+            const val = cityEl.value;
+            if (val) localStorage.setItem(CITY_KEY, val);
+        });
+    }
+})();
+
 function toggleSuperAdmin() {
     const cityGroup = document.getElementById('citySelectGroup');
     const saGroup = document.getElementById('saGroup');

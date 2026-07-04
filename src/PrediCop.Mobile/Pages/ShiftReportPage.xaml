@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:PrediCop.Mobile.Views"
+             x:Class="PrediCop.Mobile.Pages.ShiftReportPage"
+             Title="Rapport de vacation"
+             BackgroundColor="#1a2035">
+
+    <ContentPage.Resources>
+        <Style TargetType="Label" x:Key="KeyLabel">
+            <Setter Property="TextColor" Value="#6b7a99"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="Label" x:Key="ValueLabel">
+            <Setter Property="TextColor" Value="#93c5fd"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+        <views:AppHeader Grid.Row="0"/>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="16">
+
+                <ActivityIndicator IsRunning="{Binding IsLoading}"
+                                   IsVisible="{Binding IsLoading}"
+                                   Color="#2563eb" HeightRequest="40"/>
+
+                <!-- Formulaire (caché une fois le rapport généré) -->
+                <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False"
+                       IsVisible="{Binding HasReport, Converter={StaticResource InvertBoolConverter}}">
+                    <VerticalStackLayout Spacing="14">
+                        <Label Text="Plage horaire de la vacation" TextColor="White"
+                               FontSize="16" FontAttributes="Bold"/>
+
+                        <Label Text="Début" TextColor="#aab0c0" FontSize="13"/>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <DatePicker Grid.Column="0"
+                                        Date="{Binding ShiftStartDate, Mode=TwoWay}"
+                                        TextColor="White" BackgroundColor="#1e2d4a"
+                                        MinimumDate="2020-01-01"/>
+                            <TimePicker Grid.Column="1"
+                                        Time="{Binding ShiftStartTime, Mode=TwoWay}"
+                                        TextColor="White" BackgroundColor="#1e2d4a"/>
+                        </Grid>
+
+                        <Label Text="Fin" TextColor="#aab0c0" FontSize="13"/>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <DatePicker Grid.Column="0"
+                                        Date="{Binding ShiftEndDate, Mode=TwoWay}"
+                                        TextColor="White" BackgroundColor="#1e2d4a"
+                                        MinimumDate="2020-01-01"/>
+                            <TimePicker Grid.Column="1"
+                                        Time="{Binding ShiftEndTime, Mode=TwoWay}"
+                                        TextColor="White" BackgroundColor="#1e2d4a"/>
+                        </Grid>
+
+                        <Label Text="Observations" TextColor="#aab0c0" FontSize="13"/>
+                        <Editor Text="{Binding Notes, Mode=TwoWay}"
+                                Placeholder="Commentaires libres..."
+                                PlaceholderColor="#6b7a99"
+                                TextColor="White"
+                                BackgroundColor="#1e2d4a"
+                                HeightRequest="80"
+                                AutoSize="Disabled"/>
+
+                        <Label Text="{Binding ErrorMessage}" TextColor="#f87171"
+                               IsVisible="{Binding HasError}"
+                               FontSize="13"/>
+
+                        <Button Text="Générer le rapport"
+                                BackgroundColor="#2563eb" TextColor="White"
+                                CornerRadius="12" HeightRequest="50"
+                                FontAttributes="Bold"
+                                Command="{Binding GenerateCommand}"
+                                IsEnabled="{Binding IsGenerating, Converter={StaticResource InvertBoolConverter}}"/>
+                        <ActivityIndicator IsRunning="{Binding IsGenerating}"
+                                           IsVisible="{Binding IsGenerating}"
+                                           Color="#2563eb" HeightRequest="36"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Rapport affiché après génération -->
+                <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False"
+                       IsVisible="{Binding HasReport}">
+                    <VerticalStackLayout Spacing="16">
+                        <Label Text="Rapport de Vacation" TextColor="White"
+                               FontSize="18" FontAttributes="Bold"/>
+
+                        <!-- Stats -->
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                              RowSpacing="10" ColumnSpacing="16">
+
+                            <Label Grid.Row="0" Grid.Column="0" Text="Véhicule" Style="{StaticResource KeyLabel}"/>
+                            <Label Grid.Row="0" Grid.Column="1" Text="{Binding ReportVehicle}" Style="{StaticResource ValueLabel}"/>
+
+                            <Label Grid.Row="1" Grid.Column="0" Text="Agents" Style="{StaticResource KeyLabel}"/>
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding ReportOfficers}" Style="{StaticResource ValueLabel}"
+                                   LineBreakMode="WordWrap"/>
+
+                            <Label Grid.Row="2" Grid.Column="0" Text="Missions" Style="{StaticResource KeyLabel}"/>
+                            <Label Grid.Row="2" Grid.Column="1" Text="{Binding ReportMissions}" Style="{StaticResource ValueLabel}"/>
+
+                            <Label Grid.Row="3" Grid.Column="0" Text="Distance" Style="{StaticResource KeyLabel}"/>
+                            <Label Grid.Row="3" Grid.Column="1" Text="{Binding ReportKm}" Style="{StaticResource ValueLabel}"/>
+
+                            <Label Grid.Row="4" Grid.Column="0" Text="Documents" Style="{StaticResource KeyLabel}"/>
+                            <Label Grid.Row="4" Grid.Column="1" Text="{Binding ReportDocuments}" Style="{StaticResource ValueLabel}"/>
+                        </Grid>
+
+                        <BoxView Color="#2d3f5f" HeightRequest="1"/>
+
+                        <!-- Signature -->
+                        <Label Text="{Binding ReportSignedInfo}" TextColor="#4ade80"
+                               FontSize="13" IsVisible="{Binding ReportIsSigned}"/>
+
+                        <Label Text="{Binding ErrorMessage}" TextColor="#f87171"
+                               IsVisible="{Binding HasError}" FontSize="13"/>
+
+                        <Button Text="Signer électroniquement"
+                                BackgroundColor="#16a34a" TextColor="White"
+                                CornerRadius="12" HeightRequest="50"
+                                FontAttributes="Bold"
+                                IsVisible="{Binding ReportIsSigned, Converter={StaticResource InvertBoolConverter}}"
+                                Command="{Binding SignCommand}"
+                                IsEnabled="{Binding IsSigning, Converter={StaticResource InvertBoolConverter}}"/>
+                        <ActivityIndicator IsRunning="{Binding IsSigning}"
+                                           IsVisible="{Binding IsSigning}"
+                                           Color="#16a34a" HeightRequest="36"/>
+
+                        <Button Text="Nouveau rapport"
+                                BackgroundColor="#374151" TextColor="White"
+                                CornerRadius="12" HeightRequest="44"
+                                Command="{Binding ResetCommand}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

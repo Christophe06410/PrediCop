@@ -7,6 +7,7 @@ using PrediCop.Core.DTOs;
 using PrediCop.Core.Entities;
 using PrediCop.Core.Interfaces;
 using PrediCop.Infrastructure.Data;
+using PrediCop.Infrastructure.Services;
 using PrediCop.Api.Hubs;
 
 namespace PrediCop.Api.Controllers;
@@ -65,6 +66,63 @@ public class StreetsController(
             .ToListAsync(ct);
 
         return Ok(streets.Select(MapToResponse).ToList());
+    }
+
+    [HttpGet("paged")]
+    public async Task<ActionResult<PagedStreetsResponse>> GetStreetsPaged(
+        [FromQuery] string? search = null,
+        [FromQuery] string? riskLevel = null,
+        [FromQuery] string sort = "risk-desc",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        pageSize = Math.Clamp(pageSize, 10, 200);
+        page = Math.Max(1, page);
+
+        var query = db.Streets.Where(s => s.TenantId == TenantId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(s =>
+                s.Name.ToLower().Contains(term) ||
+                (s.District != null && s.District.ToLower().Contains(term)) ||
+                s.City.ToLower().Contains(term));
+        }
+
+        if (!string.IsNullOrWhiteSpace(riskLevel))
+        {
+            query = riskLevel switch
+            {
+                "high"    => query.Where(s => s.CurrentRiskScore > 70),
+                "medium"  => query.Where(s => s.CurrentRiskScore > 40 && s.CurrentRiskScore <= 70),
+                "low"     => query.Where(s => s.CurrentRiskScore > 20 && s.CurrentRiskScore <= 40),
+                "minimal" => query.Where(s => s.CurrentRiskScore <= 20),
+                _         => query
+            };
+        }
+
+        query = sort switch
+        {
+            "risk-asc"  => query.OrderBy(s => s.CurrentRiskScore),
+            "name-asc"  => query.OrderBy(s => s.Name),
+            "name-desc" => query.OrderByDescending(s => s.Name),
+            _           => query.OrderByDescending(s => s.CurrentRiskScore)
+        };
+
+        var totalCount = await query.CountAsync(ct);
+        var streets = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return Ok(new PagedStreetsResponse(
+            streets.Select(MapToResponse).ToList(),
+            totalCount,
+            page,
+            pageSize
+        ));
     }
 
     [HttpGet("priority")]
@@ -128,12 +186,14 @@ public class StreetsController(
         if (streetId.HasValue)
             query = query.Where(e => e.StreetId == streetId.Value);
 
-        if (active == true)
-            query = query.Where(e => e.ExpiresAt > DateTime.UtcNow);
-
         var events = await query
             .OrderByDescending(e => e.EventDate)
             .ToListAsync(ct);
+
+        var now = DateTime.UtcNow;
+
+        if (active == true)
+            events = events.Where(e => StreetRiskService.IsEventActive(e, now)).ToList();
 
         var result = events.Select(e => new RiskEventResponse(
             e.Id,
@@ -146,7 +206,9 @@ public class StreetsController(
             e.EventDate,
             e.ExpiresAt,
             e.Source,
-            e.ExpiresAt > DateTime.UtcNow
+            StreetRiskService.IsEventActive(e, now),
+            e.RecurrenceType,
+            e.RecurrenceEndDate
         )).ToList();
 
         return Ok(result);
@@ -173,11 +235,13 @@ public class StreetsController(
             return Problem(title: "Événement non trouvé", statusCode: 404);
 
         riskEvent.Title = request.Title;
-        riskEvent.Description = request.Description;
+        riskEvent.Description = request.Description ?? string.Empty;
         riskEvent.RiskPoints = request.RiskPoints;
         riskEvent.EventDate = request.EventDate;
         riskEvent.ExpiresAt = request.ExpiresAt;
-        riskEvent.Source = request.Source;
+        riskEvent.Source = request.Source ?? string.Empty;
+        riskEvent.RecurrenceType = request.RecurrenceType;
+        riskEvent.RecurrenceEndDate = request.RecurrenceEndDate;
 
         await db.SaveChangesAsync(ct);
 
@@ -244,11 +308,13 @@ public class StreetsController(
             TenantId = TenantId,
             StreetId = id,
             Title = request.Title,
-            Description = request.Description,
+            Description = request.Description ?? string.Empty,
             RiskPoints = request.RiskPoints,
             EventDate = request.EventDate,
             ExpiresAt = request.ExpiresAt,
-            Source = request.Source
+            Source = request.Source ?? string.Empty,
+            RecurrenceType = request.RecurrenceType,
+            RecurrenceEndDate = request.RecurrenceEndDate
         };
 
         db.StreetRiskEvents.Add(riskEvent);
@@ -280,7 +346,10 @@ public class StreetsController(
         if (street is null)
             return Problem(title: "Rue non trouvée", statusCode: 404);
 
-        street.RiskGrowthRatePerHour = Math.Clamp(request.RiskGrowthRatePerHour, 0, 20);
+        street.RiskGrowthRatePerWeek = Math.Clamp(request.RiskGrowthRatePerWeek, 0, 50);
+        street.NightRiskGrowthRatePerWeek = Math.Clamp(request.NightRiskGrowthRatePerWeek, 0, 50);
+        street.NightStartHour = Math.Clamp(request.NightStartHour, 0, 23);
+        street.NightEndHour = Math.Clamp(request.NightEndHour, 0, 23);
         street.IsRiskLocked = request.IsRiskLocked;
 
         if (request.IsRiskLocked)
@@ -305,6 +374,7 @@ public class StreetsController(
     public async Task<IActionResult> RecomputeRisks(CancellationToken ct)
     {
         await computeService.ComputeForTenantAsync(TenantId, refreshDensity: false, ct);
+        await streetRiskService.RecalculateAllStreetRisksAsync(TenantId, ct);
         return Ok(new { message = "Recalcul des scores de risque terminé." });
     }
 
@@ -323,12 +393,17 @@ public class StreetsController(
         ComputedBaseRiskScore = s.ComputedBaseRiskScore,
         IsRiskLocked = s.IsRiskLocked,
         RiskAdjustment = s.RiskAdjustment,
-        RiskGrowthRatePerHour = s.RiskGrowthRatePerHour,
+        RiskGrowthRatePerWeek = s.RiskGrowthRatePerWeek,
+        NightRiskGrowthRatePerWeek = s.NightRiskGrowthRatePerWeek,
+        NightStartHour = s.NightStartHour,
+        NightEndHour = s.NightEndHour,
         CurrentRiskScore = s.CurrentRiskScore,
         LastPatrolledAt = s.LastPatrolledAt,
         PatrolIntervalHours = s.PatrolIntervalHours
     };
 }
+
+public record PagedStreetsResponse(List<StreetResponse> Streets, int TotalCount, int Page, int PageSize);
 
 public class CreateStreetRequest
 {

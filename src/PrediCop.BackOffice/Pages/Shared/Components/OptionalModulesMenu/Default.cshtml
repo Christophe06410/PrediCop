@@ -30,6 +30,14 @@
         </a>
     </li>
 }
+@if (Model?.ModuleFleetEnabled == true)
+{
+    <li>
+        <a class="dropdown-item" asp-page="/Admin/Fleet/Index">
+            <i class="fa-solid fa-car-on me-2"></i>Gestion de flotte
+        </a>
+    </li>
+}
 
 <li><hr class="dropdown-divider" /></li>
 
@@ -55,15 +63,7 @@
 <li><hr class="dropdown-divider" /></li>
 
 @* ── Reste : Opérationnel ── *@
-<li><a class="dropdown-item" asp-page="/Admin/Streets/Index"><i class="fa-solid fa-map-location-dot me-2"></i>Rues &amp; scores de risque</a></li>
 <li><a class="dropdown-item" asp-page="/Admin/GeoZones/Index"><i class="fa-solid fa-draw-polygon me-2"></i>Zones de patrouille</a></li>
+<li><a class="dropdown-item" asp-page="/Admin/Streets/Index"><i class="fa-solid fa-map-location-dot me-2"></i>Rues &amp; scores de risque</a></li>
 <li><a class="dropdown-item" asp-page="/Admin/RiskEvents/Index"><i class="fa-solid fa-triangle-exclamation me-2"></i>Événements de risque</a></li>
 <li><a class="dropdown-item" asp-page="/Admin/Qualifications/Index"><i class="fa-solid fa-id-card me-2"></i>Habilitations agents</a></li>
-@if (Model?.ModuleFleetEnabled == true)
-{
-    <li>
-        <a class="dropdown-item" asp-page="/Admin/Fleet/Index">
-            <i class="fa-solid fa-car-on me-2"></i>Gestion de flotte
-        </a>
-    </li>
-}

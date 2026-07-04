@@ -21,16 +21,17 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
             .FirstOrDefaultAsync(v => v.Id == request.VehicleId && v.TenantId == tenantId, ct)
             ?? throw new InvalidOperationException($"Véhicule {request.VehicleId} introuvable.");
 
-        // Noms des officiers actifs sur le véhicule au moment de la vacation
-        // On sélectionne ceux dont la période d'affectation chevauche la vacation
-        var officerNames = await db.VehicleOfficers
+        // Officiers présents sur le véhicule pendant la vacation
+        var officers = await db.VehicleOfficers
             .Include(o => o.User)
             .Where(o =>
                 o.VehicleId == request.VehicleId &&
                 o.AssignedAt <= request.ShiftEnd &&
                 (o.UnassignedAt == null || o.UnassignedAt >= request.ShiftStart))
-            .Select(o => o.User.FullName)
             .ToListAsync(ct);
+
+        var officerNames = officers.Select(o => o.User.FullName).ToList();
+        var officerIds   = officers.Select(o => o.UserId).ToList();
 
         // Missions du véhicule pendant la vacation (via MissionAssignments acceptés/en cours/terminés)
         var missionIds = await db.MissionAssignments
@@ -96,7 +97,7 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
         db.ShiftReports.Add(report);
         await db.SaveChangesAsync(ct);
 
-        return MapToResponse(report, vehicle.CallSign);
+        return MapToResponse(report, vehicle.CallSign, officerIds);
     }
 
     public async Task<ShiftReportResponse?> GetAsync(Guid id, Guid tenantId, CancellationToken ct)
@@ -105,7 +106,17 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
             .Include(r => r.Vehicle)
             .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId, ct);
 
-        return report is null ? null : MapToResponse(report, report.Vehicle.CallSign);
+        if (report is null) return null;
+
+        var authorizedSignerIds = await db.VehicleOfficers
+            .Where(o =>
+                o.VehicleId == report.VehicleId &&
+                o.AssignedAt <= report.ShiftEnd &&
+                (o.UnassignedAt == null || o.UnassignedAt >= report.ShiftStart))
+            .Select(o => o.UserId)
+            .ToListAsync(ct);
+
+        return MapToResponse(report, report.Vehicle.CallSign, authorizedSignerIds);
     }
 
     public async Task<(List<ShiftReportResponse> Items, int Total)> GetListAsync(
@@ -141,7 +152,7 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
         return (reports.Select(r => MapToResponse(r, r.Vehicle.CallSign)).ToList(), total);
     }
 
-    public async Task SignAsync(Guid id, Guid tenantId, CancellationToken ct)
+    public async Task SignAsync(Guid id, Guid tenantId, Guid signerUserId, CancellationToken ct)
     {
         var report = await db.ShiftReports
             .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId, ct)
@@ -150,12 +161,57 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
         if (report.IsSigned)
             throw new InvalidOperationException("Ce rapport est déjà signé.");
 
+        // Vérifier que le signataire était bien affecté à ce véhicule pendant la vacation
+        var isAuthorized = await db.VehicleOfficers
+            .AnyAsync(o =>
+                o.VehicleId == report.VehicleId &&
+                o.UserId == signerUserId &&
+                o.AssignedAt <= report.ShiftEnd &&
+                (o.UnassignedAt == null || o.UnassignedAt >= report.ShiftStart), ct);
+
+        if (!isAuthorized)
+            throw new InvalidOperationException(
+                "Vous n'êtes pas autorisé à signer ce rapport. Seuls les agents ayant participé à cette vacation peuvent signer.");
+
+        var signerName = await db.Users
+            .Where(u => u.Id == signerUserId)
+            .Select(u => u.FullName)
+            .FirstOrDefaultAsync(ct) ?? "Inconnu";
+
         report.IsSigned = true;
         report.SignedAt = DateTime.UtcNow;
+        report.SignedByUserId = signerUserId;
+        report.SignedByName = signerName;
         await db.SaveChangesAsync(ct);
     }
 
-    private static ShiftReportResponse MapToResponse(ShiftReport r, string vehicleCallSign) => new(
+    public async Task<ShiftReportResponse> GenerateForAgentAsync(
+        Guid agentId,
+        CreateMyShiftReportRequest request,
+        Guid tenantId,
+        CancellationToken ct)
+    {
+        var assignment = await db.VehicleOfficers
+            .Include(vo => vo.Vehicle)
+            .Where(vo =>
+                vo.UserId == agentId &&
+                vo.Vehicle.TenantId == tenantId &&
+                vo.AssignedAt <= request.ShiftEnd &&
+                (vo.UnassignedAt == null || vo.UnassignedAt >= request.ShiftStart))
+            .OrderByDescending(vo => vo.AssignedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (assignment is null)
+            throw new InvalidOperationException(
+                "Aucune affectation à un véhicule trouvée pour cette plage horaire. Vérifiez que vous avez bien activé votre patrouille.");
+
+        return await GenerateAsync(
+            new CreateShiftReportRequest(assignment.VehicleId, request.ShiftStart, request.ShiftEnd, request.Notes),
+            tenantId, ct);
+    }
+
+    private static ShiftReportResponse MapToResponse(
+        ShiftReport r, string vehicleCallSign, List<Guid>? authorizedSignerIds = null) => new(
         r.Id,
         r.VehicleId,
         vehicleCallSign,
@@ -171,6 +227,8 @@ public class ShiftReportService(AppDbContext db) : IShiftReportService
         r.Notes,
         r.IsSigned,
         r.SignedAt,
-        r.CreatedAt
+        r.CreatedAt,
+        r.SignedByName,
+        authorizedSignerIds ?? []
     );
 }

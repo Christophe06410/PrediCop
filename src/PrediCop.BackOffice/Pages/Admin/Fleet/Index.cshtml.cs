@@ -110,6 +110,39 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostCreateMaintenanceAsync(
+        Guid vehicleId, string type, string scheduledDate, string description,
+        int? kmAtService, decimal? cost, string? providerName, string? notes,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("PrediCopApi");
+            var body = new
+            {
+                vehicleId,
+                type,
+                scheduledDate = DateTime.Parse(scheduledDate).ToUniversalTime(),
+                description,
+                kmAtService,
+                cost,
+                providerName,
+                notes
+            };
+            var response = await client.PostAsJsonAsync("/api/fleet/maintenance", body, ct);
+            if (response.IsSuccessStatusCode)
+                TempData["SuccessMessage"] = "Maintenance planifiée.";
+            else
+                TempData["ErrorMessage"] = $"Erreur lors de la création ({(int)response.StatusCode}).";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erreur création maintenance.");
+            TempData["ErrorMessage"] = "Impossible de joindre le serveur.";
+        }
+        return RedirectToPage(new { ActiveTab = "maintenances" });
+    }
+
     public async Task<IActionResult> OnPostCompleteMaintenanceAsync(Guid id, CancellationToken ct = default)
     {
         try

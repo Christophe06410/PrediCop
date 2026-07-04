@@ -213,4 +213,76 @@ public static class EmailTemplates
 
         return WrapInLayout(tenantName, content);
     }
+
+    // ── Template : bilan hebdomadaire des entretiens flotte ───────────────────
+
+    public static string MaintenanceFleet(
+        string tenantName,
+        IReadOnlyList<(string CallSign, string LicensePlate, string TypeLabel, string Description, DateTime ScheduledDate, bool IsOverdue)> items)
+    {
+        static string Row(string callSign, string plate, string type, string desc, DateTime date, bool overdue)
+        {
+            var color = overdue ? "#991b1b" : "#92400e";
+            var bg    = overdue ? "#fef2f2" : "#fffbeb";
+            var days  = (int)(date - DateTime.UtcNow).TotalDays;
+            var daysLabel = overdue
+                ? $"En retard de {-days} jour(s)"
+                : days == 0 ? "Aujourd'hui" : $"Dans {days} jour(s)";
+
+            return $"""
+                <tr style="background:{bg};">
+                  <td style="padding:9px 12px;font-weight:bold;color:{color};border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(callSign)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(plate)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(type)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{WebUtility.HtmlEncode(desc)}</td>
+                  <td style="padding:9px 12px;color:#374151;border-bottom:1px solid #fde68a;">{date:dd/MM/yyyy}</td>
+                  <td style="padding:9px 12px;font-weight:bold;color:{color};border-bottom:1px solid #fde68a;">{daysLabel}</td>
+                </tr>
+                """;
+        }
+
+        var rows = string.Join("\n", items.Select(i =>
+            Row(i.CallSign, i.LicensePlate, i.TypeLabel, i.Description, i.ScheduledDate, i.IsOverdue)));
+
+        var overdueCount  = items.Count(i => i.IsOverdue);
+        var upcomingCount = items.Count(i => !i.IsOverdue);
+
+        var summary = new List<string>();
+        if (overdueCount  > 0) summary.Add($"<strong style='color:#dc2626;'>{overdueCount} en retard</strong>");
+        if (upcomingCount > 0) summary.Add($"<strong style='color:#d97706;'>{upcomingCount} à planifier dans 30 jours</strong>");
+
+        var content = $"""
+            <h2 style="color:#1a2035;font-size:20px;margin:0 0 8px;">
+                &#128663; Bilan hebdomadaire — Entretiens véhicules
+            </h2>
+            <p style="color:#475569;margin:0 0 24px;font-size:14px;">
+                Ce rapport recense les entretiens nécessitant votre attention :
+                {string.Join(" — ", summary)}.
+            </p>
+
+            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px;">
+              <thead>
+                <tr style="background:#1a2035;">
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Véhicule</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Immatriculation</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Type</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Description</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Date prévue</th>
+                  <th style="padding:10px 12px;color:#ffffff;text-align:left;">Délai</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows}
+              </tbody>
+            </table>
+
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:0 4px 4px 0;">
+              <p style="margin:0;font-size:13px;color:#1e40af;">
+                Connectez-vous au back-office PrediCop → <em>Admin / Gestion de flotte</em> pour planifier ces entretiens.
+              </p>
+            </div>
+            """;
+
+        return WrapInLayout(tenantName, content);
+    }
 }

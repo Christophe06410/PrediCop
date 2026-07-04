@@ -88,6 +88,9 @@ builder.Services.AddHostedService<MissionAlertBackgroundService>();
 // ---- Bilan hebdo habilitations (lundi matin) ----
 builder.Services.AddHostedService<QualificationExpiryBackgroundService>();
 
+// ---- Bilan hebdo entretiens flotte (lundi matin) ----
+builder.Services.AddHostedService<FleetMaintenanceAlertBackgroundService>();
+
 // ---- Journal technique des flux (serveur + mobile) ----
 builder.Services.AddHostedService<PrediCop.Api.Services.FlowLogBackgroundService>();
 

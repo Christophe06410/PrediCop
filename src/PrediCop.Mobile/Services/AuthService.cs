@@ -129,6 +129,19 @@ public class AuthService
         _ = Task.Run(() => Preferences.Set(VehicleDisplayLabelKey, label));
     }
 
+    public void ClearVehicle()
+    {
+        VehicleId = null;
+        VehicleCallSign = null;
+        VehicleDisplayLabel = null;
+        _ = Task.Run(() =>
+        {
+            Preferences.Remove(VehicleIdKey);
+            Preferences.Remove(VehicleCallSignKey);
+            Preferences.Remove(VehicleDisplayLabelKey);
+        });
+    }
+
     public void Logout()
     {
         Token = null;

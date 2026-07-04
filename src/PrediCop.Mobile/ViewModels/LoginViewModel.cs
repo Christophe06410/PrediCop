@@ -30,6 +30,8 @@ public partial class LoginViewModel(
     [ObservableProperty] private ObservableCollection<TenantItem> tenants = [];
     [ObservableProperty] private TenantItem? selectedTenant;
 
+    private const string LastTenantKey = "login_last_tenant_slug";
+
     public async Task LoadTenantsAsync()
     {
         IsLoadingTenants = true;
@@ -38,22 +40,24 @@ public partial class LoginViewModel(
         {
             var list = await auth.GetTenantsAsync();
             Tenants = new ObservableCollection<TenantItem>(list);
-            SelectedTenant ??= Tenants.FirstOrDefault();
 
             if (Tenants.Count == 0)
             {
                 TenantsLoadFailed = true;
                 ErrorMessage = "Aucune ville disponible. Vérifiez la connexion au serveur.";
                 HasError = true;
+                return;
             }
-            else
-            {
-                HasError = false;
-                ErrorMessage = "";
-            }
+
+            HasError = false;
+            ErrorMessage = "";
 
 #if DEBUG
             SelectedTenant = Tenants.FirstOrDefault(t => t.Slug == "predicop") ?? Tenants.FirstOrDefault();
+#else
+            var lastSlug = Preferences.Get(LastTenantKey, null);
+            SelectedTenant = (lastSlug != null ? Tenants.FirstOrDefault(t => t.Slug == lastSlug) : null)
+                             ?? Tenants.FirstOrDefault();
 #endif
         }
         catch
@@ -133,6 +137,7 @@ public partial class LoginViewModel(
             if (success)
             {
                 log.LogInformation("Login succeeded — role={Role}", auth.CurrentUser?.Role);
+                Preferences.Set(LastTenantKey, SelectedTenant.Slug);
                 await ConnectServicesAsync();
 
                 var dest = AppShell.GetFirstRoute(auth.CurrentUser?.Role ?? "");

@@ -28,6 +28,7 @@ public class VehiclesController(
         var vehicles = await db.PatrolVehicles
             .Include(v => v.Officers.Where(o => o.IsActive))
                 .ThenInclude(o => o.User)
+            .Include(v => v.AssignedGeoZones)
             .Where(v => v.TenantId == TenantId)
             .OrderBy(v => v.CallSign)
             .ToListAsync(ct);
@@ -41,6 +42,7 @@ public class VehiclesController(
         var vehicle = await db.PatrolVehicles
             .Include(v => v.Officers.Where(o => o.IsActive))
                 .ThenInclude(o => o.User)
+            .Include(v => v.AssignedGeoZones)
             .FirstOrDefaultAsync(v => v.Id == id && v.TenantId == TenantId, ct);
 
         if (vehicle is null)
@@ -166,40 +168,48 @@ public class VehiclesController(
         CancellationToken ct)
     {
         var vehicle = await db.PatrolVehicles
+            .Include(v => v.AssignedGeoZones)
             .FirstOrDefaultAsync(v => v.Id == id && v.TenantId == TenantId, ct);
 
         if (vehicle is null)
             return Problem(title: "Véhicule non trouvé", statusCode: 404);
 
-        if (request.GeoZoneId.HasValue)
-        {
-            // Vérifier que la zone appartient au même tenant
-            var zoneExists = await db.GeoZones
-                .AnyAsync(z => z.Id == request.GeoZoneId.Value && z.TenantId == TenantId, ct);
+        // Charger uniquement les zones valides du tenant
+        var requestedIds = request.GeoZoneIds.Distinct().ToList();
+        var zones = requestedIds.Count == 0
+            ? []
+            : await db.GeoZones
+                .Where(z => requestedIds.Contains(z.Id) && z.TenantId == TenantId)
+                .ToListAsync(ct);
 
-            if (!zoneExists)
-                return Problem(title: "Zone de patrouille non trouvée", statusCode: 404);
-        }
+        // Remplacer la collection (EF Core gère la table de jointure)
+        vehicle.AssignedGeoZones.Clear();
+        foreach (var zone in zones)
+            vehicle.AssignedGeoZones.Add(zone);
 
-        vehicle.AssignedGeoZoneId = request.GeoZoneId;
         await db.SaveChangesAsync(ct);
 
         return NoContent();
     }
 
     [HttpGet("crew-sheet")]
-    public async Task<ActionResult<List<CrewSheetEntryResponse>>> GetCrewSheet(CancellationToken ct)
+    public async Task<ActionResult<List<CrewSheetEntryResponse>>> GetCrewSheet(
+        [FromQuery] bool includeOffline = false,
+        CancellationToken ct = default)
     {
-        var vehicles = await db.PatrolVehicles
+        var query = db.PatrolVehicles
             .Include(v => v.Officers.Where(o => o.IsActive))
                 .ThenInclude(o => o.User)
             .Include(v => v.Missions.Where(m =>
                 m.Mission.Status == MissionStatus.Accepted ||
                 m.Mission.Status == MissionStatus.InProgress))
                 .ThenInclude(a => a.Mission)
-            .Where(v => v.TenantId == TenantId && v.Status != VehicleStatus.Offline)
-            .OrderBy(v => v.CallSign)
-            .ToListAsync(ct);
+            .Where(v => v.TenantId == TenantId);
+
+        if (!includeOffline)
+            query = query.Where(v => v.Status != VehicleStatus.Offline);
+
+        var vehicles = await query.OrderBy(v => v.CallSign).ToListAsync(ct);
 
         var result = vehicles.Select(v =>
         {
@@ -214,6 +224,8 @@ public class VehiclesController(
                 VehicleId = v.Id,
                 CallSign = v.CallSign,
                 LicensePlate = v.LicensePlate,
+                Indicatif = v.Indicatif,
+                SessionStartedAt = v.SessionStartedAt,
                 Status = v.Status.ToString(),
                 LastLatitude = v.LastLatitude,
                 LastLongitude = v.LastLongitude,
@@ -223,7 +235,8 @@ public class VehiclesController(
                     {
                         UserId = o.UserId,
                         FullName = o.User.FullName,
-                        BadgeNumber = o.User.BadgeNumber
+                        BadgeNumber = o.User.BadgeNumber,
+                        IsLeader = o.IsLeader
                     }).ToList(),
                 CurrentMission = activeAssignment is null ? null : new ActiveMissionInfo
                 {
@@ -376,7 +389,7 @@ public class VehiclesController(
             .Select(o => o.User.FullName)
             .ToList(),
         BeaconUuid = v.BeaconUuid,
-        AssignedGeoZoneId = v.AssignedGeoZoneId,
+        AssignedGeoZoneIds = v.AssignedGeoZones.Select(z => z.Id).ToList(),
         Capacity = v.Capacity,
         Indicatif = v.Indicatif,
         PatrolType = v.PatrolType,

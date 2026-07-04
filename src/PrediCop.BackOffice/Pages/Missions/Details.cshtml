@@ -80,17 +80,22 @@
                         {
                             var assignedVehicleId = mission.Assignments
                                 .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed")?.VehicleId;
+                            var detUnitLabel = mission.AssignedVehicleIndicatif ?? mission.AssignedVehicleCallSign;
+                            var detTooltipParts = new System.Collections.Generic.List<string>();
+                            if (!string.IsNullOrEmpty(mission.AssignedVehicleCallSign)) detTooltipParts.Add(mission.AssignedVehicleCallSign);
+                            if (!string.IsNullOrEmpty(Model.AssignedVehicleLicensePlate)) detTooltipParts.Add(Model.AssignedVehicleLicensePlate);
+                            var detUnitTooltip = string.Join(" | ", detTooltipParts);
                             if (assignedVehicleId.HasValue)
                             {
                                 <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@assignedVehicleId"
-                                   class="badge bg-dark fs-6 py-2 px-3 text-decoration-none">
-                                    <i class="fa-solid fa-users-shield me-2"></i>Équipage : @mission.AssignedVehicleCallSign
+                                   class="badge bg-dark fs-6 py-2 px-3 text-decoration-none" title="@detUnitTooltip">
+                                    <i class="fa-solid fa-users-shield me-2"></i>Unité : @detUnitLabel
                                 </a>
                             }
                             else
                             {
-                                <span class="badge bg-dark fs-6 py-2 px-3">
-                                    <i class="fa-solid fa-users-shield me-2"></i>Équipage : @mission.AssignedVehicleCallSign
+                                <span class="badge bg-dark fs-6 py-2 px-3" title="@detUnitTooltip">
+                                    <i class="fa-solid fa-users-shield me-2"></i>Unité : @detUnitLabel
                                 </span>
                             }
                         }
@@ -633,6 +638,10 @@
                                                     <strong class="d-block">
                                                         <span class="badge bg-secondary me-1">#@a.ProposalOrder</span>
                                                         Patrouille <a asp-page="/Admin/Vehicles/Edit" asp-route-id="@a.VehicleId" class="text-decoration-none">@a.VehicleCallSign</a>
+                                                        @if (!string.IsNullOrEmpty(a.VehicleIndicatif))
+                                                        {
+                                                            <span class="badge bg-info text-dark ms-1">@a.VehicleIndicatif</span>
+                                                        }
                                                     </strong>
                                                     <small class="text-muted">
                                                         Proposé à @a.ProposedAt.ToLocalTime().ToString("HH:mm:ss")

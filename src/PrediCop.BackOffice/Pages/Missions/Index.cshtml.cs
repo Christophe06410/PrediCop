@@ -40,20 +40,32 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
                 .OrderByDescending(m => m.CompletedAt ?? m.CreatedAt)
                 .Take(20)
                 .ToList();
+
+            // Load vehicles to enrich unit display (LicensePlate, PatrolType, OfficerNames)
+            var vehicles = await client.GetFromJsonAsync<List<VehicleDto>>("/api/vehicles", options) ?? [];
+            var vehicleDict = vehicles.ToDictionary(v => v.CallSign, v => v, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var m in ActiveMissions.Concat(RecentMissions))
+            {
+                var asgn = m.Assignments
+                    .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed" or "Completed");
+                m.AssignedVehicleCallSign ??= asgn?.VehicleCallSign;
+                m.AssignedVehicleIndicatif ??= asgn?.VehicleIndicatif;
+
+                if (m.AssignedVehicleCallSign is not null
+                    && vehicleDict.TryGetValue(m.AssignedVehicleCallSign, out var v))
+                {
+                    m.AssignedVehicleLicensePlate = v.LicensePlate;
+                    m.AssignedVehiclePatrolType = v.PatrolType;
+                    m.AssignedVehicleOfficerNames = v.OfficerNames;
+                }
+            }
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Impossible de charger les missions depuis l'API.");
             ActiveMissions = [];
             RecentMissions = [];
-        }
-
-        // Compute AssignedVehicleCallSign from the Assignments list
-        foreach (var m in ActiveMissions.Concat(RecentMissions))
-        {
-            m.AssignedVehicleCallSign ??= m.Assignments
-                .FirstOrDefault(a => a.Status is "Accepted" or "InProgress" or "Proposed" or "Completed")
-                ?.VehicleCallSign;
         }
     }
 

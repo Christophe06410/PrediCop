@@ -91,12 +91,12 @@ public class GeofencingBackgroundService(
         DateTime now,
         CancellationToken ct)
     {
-        // Véhicules avec une zone assignée et un GPS récent
+        // Véhicules avec au moins une zone assignée et un GPS récent
         var vehicles = await db.PatrolVehicles
-            .Include(v => v.AssignedGeoZone)
-                .ThenInclude(z => z!.Vertices)
+            .Include(v => v.AssignedGeoZones)
+                .ThenInclude(z => z.Vertices)
             .Where(v => v.TenantId == tenantId
-                        && v.AssignedGeoZoneId != null
+                        && v.AssignedGeoZones.Any()
                         && v.LastLatitude != null
                         && v.LastLongitude != null
                         && v.LastPositionUpdate != null
@@ -105,30 +105,34 @@ public class GeofencingBackgroundService(
 
         foreach (var vehicle in vehicles)
         {
-            if (vehicle.AssignedGeoZone is null || vehicle.AssignedGeoZone.Vertices.Count < 3)
+            var validZones = vehicle.AssignedGeoZones.Where(z => z.Vertices.Count >= 3).ToList();
+            if (validZones.Count == 0)
                 continue;
 
-            var vertices = vehicle.AssignedGeoZone.Vertices
-                .OrderBy(v => v.Order)
-                .Select(v => (v.Latitude, v.Longitude))
-                .ToList();
+            // Le véhicule est considéré "en zone" s'il est dans AU MOINS une de ses zones
+            bool isInAnyZone = validZones.Any(zone =>
+            {
+                var verts = zone.Vertices
+                    .OrderBy(v => v.Order)
+                    .Select(v => (v.Latitude, v.Longitude))
+                    .ToList();
+                return GeofencingService.IsInsidePolygon(
+                    vehicle.LastLatitude!.Value,
+                    vehicle.LastLongitude!.Value,
+                    verts);
+            });
 
-            bool isInside = GeofencingService.IsInsidePolygon(
-                vehicle.LastLatitude!.Value,
-                vehicle.LastLongitude!.Value,
-                vertices);
-
-            if (isInside)
+            if (isInAnyZone)
                 continue;
 
-            // Véhicule hors zone — vérifier l'anti-spam
+            // Véhicule hors de toutes ses zones — vérifier l'anti-spam
             if (_lastAlertSent.TryGetValue(vehicle.Id, out var lastSent)
                 && (now - lastSent).TotalMinutes < AlertCooldownMinutes)
             {
                 continue;
             }
 
-            var zoneName = vehicle.AssignedGeoZone.Name;
+            var zoneName = string.Join(", ", validZones.Select(z => z.Name));
             var detectedAt = now;
 
             logger.LogWarning(

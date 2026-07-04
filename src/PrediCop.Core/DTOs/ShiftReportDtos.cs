@@ -7,6 +7,12 @@ public record CreateShiftReportRequest(
     string? Notes
 );
 
+public record CreateMyShiftReportRequest(
+    DateTime ShiftStart,
+    DateTime ShiftEnd,
+    string? Notes
+);
+
 public record ShiftReportResponse(
     Guid Id,
     Guid VehicleId,
@@ -23,5 +29,7 @@ public record ShiftReportResponse(
     string? Notes,
     bool IsSigned,
     DateTime? SignedAt,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string? SignedByName = null,
+    List<Guid>? AuthorizedSignerIds = null
 );

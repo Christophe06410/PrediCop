@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using PrediCop.Core.Interfaces;
+using PrediCop.Infrastructure.Data;
+
 namespace PrediCop.Api.Services;
 
 public class StreetRiskBackgroundService(
@@ -15,8 +19,18 @@ public class StreetRiskBackgroundService(
             {
                 logger.LogInformation("Starting nightly street risk recomputation");
                 using var scope = scopeFactory.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<StreetRiskComputeService>();
-                await service.ComputeAllTenantsAsync(refreshDensity: true, stoppingToken);
+                var computeService = scope.ServiceProvider.GetRequiredService<StreetRiskComputeService>();
+                await computeService.ComputeAllTenantsAsync(refreshDensity: true, stoppingToken);
+
+                var streetRiskService = scope.ServiceProvider.GetRequiredService<IStreetRiskService>();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var tenantIds = await db.Streets
+                    .Select(s => s.TenantId)
+                    .Distinct()
+                    .ToListAsync(stoppingToken);
+                foreach (var tenantId in tenantIds)
+                    await streetRiskService.RecalculateAllStreetRisksAsync(tenantId, stoppingToken);
+
                 logger.LogInformation("Nightly street risk recomputation complete");
             }
             catch (OperationCanceledException) { break; }

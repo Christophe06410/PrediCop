@@ -22,6 +22,21 @@ namespace PrediCop.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("GeoZonePatrolVehicle", b =>
+                {
+                    b.Property<Guid>("AssignedGeoZonesId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AssignedVehiclesId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("AssignedGeoZonesId", "AssignedVehiclesId");
+
+                    b.HasIndex("AssignedVehiclesId");
+
+                    b.ToTable("VehicleGeoZones", (string)null);
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.AgentProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1235,9 +1250,6 @@ namespace PrediCop.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("AssignedGeoZoneId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("BeaconUuid")
                         .HasColumnType("nvarchar(max)");
 
@@ -1288,8 +1300,6 @@ namespace PrediCop.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AssignedGeoZoneId");
 
                     b.HasIndex("TenantId", "CallSign")
                         .IsUnique();
@@ -1437,6 +1447,12 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<DateTime?>("SignedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("SignedByName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1566,14 +1582,23 @@ namespace PrediCop.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<int>("NightEndHour")
+                        .HasColumnType("int");
+
+                    b.Property<double>("NightRiskGrowthRatePerWeek")
+                        .HasColumnType("float");
+
+                    b.Property<int>("NightStartHour")
+                        .HasColumnType("int");
+
                     b.Property<int>("PatrolIntervalHours")
                         .HasColumnType("int");
 
                     b.Property<int?>("RiskAdjustment")
                         .HasColumnType("int");
 
-                    b.Property<int>("RiskGrowthRatePerHour")
-                        .HasColumnType("int");
+                    b.Property<double>("RiskGrowthRatePerWeek")
+                        .HasColumnType("float");
 
                     b.Property<double>("StartLatitude")
                         .HasColumnType("float");
@@ -1619,6 +1644,12 @@ namespace PrediCop.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RecurrenceEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecurrenceType")
+                        .HasColumnType("int");
 
                     b.Property<int>("RiskPoints")
                         .HasColumnType("int");
@@ -2172,6 +2203,21 @@ namespace PrediCop.Infrastructure.Migrations
                     b.ToTable("VehicleOfficers");
                 });
 
+            modelBuilder.Entity("GeoZonePatrolVehicle", b =>
+                {
+                    b.HasOne("PrediCop.Core.Entities.GeoZone", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedGeoZonesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PrediCop.Core.Entities.PatrolVehicle", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedVehiclesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PrediCop.Core.Entities.AgentProfile", b =>
                 {
                     b.HasOne("PrediCop.Core.Entities.User", "Agent")
@@ -2518,18 +2564,11 @@ namespace PrediCop.Infrastructure.Migrations
 
             modelBuilder.Entity("PrediCop.Core.Entities.PatrolVehicle", b =>
                 {
-                    b.HasOne("PrediCop.Core.Entities.GeoZone", "AssignedGeoZone")
-                        .WithMany("AssignedVehicles")
-                        .HasForeignKey("AssignedGeoZoneId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
                         .WithMany("Vehicles")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("AssignedGeoZone");
 
                     b.Navigation("Tenant");
                 });
@@ -2799,8 +2838,6 @@ namespace PrediCop.Infrastructure.Migrations
 
             modelBuilder.Entity("PrediCop.Core.Entities.GeoZone", b =>
                 {
-                    b.Navigation("AssignedVehicles");
-
                     b.Navigation("Vertices");
                 });
 

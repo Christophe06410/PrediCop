@@ -1,12 +1,12 @@
 @page
 @model PrediCop.BackOffice.Pages.Admin.Streets.IndexModel
 @{
-    ViewData["Title"] = "Gestion des rues — Zone géographique";
+    ViewData["Title"] = "Rues & scores de risque";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">
-        <i class="fa-solid fa-map-location-dot me-2 text-primary"></i>Zone géographique — Rues
+        <i class="fa-solid fa-map-location-dot me-2 text-primary"></i>Rues &amp; scores de risque
     </h4>
     @if (User.IsInRole("Admin"))
     {
@@ -34,6 +34,11 @@
     </div>
 }
 
+<!-- Hidden delete form with CSRF token -->
+<form method="post" asp-page-handler="Delete" id="deleteForm" style="display:none">
+    <input type="hidden" name="id" id="deleteId" />
+</form>
+
 <div class="row g-3">
     <!-- Liste des rues -->
     <div class="col-lg-8">
@@ -42,9 +47,8 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0 fw-semibold">
                         <i class="fa-solid fa-list me-2"></i>Rues enregistrées
-                        <span id="streetCount" class="badge bg-secondary ms-2">@Model.Streets.Count</span>
+                        <span id="streetCount" class="badge bg-secondary ms-2">—</span>
                     </h6>
-                    <span id="paginationInfo" class="small text-muted"></span>
                 </div>
                 <!-- Filtres -->
                 <div class="row g-2 align-items-center">
@@ -81,92 +85,47 @@
                             <option value="25" selected>25 / page</option>
                             <option value="50">50 / page</option>
                             <option value="100">100 / page</option>
-                            <option value="0">Tout afficher</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            @if (Model.Streets.Any())
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0" id="streetsTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Rue</th>
-                                <th>Quartier / Ville</th>
-                                <th>Risque base</th>
-                                <th title="Croissance du risque par heure">Croissance/h</th>
-                                <th>Risque actuel</th>
-                                <th>Dernière patrouille</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="streetsBody">
-                            @foreach (var s in Model.Streets)
-                            {
-                                var badgeClass = s.CurrentRiskScore > 70 ? "bg-danger" :
-                                                 s.CurrentRiskScore > 40 ? "bg-warning text-dark" :
-                                                 s.CurrentRiskScore > 20 ? "bg-info text-dark" : "bg-success";
-                                var riskLevel = s.CurrentRiskScore > 70 ? "high" :
-                                                s.CurrentRiskScore > 40 ? "medium" :
-                                                s.CurrentRiskScore > 20 ? "low" : "minimal";
-                                <tr data-name="@s.Name.ToLower()"
-                                    data-district="@(s.District?.ToLower() ?? "")"
-                                    data-city="@(s.City?.ToLower() ?? "")"
-                                    data-risk="@s.CurrentRiskScore"
-                                    data-risk-level="@riskLevel">
-                                    <td class="fw-semibold">@s.Name<br/><span class="small text-muted">@s.StartLatitude.ToString("F4"), @s.StartLongitude.ToString("F4")</span></td>
-                                    <td class="text-muted small">@s.District @(s.City != null ? $"— {s.City}" : "")</td>
-                                    <td><span class="badge bg-secondary">@s.BaseRiskScore</span></td>
-                                    <td><span class="badge bg-secondary">@s.RiskGrowthRatePerHour</span></td>
-                                    <td><span class="badge @badgeClass">@s.CurrentRiskScore</span></td>
-                                    <td class="small text-muted">
-                                        @(s.LastPatrolledAt.HasValue
-                                            ? s.LastPatrolledAt.Value.ToLocalTime().ToString("dd/MM HH:mm")
-                                            : "Jamais")
-                                    </td>
-                                    <td class="text-end" style="white-space:nowrap">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1"
-                                                data-bs-toggle="modal" data-bs-target="#editModal-@s.Id">
-                                            <i class="fa-solid fa-pen"></i>
-                                        </button>
-                                        <form method="post" asp-page-handler="Delete" class="d-inline"
-                                              onsubmit="return confirm('Supprimer cette rue ?')">
-                                            <input type="hidden" name="id" value="@s.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0" id="streetsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Rue</th>
+                            <th>Quartier / Ville</th>
+                            <th>Risque base</th>
+                            <th title="Croissance du risque par semaine">Croissance/sem.</th>
+                            <th>Risque actuel</th>
+                            <th>Dernière patrouille</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="streetsBody">
+                        <tr id="loadingRow">
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm me-2"></div>Chargement…
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-                <!-- Empty state when filters match nothing -->
-                <div id="noResults" class="card-body text-center text-muted py-4" style="display:none">
-                    <i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>
-                    Aucune rue ne correspond aux filtres sélectionnés.
-                    <br><button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="resetFilters()">Réinitialiser les filtres</button>
-                </div>
+            <div id="noResults" class="card-body text-center text-muted py-4" style="display:none">
+                <i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>
+                Aucune rue ne correspond aux filtres sélectionnés.
+                <br><button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="resetFilters()">Réinitialiser les filtres</button>
+            </div>
 
-                <!-- Pagination -->
-                <div class="card-footer py-2 d-flex justify-content-between align-items-center" id="paginationContainer">
-                    <small class="text-muted" id="pageInfo"></small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0" id="paginationNav"></ul>
-                    </nav>
-                </div>
-            }
-            else
-            {
-                <div class="card-body text-center text-muted py-5">
-                    <i class="fa-solid fa-map fa-2x mb-2 d-block"></i>
-                    Aucune rue enregistrée. Ajoutez des rues pour définir la zone géographique.
-                </div>
-            }
+            <!-- Pagination -->
+            <div class="card-footer py-2 d-flex justify-content-between align-items-center" id="paginationContainer" style="display:none">
+                <small class="text-muted" id="pageInfo"></small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="paginationNav"></ul>
+                </nav>
+            </div>
         </div>
     </div>
 
@@ -250,235 +209,281 @@
     </div>
 </div>
 
-<!-- Edit modals (outside table so they survive DOM reordering) -->
-@foreach (var s in Model.Streets)
-{
-    <div class="modal fade" id="editModal-@s.Id" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header py-2">
-                    <h6 class="modal-title">Modifier — @s.Name</h6>
-                    <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="post" asp-page-handler="Edit">
-                    <div class="modal-body">
-                        <input type="hidden" name="id" value="@s.Id" />
-
-                        <div class="alert alert-light border py-2 mb-3 small">
-                            <i class="fa-solid fa-brain me-1 text-primary"></i>
-                            Score calculé par l'algorithme :
-                            <span class="badge bg-primary ms-1">@s.ComputedBaseRiskScore</span>
-                            <span class="text-muted">/ 100</span>
-                            <span class="ms-2 text-muted">— actuel :</span>
-                            <span class="badge bg-secondary ms-1">@s.BaseRiskScore</span>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input type="hidden" name="isRiskLocked" value="false" />
-                            <input type="checkbox" name="isRiskLocked" value="true"
-                                   class="form-check-input" id="lock-@s.Id"
-                                   @(s.IsRiskLocked ? "checked" : "")
-                                   onchange="toggleRiskMode('@s.Id', this.checked)" />
-                            <label class="form-check-label small fw-semibold" for="lock-@s.Id">
-                                <i class="fa-solid fa-lock me-1 text-warning"></i>
-                                Verrouiller (override absolu, l'algorithme n'y touche plus)
-                            </label>
-                        </div>
-
-                        <div id="abs-@s.Id" @(s.IsRiskLocked ? "" : "style=\"display:none\"") class="mb-3">
-                            <label class="form-label fw-semibold small">Score absolu (0–100)</label>
-                            <input type="number" name="baseRiskScore" class="form-control form-control-sm"
-                                   value="@s.BaseRiskScore" min="0" max="100" />
-                        </div>
-
-                        <div id="adj-@s.Id" @(s.IsRiskLocked ? "style=\"display:none\"" : "") class="mb-3">
-                            <label class="form-label fw-semibold small">Ajustement relatif (+/-)</label>
-                            <input type="number" name="riskAdjustment" class="form-control form-control-sm"
-                                   value="@(s.RiskAdjustment.HasValue ? s.RiskAdjustment.Value.ToString() : "")"
-                                   placeholder="ex: 10 ou -5 (vide = score brut de l'algo)" />
-                            <div class="form-text">Valeur ajoutée au score calculé. Vide = utiliser le score brut.</div>
-                        </div>
-
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold small">Croissance par heure (0–20)</label>
-                            <input type="number" name="riskGrowthRatePerHour" class="form-control form-control-sm"
-                                   value="@s.RiskGrowthRatePerHour" min="0" max="20" required />
-                        </div>
-                    </div>
-                    <div class="modal-footer py-2">
-                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
-                    </div>
-                </form>
+<!-- Single reusable edit modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="editModalTitle">Modifier une rue</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
             </div>
+            <form method="post" asp-page-handler="Edit">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editId" />
+
+                    <div class="alert alert-light border py-2 mb-3 small">
+                        <i class="fa-solid fa-brain me-1 text-primary"></i>
+                        Score calculé par l'algorithme :
+                        <span class="badge bg-primary ms-1" id="editComputedScore"></span>
+                        <span class="text-muted">/ 100</span>
+                        <span class="ms-2 text-muted">— actuel :</span>
+                        <span class="badge bg-secondary ms-1" id="editCurrentBase"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="hidden" name="isRiskLocked" value="false" />
+                        <input type="checkbox" name="isRiskLocked" value="true"
+                               class="form-check-input" id="editLock"
+                               onchange="toggleEditMode(this.checked)" />
+                        <label class="form-check-label small fw-semibold" for="editLock">
+                            <i class="fa-solid fa-lock me-1 text-warning"></i>
+                            Verrouiller (override absolu, l'algorithme n'y touche plus)
+                        </label>
+                    </div>
+
+                    <div id="editAbsDiv" class="mb-3" style="display:none">
+                        <label class="form-label fw-semibold small">Score absolu (0–100)</label>
+                        <input type="number" name="baseRiskScore" id="editBaseRiskScore"
+                               class="form-control form-control-sm" min="0" max="100" />
+                    </div>
+
+                    <div id="editAdjDiv" class="mb-3">
+                        <label class="form-label fw-semibold small">Ajustement relatif (+/-)</label>
+                        <input type="number" name="riskAdjustment" id="editRiskAdjustment"
+                               class="form-control form-control-sm"
+                               placeholder="ex: 10 ou -5 (vide = score brut de l'algo)" />
+                        <div class="form-text">Valeur ajoutée au score calculé. Vide = utiliser le score brut.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Croissance par semaine — Jour (0–50)</label>
+                        <input type="number" name="riskGrowthRatePerWeek" id="editGrowthRate"
+                               class="form-control form-control-sm" min="0" max="50" step="0.1" required />
+                    </div>
+
+                    <div class="card bg-dark bg-opacity-10 border-0 p-3 mb-2">
+                        <div class="fw-semibold small mb-2">
+                            <i class="fa-solid fa-moon me-1 text-primary"></i>Plage horaire de nuit
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Heure de début (0–23)</label>
+                                <input type="number" name="nightStartHour" id="editNightStart"
+                                       class="form-control form-control-sm" min="0" max="23" required />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Heure de fin (0–23)</label>
+                                <input type="number" name="nightEndHour" id="editNightEnd"
+                                       class="form-control form-control-sm" min="0" max="23" required />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold small">Croissance par semaine — Nuit (0–50)</label>
+                            <input type="number" name="nightRiskGrowthRatePerWeek" id="editNightGrowthRate"
+                                   class="form-control form-control-sm" min="0" max="50" step="0.1" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Enregistrer</button>
+                </div>
+            </form>
         </div>
     </div>
-}
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        function toggleRiskMode(id, locked) {
-            document.getElementById('abs-' + id).style.display = locked ? '' : 'none';
-            document.getElementById('adj-' + id).style.display = locked ? 'none' : '';
+    function toggleEditMode(locked) {
+        document.getElementById('editAbsDiv').style.display = locked ? '' : 'none';
+        document.getElementById('editAdjDiv').style.display = locked ? 'none' : '';
+    }
+
+    (function () {
+        let currentPage = 1;
+
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn    = document.getElementById('clearSearch');
+        const riskFilter  = document.getElementById('riskFilter');
+        const sortOrder   = document.getElementById('sortOrder');
+        const pageSizeEl  = document.getElementById('pageSize');
+
+        function getPageSize() { return parseInt(pageSizeEl.value) || 25; }
+
+        function load(page) {
+            currentPage = page;
+            var loadingRow = document.getElementById('loadingRow');
+            if (loadingRow) loadingRow.style.display = '';
+            document.getElementById('noResults').style.display  = 'none';
+            document.getElementById('paginationContainer').style.display = 'none';
+
+            const search    = searchInput.value.trim();
+            const riskLevel = riskFilter.value;
+            const sort      = sortOrder.value;
+            const pageSize  = getPageSize();
+
+            const params = new URLSearchParams({ page: page, pageSize: pageSize });
+            if (search)    params.set('search', search);
+            if (riskLevel) params.set('riskLevel', riskLevel);
+            if (sort)      params.set('sort', sort);
+
+            fetch('/Admin/Streets?handler=Search&' + params.toString())
+                .then(function(r) { return r.json(); })
+                .then(function(data) { render(data); })
+                .catch(function() {
+                    document.getElementById('streetsBody').innerHTML =
+                        '<tr><td colspan="7" class="text-center py-4 text-danger">' +
+                        '<i class="fa-solid fa-circle-exclamation me-2"></i>Impossible de charger les rues.</td></tr>';
+                });
         }
 
-        (function () {
-            const tbody       = document.getElementById('streetsBody');
-            if (!tbody) return;
+        function render(data) {
+            const tbody    = document.getElementById('streetsBody');
+            const total    = data.totalCount || 0;
+            const streets  = data.streets || [];
+            const pageSize = getPageSize();
 
-            const allRows     = Array.from(tbody.querySelectorAll('tr'));
-            const totalCount  = allRows.length;
-            let currentPage   = 1;
-            let filteredRows  = allRows.slice();
+            document.getElementById('streetCount').textContent = total;
+            var loadingRow = document.getElementById('loadingRow');
+            if (loadingRow) loadingRow.remove();
 
-            const searchInput  = document.getElementById('searchInput');
-            const clearBtn     = document.getElementById('clearSearch');
-            const riskFilter   = document.getElementById('riskFilter');
-            const sortOrder    = document.getElementById('sortOrder');
-            const pageSizeEl   = document.getElementById('pageSize');
-            const streetCount  = document.getElementById('streetCount');
-            const pageInfo     = document.getElementById('pageInfo');
-            const paginationNav = document.getElementById('paginationNav');
-            const noResults    = document.getElementById('noResults');
-            const paginationContainer = document.getElementById('paginationContainer');
+            clearBtn.style.display = (searchInput.value || riskFilter.value) ? '' : 'none';
 
-            function applyFilters() {
-                const term = searchInput.value.trim().toLowerCase();
-                const risk = riskFilter.value;
-
-                clearBtn.style.display = (term || risk) ? '' : 'none';
-
-                filteredRows = allRows.filter(row => {
-                    const matchText = !term ||
-                        row.dataset.name.includes(term) ||
-                        row.dataset.district.includes(term) ||
-                        row.dataset.city.includes(term);
-                    const matchRisk = !risk || row.dataset.riskLevel === risk;
-                    return matchText && matchRisk;
-                });
-
-                applySort();
+            if (streets.length === 0) {
+                tbody.innerHTML = '';
+                document.getElementById('noResults').style.display = '';
+                return;
             }
 
-            function applySort() {
-                const sort = sortOrder.value;
-                filteredRows.sort((a, b) => {
-                    if (sort === 'risk-desc') return +b.dataset.risk - +a.dataset.risk;
-                    if (sort === 'risk-asc')  return +a.dataset.risk - +b.dataset.risk;
-                    if (sort === 'name-asc')  return a.dataset.name.localeCompare(b.dataset.name);
-                    if (sort === 'name-desc') return b.dataset.name.localeCompare(a.dataset.name);
-                    return 0;
-                });
-                currentPage = 1;
-                render();
+            document.getElementById('noResults').style.display = 'none';
+
+            var html = '';
+            streets.forEach(function(s) {
+                const badgeClass = s.currentRiskScore > 70 ? 'bg-danger' :
+                                   s.currentRiskScore > 40 ? 'bg-warning text-dark' :
+                                   s.currentRiskScore > 20 ? 'bg-info text-dark' : 'bg-success';
+                const lastPatrol = s.lastPatrolledAt
+                    ? new Date(s.lastPatrolledAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : 'Jamais';
+                const lat = s.startLatitude ? s.startLatitude.toFixed(4) : '';
+                const lon = s.startLongitude ? s.startLongitude.toFixed(4) : '';
+
+                const editJson = encodeURIComponent(JSON.stringify({
+                    id: s.id, name: s.name,
+                    computedBase: s.computedBaseRiskScore,
+                    baseRisk: s.baseRiskScore,
+                    locked: s.isRiskLocked,
+                    adj: s.riskAdjustment,
+                    growth: s.riskGrowthRatePerWeek,
+                    nightGrowth: s.nightRiskGrowthRatePerWeek,
+                    nightStart: s.nightStartHour,
+                    nightEnd: s.nightEndHour
+                }));
+
+                html += '<tr>' +
+                    '<td class="fw-semibold">' + escHtml(s.name) +
+                        '<br/><span class="small text-muted">' + lat + ', ' + lon + '</span></td>' +
+                    '<td class="text-muted small">' +
+                        (s.district ? escHtml(s.district) : '') +
+                        (s.city ? ' — ' + escHtml(s.city) : '') + '</td>' +
+                    '<td><span class="badge bg-secondary">' + s.baseRiskScore + '</span></td>' +
+                    '<td><span class="badge bg-secondary">' + s.riskGrowthRatePerWeek + '</span></td>' +
+                    '<td><span class="badge ' + badgeClass + '">' + s.currentRiskScore + '</span></td>' +
+                    '<td class="small text-muted">' + lastPatrol + '</td>' +
+                    '<td class="text-end" style="white-space:nowrap">' +
+                        '<button type="button" class="btn btn-sm btn-outline-secondary me-1" ' +
+                            'onclick="openEditModal(decodeURIComponent(\'' + editJson + '\'))">' +
+                            '<i class="fa-solid fa-pen"></i></button>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger" ' +
+                            'onclick="deleteStreet(\'' + s.id + '\')">' +
+                            '<i class="fa-solid fa-trash"></i></button>' +
+                    '</td></tr>';
+            });
+            tbody.innerHTML = html;
+
+            // Pagination
+            const totalPages = Math.ceil(total / pageSize);
+            const pc = document.getElementById('paginationContainer');
+            if (totalPages > 1) {
+                pc.style.display = '';
+                renderPagination(totalPages, total, pageSize);
+            } else {
+                pc.style.display = 'none';
+                document.getElementById('pageInfo').textContent = total + ' rue(s)';
             }
+        }
 
-            function render() {
-                const size       = parseInt(pageSizeEl.value) || 0;
-                const totalPages = size ? Math.ceil(filteredRows.length / size) : 1;
-                if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+        function escHtml(s) {
+            return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
 
-                const start = size ? (currentPage - 1) * size : 0;
-                const end   = size ? start + size : filteredRows.length;
-                const pageRows = filteredRows.slice(start, end);
+        function renderPagination(totalPages, total, pageSize) {
+            const nav = document.getElementById('paginationNav');
+            nav.innerHTML = '';
+            const from = (currentPage - 1) * pageSize + 1;
+            const to   = Math.min(currentPage * pageSize, total);
+            document.getElementById('pageInfo').textContent = 'Affichage ' + from + '–' + to + ' sur ' + total;
 
-                // Reorder rows in DOM
-                allRows.forEach(r => { r.style.display = 'none'; });
-                pageRows.forEach(r => {
-                    r.style.display = '';
-                    tbody.appendChild(r);
-                });
-
-                // Count badge
-                streetCount.textContent = filteredRows.length < totalCount
-                    ? filteredRows.length + ' / ' + totalCount
-                    : totalCount;
-
-                // No-results state
-                const hasRows = filteredRows.length > 0;
-                document.querySelector('.table-responsive').style.display = hasRows ? '' : 'none';
-                noResults.style.display = hasRows ? 'none' : '';
-                paginationContainer.style.display = (hasRows && size && totalPages > 1) ? '' : 'none';
-
-                if (!hasRows) return;
-
-                // Page info
-                const from = start + 1;
-                const to   = Math.min(end, filteredRows.length);
-                pageInfo.textContent = size
-                    ? `Affichage ${from}–${to} sur ${filteredRows.length}`
-                    : `${filteredRows.length} rue(s)`;
-
-                // Pagination nav
-                paginationNav.innerHTML = '';
-                if (!size || totalPages <= 1) return;
-
-                const prevLi = document.createElement('li');
-                prevLi.className = 'page-item' + (currentPage === 1 ? ' disabled' : '');
-                prevLi.innerHTML = `<a class="page-link" href="#">‹</a>`;
-                prevLi.querySelector('a').addEventListener('click', e => {
-                    e.preventDefault(); if (currentPage > 1) { currentPage--; render(); }
-                });
-                paginationNav.appendChild(prevLi);
-
-                const maxButtons = 7;
-                let start2 = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-                let end2   = Math.min(totalPages, start2 + maxButtons - 1);
-                if (end2 - start2 < maxButtons - 1) start2 = Math.max(1, end2 - maxButtons + 1);
-
-                if (start2 > 1) {
-                    appendPageBtn(1);
-                    if (start2 > 2) appendEllipsis();
-                }
-                for (let p = start2; p <= end2; p++) appendPageBtn(p);
-                if (end2 < totalPages) {
-                    if (end2 < totalPages - 1) appendEllipsis();
-                    appendPageBtn(totalPages);
-                }
-
-                const nextLi = document.createElement('li');
-                nextLi.className = 'page-item' + (currentPage === totalPages ? ' disabled' : '');
-                nextLi.innerHTML = `<a class="page-link" href="#">›</a>`;
-                nextLi.querySelector('a').addEventListener('click', e => {
-                    e.preventDefault(); if (currentPage < totalPages) { currentPage++; render(); }
-                });
-                paginationNav.appendChild(nextLi);
-            }
-
-            function appendPageBtn(p) {
+            function btn(label, pg, disabled, active) {
                 const li = document.createElement('li');
-                li.className = 'page-item' + (p === currentPage ? ' active' : '');
-                li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
-                li.querySelector('a').addEventListener('click', e => {
-                    e.preventDefault(); currentPage = p; render();
-                });
-                paginationNav.appendChild(li);
+                li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                const a = document.createElement('a');
+                a.className = 'page-link'; a.href = '#'; a.textContent = label;
+                if (!disabled && !active) a.addEventListener('click', function(e) { e.preventDefault(); load(pg); });
+                li.appendChild(a); nav.appendChild(li);
             }
 
-            function appendEllipsis() {
-                const li = document.createElement('li');
-                li.className = 'page-item disabled';
-                li.innerHTML = '<span class="page-link">…</span>';
-                paginationNav.appendChild(li);
-            }
+            btn('‹', currentPage - 1, currentPage === 1, false);
+            const range = 5, half = Math.floor(range / 2);
+            let s2 = Math.max(1, currentPage - half);
+            let e2 = Math.min(totalPages, s2 + range - 1);
+            if (e2 - s2 < range - 1) s2 = Math.max(1, e2 - range + 1);
 
-            window.resetFilters = function () {
-                searchInput.value = '';
-                riskFilter.value  = '';
-                sortOrder.value   = 'risk-desc';
-                pageSizeEl.value  = '25';
-                applyFilters();
-            };
+            if (s2 > 1) { btn('1', 1, false, false); if (s2 > 2) btn('…', 0, true, false); }
+            for (let p = s2; p <= e2; p++) btn(p, p, false, p === currentPage);
+            if (e2 < totalPages) { if (e2 < totalPages - 1) btn('…', 0, true, false); btn(totalPages, totalPages, false, false); }
+            btn('›', currentPage + 1, currentPage === totalPages, false);
+        }
 
-            searchInput.addEventListener('input', () => { currentPage = 1; applyFilters(); });
-            clearBtn.addEventListener('click', resetFilters);
-            riskFilter.addEventListener('change', () => { currentPage = 1; applyFilters(); });
-            sortOrder.addEventListener('change', applySort);
-            pageSizeEl.addEventListener('change', () => { currentPage = 1; render(); });
+        window.openEditModal = function(jsonStr) {
+            const data = JSON.parse(jsonStr);
+            document.getElementById('editModalTitle').textContent = 'Modifier — ' + data.name;
+            document.getElementById('editId').value = data.id;
+            document.getElementById('editComputedScore').textContent = data.computedBase;
+            document.getElementById('editCurrentBase').textContent = data.baseRisk;
+            document.getElementById('editLock').checked = data.locked;
+            document.getElementById('editBaseRiskScore').value = data.baseRisk;
+            document.getElementById('editRiskAdjustment').value = data.adj ?? '';
+            document.getElementById('editGrowthRate').value = data.growth;
+            document.getElementById('editNightGrowthRate').value = data.nightGrowth ?? 2.0;
+            document.getElementById('editNightStart').value = data.nightStart ?? 22;
+            document.getElementById('editNightEnd').value = data.nightEnd ?? 6;
+            toggleEditMode(data.locked);
+            new bootstrap.Modal(document.getElementById('editModal')).show();
+        };
 
-            // Initial render
-            applyFilters();
-        })();
+        window.deleteStreet = function(id) {
+            if (!confirm('Supprimer cette rue ?')) return;
+            document.getElementById('deleteId').value = id;
+            document.getElementById('deleteForm').submit();
+        };
+
+        window.resetFilters = function() {
+            searchInput.value = ''; riskFilter.value = ''; sortOrder.value = 'risk-desc';
+            pageSizeEl.value = '25'; clearBtn.style.display = 'none';
+            load(1);
+        };
+
+        var debounce = null;
+        searchInput.addEventListener('input', function() { clearTimeout(debounce); debounce = setTimeout(function() { load(1); }, 350); });
+        clearBtn.addEventListener('click', resetFilters);
+        riskFilter.addEventListener('change', function() { load(1); });
+        sortOrder.addEventListener('change', function() { load(1); });
+        pageSizeEl.addEventListener('change', function() { load(1); });
+
+        load(1);
+    })();
     </script>
 }

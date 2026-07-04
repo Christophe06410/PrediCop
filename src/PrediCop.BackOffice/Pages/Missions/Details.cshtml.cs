@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Missions;
@@ -11,7 +12,7 @@ namespace PrediCop.BackOffice.Pages.Missions;
 public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsModel> logger) : PageModel
 {
     private static readonly JsonSerializerOptions JsonOpts =
-        new() { PropertyNameCaseInsensitive = true };
+        ApiJsonOptions.Default;
 
     private static readonly JsonSerializerOptions SerializeOpts =
         new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -23,6 +24,7 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
     public double? DistanceKm { get; set; }
     public double? EtaMinutes { get; set; }
     public List<string> AssignedVehicleOfficerNames { get; private set; } = [];
+    public string? AssignedVehicleLicensePlate { get; private set; }
     public List<VehicleDto> OnMissionVehicles { get; set; } = [];
     public List<VehicleDto> AvailableVehicles { get; set; } = [];
     public bool CanForceAssign =>
@@ -262,6 +264,7 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
         EtaMinutes = Math.Round(DistanceKm.Value / speedKmH * 60, 0);
 
         AssignedVehicleOfficerNames = vehicle.OfficerNames;
+        AssignedVehicleLicensePlate = vehicle.LicensePlate;
 
         AssignedVehicleJson = JsonSerializer.Serialize(vehicle, SerializeOpts);
     }
@@ -304,6 +307,7 @@ public class DetailsModel(IHttpClientFactory httpClientFactory, ILogger<DetailsM
     private class VehicleMapItem
     {
         public string CallSign { get; set; } = "";
+        public string LicensePlate { get; set; } = "";
         public string Status { get; set; } = "";
         public double? LastLatitude { get; set; }
         public double? LastLongitude { get; set; }

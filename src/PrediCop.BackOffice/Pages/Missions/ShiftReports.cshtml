@@ -91,7 +91,7 @@
                                 <td data-sort="@r.ShiftStart.ToString("yyyy-MM-ddTHH:mm:ss")">@r.ShiftStart.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                 <td data-sort="@r.ShiftEnd.ToString("yyyy-MM-ddTHH:mm:ss")">@r.ShiftEnd.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                 <td class="text-center" data-sort="@((int)dur.TotalMinutes)">
-                                    @((int)dur.TotalHours)h@dur.Minutes.ToString("D2")
+                                    @((int)dur.TotalHours)h@(dur.Minutes.ToString("D2"))
                                 </td>
                                 <td class="text-center">
                                     <span class="fw-semibold">@r.MissionCount</span>

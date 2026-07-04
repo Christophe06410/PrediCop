@@ -9,25 +9,50 @@ namespace PrediCop.BackOffice.Pages.Admin.Streets;
 [Authorize(Roles = "Admin,Manager")]
 public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel> logger) : PageModel
 {
-    public List<StreetDto> Streets { get; set; } = [];
-
     [BindProperty]
     public CreateStreetInput Input { get; set; } = new();
 
     public string? ErrorMessage { get; set; }
 
-    public async Task OnGetAsync()
+    public Task OnGetAsync() => Task.CompletedTask;
+
+    public async Task<IActionResult> OnGetSearchAsync(
+        string? search, string? riskLevel, string? sort,
+        int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
-        await LoadStreetsAsync();
+        pageSize = Math.Clamp(pageSize, 10, 200);
+        var client = httpClientFactory.CreateClient("PrediCopApi");
+        try
+        {
+            var qs = new List<string>();
+            if (!string.IsNullOrWhiteSpace(search)) qs.Add($"search={Uri.EscapeDataString(search)}");
+            if (!string.IsNullOrWhiteSpace(riskLevel)) qs.Add($"riskLevel={riskLevel}");
+            if (!string.IsNullOrWhiteSpace(sort)) qs.Add($"sort={sort}");
+            qs.Add($"page={page}");
+            qs.Add($"pageSize={pageSize}");
+            var url = "/api/streets/paged?" + string.Join("&", qs);
+            var result = await client.GetFromJsonAsync<PagedStreetsResult>(url, ct);
+            return new JsonResult(result ?? new());
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Streets search failed");
+            return new JsonResult(new PagedStreetsResult());
+        }
+    }
+
+    private class PagedStreetsResult
+    {
+        public List<StreetDto> Streets { get; set; } = [];
+        public int TotalCount { get; set; }
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 25;
     }
 
     public async Task<IActionResult> OnPostAddAsync()
     {
         if (!ModelState.IsValid)
-        {
-            await LoadStreetsAsync();
             return Page();
-        }
 
         try
         {
@@ -64,12 +89,12 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
             ErrorMessage = "Impossible de joindre le serveur.";
         }
 
-        await LoadStreetsAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostEditAsync(
-        Guid id, int baseRiskScore, int riskGrowthRatePerHour,
+        Guid id, int baseRiskScore, double riskGrowthRatePerWeek,
+        double nightRiskGrowthRatePerWeek, int nightStartHour, int nightEndHour,
         bool isRiskLocked, int? riskAdjustment)
     {
         try
@@ -78,7 +103,10 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
             var response = await client.PutAsJsonAsync($"/api/streets/{id}", new
             {
                 baseRiskScore,
-                riskGrowthRatePerHour,
+                riskGrowthRatePerWeek,
+                nightRiskGrowthRatePerWeek,
+                nightStartHour,
+                nightEndHour,
                 isRiskLocked,
                 riskAdjustment
             });
@@ -131,20 +159,6 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
         return RedirectToPage();
     }
 
-    private async Task LoadStreetsAsync()
-    {
-        try
-        {
-            var client = httpClientFactory.CreateClient("PrediCopApi");
-            var streets = await client.GetFromJsonAsync<List<StreetDto>>("/api/streets") ?? [];
-            Streets = streets.OrderByDescending(s => s.CurrentRiskScore).ToList();
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Impossible de charger les rues.");
-            Streets = [];
-        }
-    }
 }
 
 public class StreetDto
@@ -157,7 +171,10 @@ public class StreetDto
     public int ComputedBaseRiskScore { get; set; }
     public bool IsRiskLocked { get; set; }
     public int? RiskAdjustment { get; set; }
-    public int RiskGrowthRatePerHour { get; set; }
+    public double RiskGrowthRatePerWeek { get; set; }
+    public double NightRiskGrowthRatePerWeek { get; set; }
+    public int NightStartHour { get; set; }
+    public int NightEndHour { get; set; }
     public int CurrentRiskScore { get; set; }
     public double StartLatitude { get; set; }
     public double StartLongitude { get; set; }

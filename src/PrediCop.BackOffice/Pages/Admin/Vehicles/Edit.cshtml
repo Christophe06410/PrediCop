@@ -71,21 +71,34 @@
                     </div>
 
                     <div class="mb-4">
-                        <label asp-for="Input.AssignedGeoZoneId" class="form-label fw-semibold"></label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fa-solid fa-draw-polygon"></i></span>
-                            <select asp-for="Input.AssignedGeoZoneId" class="form-select">
-                                <option value="">— Aucune zone assignée —</option>
+                        <label class="form-label fw-semibold">
+                            <i class="fa-solid fa-draw-polygon me-1 text-primary"></i>Zones de patrouille (géofencing)
+                        </label>
+                        @if (Model.GeoZones.Count == 0)
+                        {
+                            <div class="text-muted small fst-italic">Aucune zone de patrouille définie.</div>
+                        }
+                        else
+                        {
+                            <div class="border rounded p-3" style="max-height:200px;overflow-y:auto;">
                                 @foreach (var zone in Model.GeoZones)
                                 {
-                                    <option value="@zone.Id" style="border-left: 4px solid @zone.Color;">
-                                        @zone.Name@(zone.IsActive ? "" : " (inactive)")
-                                    </option>
+                                    var isChecked = Model.Input.AssignedGeoZoneIds.Contains(zone.Id);
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="Input.AssignedGeoZoneIds"
+                                               value="@zone.Id"
+                                               id="zone_@zone.Id"
+                                               @(isChecked ? "checked" : "") />
+                                        <label class="form-check-label d-flex align-items-center gap-2" for="zone_@zone.Id">
+                                            <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:@zone.Color;flex-shrink:0;"></span>
+                                            @zone.Name@(zone.IsActive ? "" : " (inactive)")
+                                        </label>
+                                    </div>
                                 }
-                            </select>
-                        </div>
-                        <span asp-validation-for="Input.AssignedGeoZoneId" class="text-danger small"></span>
-                        <div class="form-text">Zone de patrouille utilisée pour le géofencing. Une alerte est envoyée si le véhicule sort de cette zone.</div>
+                            </div>
+                        }
+                        <div class="form-text">Une alerte est envoyée si le véhicule quitte toutes ses zones assignées.</div>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-end">

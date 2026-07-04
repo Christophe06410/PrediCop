@@ -41,7 +41,7 @@ public class PatrolController(
     /// Retourne la liste des agents (PatrolAgent) disponibles pour composer une patrouille.
     /// </summary>
     [HttpGet("available-agents")]
-    [Authorize(Roles = "PatrolLeader,Admin,Manager")]
+    [Authorize(Roles = "PatrolLeader,Admin,Manager,Operator")]
     public async Task<ActionResult<List<AvailableAgentDto>>> GetAvailableAgents(CancellationToken ct)
     {
         var agents = await db.Users
@@ -243,6 +243,102 @@ public class PatrolController(
         return Ok(result);
     }
 
+    /// <summary>
+    /// L'agent (ou chef) retire sa propre assignation du véhicule en cours.
+    /// Le véhicule reste actif si d'autres membres sont encore présents.
+    /// </summary>
+    [HttpPost("leave")]
+    public async Task<IActionResult> LeavePatrol(CancellationToken ct)
+    {
+        var assignment = await db.VehicleOfficers
+            .FirstOrDefaultAsync(vo => vo.UserId == UserId && vo.IsActive, ct);
+
+        if (assignment is null)
+            return NoContent(); // Déjà sans véhicule
+
+        var vehicleId = assignment.VehicleId;
+        assignment.IsActive = false;
+        assignment.UnassignedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("CrewUpdated", new { vehicleId }, ct);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Ajoute manuellement un agent à un véhicule (fallback BLE depuis le Back Office).
+    /// </summary>
+    [HttpPost("{vehicleId:guid}/add-agent")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
+    public async Task<IActionResult> AddAgent(
+        Guid vehicleId,
+        [FromBody] AddAgentRequest request,
+        CancellationToken ct)
+    {
+        var vehicle = await db.PatrolVehicles
+            .FirstOrDefaultAsync(v => v.Id == vehicleId && v.TenantId == TenantId, ct);
+        if (vehicle is null)
+            return Problem(title: "Véhicule non trouvé", statusCode: 404);
+
+        var agent = await db.Users
+            .FirstOrDefaultAsync(u => u.Id == request.UserId && u.TenantId == TenantId && u.IsActive && !u.IsDeleted, ct);
+        if (agent is null)
+            return Problem(title: "Agent non trouvé", statusCode: 404);
+
+        // Désaffecter l'agent de tout autre véhicule actif
+        var existing = await db.VehicleOfficers
+            .Where(vo => vo.UserId == request.UserId && vo.IsActive)
+            .ToListAsync(ct);
+        foreach (var vo in existing)
+        {
+            vo.IsActive = false;
+            vo.UnassignedAt = DateTime.UtcNow;
+        }
+
+        db.VehicleOfficers.Add(new VehicleOfficer
+        {
+            VehicleId = vehicleId,
+            UserId = request.UserId,
+            IsActive = true,
+            IsLeader = false,
+            AssignedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("CrewUpdated", new { vehicleId }, ct);
+
+        return Ok();
+    }
+
+    /// <summary>
+    /// Retire un agent d'un véhicule (fallback BLE depuis le Back Office).
+    /// </summary>
+    [HttpDelete("{vehicleId:guid}/agents/{userId:guid}")]
+    [Authorize(Roles = "Admin,Manager,Operator")]
+    public async Task<IActionResult> RemoveAgent(Guid vehicleId, Guid userId, CancellationToken ct)
+    {
+        var assignment = await db.VehicleOfficers
+            .FirstOrDefaultAsync(vo => vo.VehicleId == vehicleId && vo.UserId == userId && vo.IsActive, ct);
+        if (assignment is null)
+            return Problem(title: "Agent non trouvé dans cet équipage", statusCode: 404);
+
+        assignment.IsActive = false;
+        assignment.UnassignedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        await hubContext.Clients
+            .Group($"operators_{TenantId}")
+            .SendAsync("CrewUpdated", new { vehicleId }, ct);
+
+        return NoContent();
+    }
+
     private static VehicleResponse MapToResponse(PatrolVehicle v) => new()
     {
         Id = v.Id,
@@ -253,7 +349,7 @@ public class PatrolController(
         LastLongitude = v.LastLongitude,
         LastPositionUpdate = v.LastPositionUpdate,
         BeaconUuid = v.BeaconUuid,
-        AssignedGeoZoneId = v.AssignedGeoZoneId,
+        AssignedGeoZoneIds = v.AssignedGeoZones.Select(z => z.Id).ToList(),
         Capacity = v.Capacity,
         Indicatif = v.Indicatif,
         PatrolType = v.PatrolType,
@@ -281,3 +377,5 @@ public class AvailableAgentDto
     public string BadgeNumber { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 }
+
+public record AddAgentRequest(Guid UserId);

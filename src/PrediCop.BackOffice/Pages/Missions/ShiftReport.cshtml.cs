@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Missions;
@@ -13,12 +14,23 @@ public class ShiftReportModel(
     IHttpClientFactory httpClientFactory,
     ILogger<ShiftReportModel> logger) : PageModel
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOpts = ApiJsonOptions.Default;
 
     // ---- Données de la page ----
     public List<VehicleDto> Vehicles { get; set; } = [];
     public ShiftReportDto? GeneratedReport { get; set; }
     public string? ErrorMessage { get; set; }
+
+    public bool CanSign
+    {
+        get
+        {
+            if (GeneratedReport is null || GeneratedReport.IsSigned) return false;
+            var uidStr = User.FindFirst("userId")?.Value;
+            if (!Guid.TryParse(uidStr, out var uid)) return false;
+            return GeneratedReport.AuthorizedSignerIds.Contains(uid);
+        }
+    }
 
     // ---- Formulaire ----
     [BindProperty]
@@ -88,6 +100,7 @@ public class ShiftReportModel(
 
     public async Task<IActionResult> OnPostSignAsync(Guid reportId, CancellationToken ct)
     {
+        ModelState.Clear();
         await LoadVehiclesAsync(ct);
 
         var client = httpClientFactory.CreateClient("PrediCopApi");
@@ -150,6 +163,8 @@ public class ShiftReportDto
     public bool IsSigned { get; set; }
     public DateTime? SignedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? SignedByName { get; set; }
+    public List<Guid> AuthorizedSignerIds { get; set; } = [];
 
     public TimeSpan Duration => ShiftEnd - ShiftStart;
 }

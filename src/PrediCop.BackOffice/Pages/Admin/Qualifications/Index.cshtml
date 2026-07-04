@@ -25,21 +25,6 @@
     </div>
 }
 
-@if (TempData["SuccessMessage"] is string ok)
-{
-    <div class="alert alert-success alert-dismissible fade show">
-        <i class="fa-solid fa-circle-check me-1"></i>@ok
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["ErrorMessage"] is string err)
-{
-    <div class="alert alert-danger alert-dismissible fade show">
-        <i class="fa-solid fa-circle-exclamation me-1"></i>@err
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
 <!-- Filtres -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
@@ -98,17 +83,17 @@
         }
         else
         {
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-hover mb-0 align-middle" id="qualsTable">
                 <thead class="table-dark">
                     <tr>
-                        <th>Agent</th>
-                        <th>Badge</th>
-                        <th>Type</th>
+                        <th class="sortable" data-col="0" style="cursor:pointer">Agent <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
+                        <th class="sortable" data-col="1" style="cursor:pointer">Badge <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
+                        <th class="sortable" data-col="2" style="cursor:pointer">Type <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
                         <th>Référence</th>
                         <th>Autorité émettrice</th>
-                        <th class="text-center">Émise le</th>
-                        <th class="text-center">Expire le</th>
-                        <th class="text-center">Statut</th>
+                        <th class="text-center sortable" data-col="5" style="cursor:pointer">Émise le <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
+                        <th class="text-center sortable" data-col="6" style="cursor:pointer">Expire le <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
+                        <th class="text-center sortable" data-col="7" style="cursor:pointer">Statut <i class="fa-solid fa-sort ms-1 opacity-50 small"></i></th>
                         <th class="text-end" style="width:130px">Actions</th>
                     </tr>
                 </thead>
@@ -159,3 +144,48 @@
         }
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    const table = document.getElementById('qualsTable');
+    if (!table) return;
+    let sortCol = -1, sortAsc = true;
+
+    // Convert DD/MM/YYYY → YYYY/MM/DD for correct string-sort of date columns
+    function cellVal(row, col) {
+        const t = row.cells[col]?.innerText.trim() ?? '';
+        if (col === 5 || col === 6) {
+            const p = t.split('/');
+            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+        }
+        return t;
+    }
+
+    table.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = parseInt(th.dataset.col);
+            if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+
+            // Update icons
+            table.querySelectorAll('th.sortable i').forEach(i => {
+                i.className = 'fa-solid fa-sort ms-1 opacity-50 small';
+            });
+            const icon = th.querySelector('i');
+            icon.className = sortAsc
+                ? 'fa-solid fa-sort-up ms-1 small text-info'
+                : 'fa-solid fa-sort-down ms-1 small text-info';
+
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+                const va = cellVal(a, col);
+                const vb = cellVal(b, col);
+                return sortAsc ? va.localeCompare(vb, 'fr') : vb.localeCompare(va, 'fr');
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        });
+    });
+})();
+</script>
+}

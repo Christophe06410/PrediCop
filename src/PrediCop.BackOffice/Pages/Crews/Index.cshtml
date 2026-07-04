@@ -3,14 +3,17 @@
 @inject IConfiguration Configuration
 @inject IHttpContextAccessor HttpContextAccessor
 @{
-    ViewData["Title"] = "Équipages en service";
+    ViewData["Title"] = "Équipages";
+    var apiBase = Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7229";
+    var jwtToken = HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") ?? "";
+    var canManage = User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Operator");
 }
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0">
         <i class="fa-solid fa-users me-2 text-primary"></i>
-        Équipages en service
-        <span class="badge bg-primary ms-2">@Model.Crews.Count</span>
+        Équipages
+        <span class="badge bg-primary ms-2" id="crew-count">@Model.Crews.Count</span>
     </h1>
     <div class="d-flex align-items-center gap-3">
         <small class="text-muted">
@@ -28,151 +31,237 @@
         <i class="fa-solid fa-circle-exclamation me-2"></i>@Model.ErrorMessage
     </div>
 }
-else if (Model.Crews.Count == 0)
-{
-    <div class="card">
-        <div class="card-body text-center py-5 text-muted">
-            <i class="fa-solid fa-users-slash fa-3x mb-3 d-block opacity-25"></i>
-            <p class="mb-0">Aucun équipage en service actuellement.</p>
-        </div>
-    </div>
-}
 else
 {
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th><i class="fa-solid fa-radio me-1"></i>Indicatif</th>
-                            <th>Statut</th>
-                            <th><i class="fa-solid fa-user-shield me-1"></i>Équipage</th>
-                            <th><i class="fa-solid fa-car-side me-1"></i>Mission en cours</th>
-                            <th><i class="fa-solid fa-map-pin me-1"></i>Position</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var crew in Model.Crews)
-                        {
-                            <tr id="crew-row-@crew.VehicleId">
-                                <td>
-                                    <div class="fw-semibold">@crew.CallSign</div>
-                                    <small class="text-muted">@crew.LicensePlate</small>
-                                </td>
-                                <td>
-                                    @{
-                                        var (badgeClass, statusLabel) = crew.Status switch
-                                        {
-                                            "OnMission" => ("bg-danger", "En mission"),
-                                            "Busy"      => ("bg-warning text-dark", "Occupé"),
-                                            "Available" => ("bg-success", "Disponible"),
-                                            _           => ("bg-secondary", crew.Status)
-                                        };
-                                    }
-                                    <span class="badge @badgeClass">@statusLabel</span>
-                                </td>
-                                <td>
-                                    @if (crew.Officers.Count == 0)
+    <div id="toast-container" style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;"></div>
+
+    @if (Model.Crews.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="fa-solid fa-users-slash fa-3x mb-3 d-block opacity-25"></i>
+                <p class="mb-0">Aucun véhicule configuré.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var crew in Model.Crews)
+            {
+                var (cardBorder, statusLabel, statusBadge) = crew.Status switch
+                {
+                    "OnMission" => ("border-danger",  "En mission",  "bg-danger"),
+                    "Busy"      => ("border-warning", "Occupé",      "bg-warning text-dark"),
+                    "Available" => ("border-success", "Disponible",  "bg-success"),
+                    _           => ("border-secondary","Hors service","bg-secondary")
+                };
+
+                <div class="col-12 col-lg-6" id="vehicle-card-@crew.VehicleId">
+                    <div class="card h-100 @cardBorder">
+                        <div class="card-header d-flex align-items-center justify-content-between py-2">
+                            <div>
+                                <span class="fw-bold fs-6">@crew.CallSign</span>
+                                <span class="text-muted small ms-2">@crew.LicensePlate</span>
+                                @if (!string.IsNullOrEmpty(crew.Indicatif))
+                                {
+                                    <span class="badge bg-dark ms-2">
+                                        <i class="fa-solid fa-radio me-1"></i>@crew.Indicatif
+                                    </span>
+                                }
+                            </div>
+                            <span class="badge @statusBadge">@statusLabel</span>
+                        </div>
+
+                        <div class="card-body py-2">
+                            @if (crew.SessionStartedAt.HasValue)
+                            {
+                                <div class="text-muted small mb-2">
+                                    <i class="fa-regular fa-clock me-1"></i>
+                                    En service depuis @crew.SessionStartedAt.Value.ToLocalTime().ToString("HH:mm")
+                                </div>
+                            }
+
+                            @* Membres actuels *@
+                            <div id="crew-list-@crew.VehicleId">
+                                @if (crew.Officers.Count == 0)
+                                {
+                                    <p class="text-muted fst-italic small mb-2">Aucun agent assigné</p>
+                                }
+                                else
+                                {
+                                    foreach (var officer in crew.Officers)
                                     {
-                                        <span class="text-muted fst-italic">Sans agent</span>
-                                    }
-                                    else
-                                    {
-                                        foreach (var officer in crew.Officers)
-                                        {
-                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                        <div class="d-flex align-items-center justify-content-between mb-1 officer-row"
+                                             data-user-id="@officer.UserId">
+                                            <div class="d-flex align-items-center gap-2">
+                                                @if (officer.IsLeader)
+                                                {
+                                                    <i class="fa-solid fa-star text-warning" title="Chef de patrouille"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fa-solid fa-user text-secondary"></i>
+                                                }
                                                 <span>@officer.FullName</span>
                                                 <span class="badge bg-secondary">@officer.BadgeNumber</span>
                                             </div>
-                                        }
-                                    }
-                                </td>
-                                <td>
-                                    @if (crew.CurrentMission is not null)
-                                    {
-                                        var m = crew.CurrentMission;
-                                        var duration = crew.CurrentMission.AcceptedAt.HasValue
-                                            ? (DateTime.UtcNow - crew.CurrentMission.AcceptedAt.Value)
-                                            : (TimeSpan?)null;
-                                        var durationText = duration.HasValue
-                                            ? (duration.Value.TotalHours >= 1
-                                                ? $"{(int)duration.Value.TotalHours}h{duration.Value.Minutes:00}"
-                                                : $"{duration.Value.Minutes} min")
-                                            : "";
-                                        var priorityClass = m.Priority switch
-                                        {
-                                            "Critique" => "bg-danger",
-                                            "SOS"      => "bg-danger",
-                                            "Urgent"   => "bg-warning text-dark",
-                                            _          => "bg-secondary"
-                                        };
-                                        <div>
-                                            <a href="/Missions/Details/@m.MissionId" class="fw-semibold text-decoration-none">@m.Reference</a>
-                                            <span class="badge @priorityClass ms-1">@m.Priority</span>
-                                            @if (!string.IsNullOrEmpty(durationText))
+                                            @if (canManage && !officer.IsLeader)
                                             {
-                                                <span class="badge bg-light text-dark ms-1">
-                                                    <i class="fa-solid fa-stopwatch me-1"></i>@durationText
-                                                </span>
+                                                <button class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                        title="Retirer de l'équipage"
+                                                        onclick="removeAgent('@crew.VehicleId', '@officer.UserId', this)">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
                                             }
-                                            <div class="text-muted small">@m.TargetAddress</div>
                                         </div>
                                     }
-                                    else
+                                }
+                            </div>
+
+                            @* Mission en cours *@
+                            @if (crew.CurrentMission is not null)
+                            {
+                                var m = crew.CurrentMission;
+                                var duration = m.AcceptedAt.HasValue ? (DateTime.UtcNow - m.AcceptedAt.Value) : (TimeSpan?)null;
+                                var durationText = duration.HasValue
+                                    ? (duration.Value.TotalHours >= 1
+                                        ? $"{(int)duration.Value.TotalHours}h{duration.Value.Minutes:00}"
+                                        : $"{duration.Value.Minutes} min")
+                                    : "";
+                                var priorityClass = m.Priority switch
+                                {
+                                    "Critique" => "bg-danger",
+                                    "SOS"      => "bg-danger",
+                                    "Urgent"   => "bg-warning text-dark",
+                                    _          => "bg-secondary"
+                                };
+                                <hr class="my-2" />
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <i class="fa-solid fa-siren-on text-danger"></i>
+                                    <a href="/Missions/Details/@m.MissionId" class="fw-semibold text-decoration-none small">@m.Reference</a>
+                                    <span class="badge @priorityClass">@m.Priority</span>
+                                    @if (!string.IsNullOrEmpty(durationText))
                                     {
-                                        <span class="text-muted">—</span>
+                                        <span class="badge bg-light text-dark">
+                                            <i class="fa-solid fa-stopwatch me-1"></i>@durationText
+                                        </span>
                                     }
-                                </td>
-                                <td>
-                                    @if (crew.LastLatitude.HasValue && crew.LastLongitude.HasValue)
-                                    {
-                                        var mapsUrl = $"https://www.google.com/maps?q={crew.LastLatitude:F5},{crew.LastLongitude:F5}";
-                                        <a href="@mapsUrl" target="_blank" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fa-solid fa-map-location-dot me-1"></i>Voir
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">Non disponible</span>
-                                    }
-                                </td>
-                            </tr>
+                                    <span class="text-muted small">@m.TargetAddress</span>
+                                </div>
+                            }
+                        </div>
+
+                        @if (canManage)
+                        {
+                            <div class="card-footer py-2">
+                                <div class="d-flex gap-2">
+                                    <select class="form-select form-select-sm agent-select" id="agent-select-@crew.VehicleId">
+                                        <option value="">— Ajouter un agent —</option>
+                                        @foreach (var agent in Model.AvailableAgents)
+                                        {
+                                            // Exclure les agents déjà dans cet équipage
+                                            var alreadyIn = crew.Officers.Any(o => o.UserId == agent.Id);
+                                            if (!alreadyIn)
+                                            {
+                                                <option value="@agent.Id">@agent.FullName (@agent.BadgeNumber)</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button class="btn btn-primary btn-sm text-nowrap"
+                                            onclick="addAgent('@crew.VehicleId', this)">
+                                        <i class="fa-solid fa-plus me-1"></i>Ajouter
+                                    </button>
+                                </div>
+                            </div>
                         }
-                    </tbody>
-                </table>
-            </div>
+                    </div>
+                </div>
+            }
         </div>
-    </div>
+    }
 }
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
-    // Auto-refresh toutes les 30 secondes
-    setTimeout(function () { location.reload(); }, 30000);
+    var _apiBase  = '@apiBase';
+    var _token    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(jwtToken));
 
-    // SignalR : rechargement si une mission change de statut
+    function showToast(msg, type) {
+        var id = 'toast-' + Date.now();
+        var cls = type === 'success' ? 'bg-success text-white' : 'bg-danger text-white';
+        var html = '<div id="' + id + '" class="toast align-items-center ' + cls + ' border-0 show mb-2" role="alert">'
+                 + '<div class="d-flex"><div class="toast-body">' + msg + '</div>'
+                 + '<button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById(\'' + id + '\').remove()"></button>'
+                 + '</div></div>';
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+        setTimeout(function () {
+            var el = document.getElementById(id);
+            if (el) el.remove();
+        }, 4000);
+    }
+
+    function addAgent(vehicleId, btn) {
+        var sel   = document.getElementById('agent-select-' + vehicleId);
+        var userId = sel ? sel.value : '';
+        if (!userId) { showToast('Sélectionnez un agent.', 'danger'); return; }
+
+        btn.disabled = true;
+        fetch(_apiBase + '/api/patrol/' + vehicleId + '/add-agent', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId })
+        })
+        .then(function (r) {
+            btn.disabled = false;
+            if (r.ok) {
+                showToast('Agent ajouté avec succès.', 'success');
+                setTimeout(function () { location.reload(); }, 800);
+            } else {
+                r.json().then(function (d) { showToast('Erreur : ' + (d.title || r.status), 'danger'); });
+            }
+        })
+        .catch(function () { btn.disabled = false; showToast('Erreur réseau.', 'danger'); });
+    }
+
+    function removeAgent(vehicleId, userId, btn) {
+        btn.disabled = true;
+        fetch(_apiBase + '/api/patrol/' + vehicleId + '/agents/' + userId, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + _token }
+        })
+        .then(function (r) {
+            btn.disabled = false;
+            if (r.ok) {
+                showToast('Agent retiré.', 'success');
+                var row = btn.closest('.officer-row');
+                if (row) row.remove();
+            } else {
+                r.json().then(function (d) { showToast('Erreur : ' + (d.title || r.status), 'danger'); });
+            }
+        })
+        .catch(function () { btn.disabled = false; showToast('Erreur réseau.', 'danger'); });
+    }
+
+    // Auto-refresh toutes les 60 secondes
+    setTimeout(function () { location.reload(); }, 60000);
+
+    // SignalR : rechargement si équipage ou mission change
     (function () {
-        var _apiHubUrl = '@(Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7229")' + '/hubs/police';
-        var _token = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(HttpContextAccessor.HttpContext?.Session.GetString("JwtToken") ?? ""));
-
         var connection = new signalR.HubConnectionBuilder()
-            .withUrl(_apiHubUrl, { accessTokenFactory: function () { return _token; } })
+            .withUrl(_apiBase + '/hubs/police', { accessTokenFactory: function () { return _token; } })
             .withAutomaticReconnect()
             .build();
 
-        connection.on('MissionStatusChanged', function (data) {
-            location.reload();
-        });
+        connection.on('MissionStatusChanged', function () { location.reload(); });
+        connection.on('CrewUpdated',          function () { location.reload(); });
+        connection.on('PatrolActivated',      function () { location.reload(); });
+        connection.on('PatrolDeactivated',    function () { location.reload(); });
 
         connection.start()
-            .then(function () {
-                connection.invoke('JoinOperatorGroup').catch(function () {});
-            })
-            .catch(function (err) {
-                console.warn('[Crews] SignalR connection failed:', err);
-            });
+            .then(function () { connection.invoke('JoinOperatorGroup').catch(function () {}); })
+            .catch(function (err) { console.warn('[Crews] SignalR:', err); });
     })();
     </script>
 }

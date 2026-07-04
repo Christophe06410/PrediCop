@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using PrediCop.BackOffice.Models;
 using PrediCop.BackOffice.Services;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Calls;
@@ -13,7 +14,7 @@ public class ExportModel(
     IHttpClientFactory httpClientFactory,
     ILogger<ExportModel> logger) : PageModel
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOpts = ApiJsonOptions.Default;
 
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken ct)
     {

@@ -1,4 +1,6 @@
-﻿namespace PrediCop.Core.DTOs;
+using PrediCop.Core.Enums;
+
+namespace PrediCop.Core.DTOs;
 
 public class StreetResponse
 {
@@ -15,7 +17,10 @@ public class StreetResponse
     public int ComputedBaseRiskScore { get; set; }
     public bool IsRiskLocked { get; set; }
     public int? RiskAdjustment { get; set; }
-    public int RiskGrowthRatePerHour { get; set; }
+    public double RiskGrowthRatePerWeek { get; set; }
+    public double NightRiskGrowthRatePerWeek { get; set; }
+    public int NightStartHour { get; set; }
+    public int NightEndHour { get; set; }
     public int CurrentRiskScore { get; set; }
     public DateTime? LastPatrolledAt { get; set; }
     public int PatrolIntervalHours { get; set; }
@@ -26,7 +31,10 @@ public class StreetResponse
 public class UpdateStreetRequest
 {
     public int BaseRiskScore { get; set; }
-    public int RiskGrowthRatePerHour { get; set; }
+    public double RiskGrowthRatePerWeek { get; set; }
+    public double NightRiskGrowthRatePerWeek { get; set; }
+    public int NightStartHour { get; set; }
+    public int NightEndHour { get; set; }
     public bool IsRiskLocked { get; set; }
     public int? RiskAdjustment { get; set; }
 }
@@ -39,11 +47,13 @@ public class PatrolRequest
 public class RiskEventRequest
 {
     public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int RiskPoints { get; set; }
     public DateTime EventDate { get; set; }
     public DateTime ExpiresAt { get; set; }
-    public string Source { get; set; } = string.Empty;
+    public string? Source { get; set; }
+    public RecurrenceType RecurrenceType { get; set; } = RecurrenceType.None;
+    public DateTime? RecurrenceEndDate { get; set; }
 }
 
 public class UpdateBaseRiskRequest
@@ -62,15 +72,19 @@ public record RiskEventResponse(
     DateTime EventDate,
     DateTime ExpiresAt,
     string Source,
-    bool IsActive
+    bool IsActive,
+    RecurrenceType RecurrenceType,
+    DateTime? RecurrenceEndDate
 );
 
 public class UpdateRiskEventRequest
 {
     public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int RiskPoints { get; set; }
     public DateTime EventDate { get; set; }
     public DateTime ExpiresAt { get; set; }
-    public string Source { get; set; } = string.Empty;
+    public string? Source { get; set; }
+    public RecurrenceType RecurrenceType { get; set; } = RecurrenceType.None;
+    public DateTime? RecurrenceEndDate { get; set; }
 }

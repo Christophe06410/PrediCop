@@ -16,10 +16,10 @@
         <a href="/Admin/Tickets/Index" class="btn btn-sm btn-outline-secondary">
             <i class="fa-solid fa-arrow-left me-1"></i>Retour aux PV
         </a>
-        <a href="/api/tickets/export?format=xlsx&dateFrom=@Model.DateFrom&dateTo=@Model.DateTo@(Model.AgentFilter.HasValue ? "&agentId=" + Model.AgentFilter : "")"
-           class="btn btn-sm btn-success" target="_blank">
-            <i class="fa-solid fa-file-excel me-1"></i>Exporter Excel
-        </a>
+        <button type="button" class="btn btn-sm btn-outline-success"
+                data-bs-toggle="modal" data-bs-target="#exportModal">
+            <i class="fa-solid fa-file-arrow-down me-1"></i>Exporter
+        </button>
     </div>
 </div>
 
@@ -44,6 +44,32 @@
                 </a>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Modal export -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="fa-solid fa-file-arrow-down me-2"></i>Format d'export</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-grid gap-2">
+                @{
+                    var baseExportUrl = $"/api/tickets/export?dateFrom={Model.DateFrom}&dateTo={Model.DateTo}" +
+                        (Model.AgentFilter.HasValue ? $"&agentId={Model.AgentFilter}" : "");
+                }
+                <a href="@(baseExportUrl)&format=csv" target="_blank"
+                   class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-file-csv me-2"></i>CSV
+                </a>
+                <a href="@(baseExportUrl)&format=xlsx" target="_blank"
+                   class="btn btn-outline-success" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-file-excel me-2"></i>Excel (XLSX)
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 

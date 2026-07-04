@@ -139,6 +139,27 @@ public partial class ProfilePage : ContentPage
         await Navigation.PushAsync(page);
     }
 
+    private async void OnShiftReportClicked(object sender, EventArgs e)
+    {
+        var services = Handler?.MauiContext?.Services;
+        if (services is null) return;
+        var page = services.GetRequiredService<ShiftReportPage>();
+        await Navigation.PushAsync(page);
+    }
+
+    private async void OnLeavePatrolClicked(object sender, EventArgs e)
+    {
+        var confirm = await DisplayAlert("Quitter la patrouille",
+            "Vous allez quitter l'équipage de ce véhicule. Continuer ?", "Quitter", "Annuler");
+        if (!confirm) return;
+
+        var success = await _vm.LeavePatrolAsync();
+        if (success)
+            await DisplayAlert("Patrouille", "Vous avez quitté l'équipage.", "OK");
+        else
+            await DisplayAlert("Erreur", "Impossible de quitter la patrouille. Réessayez.", "OK");
+    }
+
     private async void OnLogoutClicked(object sender, EventArgs e)
     {
         var confirm = await DisplayAlert("Déconnexion", "Se déconnecter ?", "Oui", "Annuler");

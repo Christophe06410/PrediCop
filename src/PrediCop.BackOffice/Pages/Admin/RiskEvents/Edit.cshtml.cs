@@ -1,7 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using PrediCop.Core.Enums;
 using System.Net.Http.Json;
+using PrediCop.BackOffice.Helpers;
 using System.Text.Json;
 
 namespace PrediCop.BackOffice.Pages.Admin.RiskEvents;
@@ -10,31 +12,31 @@ namespace PrediCop.BackOffice.Pages.Admin.RiskEvents;
 public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> logger) : PageModel
 {
     private static readonly JsonSerializerOptions JsonOpts =
-        new() { PropertyNameCaseInsensitive = true };
+        ApiJsonOptions.Default;
 
     [BindProperty] public Guid StreetId { get; set; }
+    [BindProperty] public string StreetName { get; set; } = "";
     [BindProperty] public string Title { get; set; } = "";
     [BindProperty] public string Description { get; set; } = "";
     [BindProperty] public int RiskPoints { get; set; } = 10;
     [BindProperty] public DateTime EventDate { get; set; } = DateTime.Now;
     [BindProperty] public DateTime ExpiresAt { get; set; } = DateTime.Now.AddDays(1);
     [BindProperty] public string Source { get; set; } = "";
+    [BindProperty] public RecurrenceType RecurrenceType { get; set; } = RecurrenceType.None;
+    [BindProperty] public DateTime? RecurrenceEndDate { get; set; }
 
     public Guid? EventId { get; set; }
-    public List<StreetItem> Streets { get; set; } = [];
 
     public async Task OnGetAsync(Guid? id, CancellationToken ct)
     {
         EventId = id;
-        await LoadStreetsAsync(ct);
 
         if (id == null) return;
 
         try
         {
             var client = httpClientFactory.CreateClient("PrediCopApi");
-            // Fetch all events and find the one matching id
-            var events = await client.GetFromJsonAsync<List<RiskEventDto>>("/api/streets/risk-events", JsonOpts);
+            var events = await client.GetFromJsonAsync<List<RiskEventDto>>("/api/streets/risk-events", JsonOpts, ct);
             var ev = events?.FirstOrDefault(e => e.Id == id);
             if (ev == null)
             {
@@ -43,12 +45,15 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
             }
 
             StreetId = ev.StreetId;
+            StreetName = ev.StreetName + (string.IsNullOrEmpty(ev.StreetDistrict) ? "" : $" — {ev.StreetDistrict}");
             Title = ev.Title;
             Description = ev.Description;
             RiskPoints = ev.RiskPoints;
             EventDate = ev.EventDate.ToLocalTime();
             ExpiresAt = ev.ExpiresAt.ToLocalTime();
             Source = ev.Source;
+            RecurrenceType = ev.RecurrenceType;
+            RecurrenceEndDate = ev.RecurrenceEndDate?.ToLocalTime();
         }
         catch (Exception ex)
         {
@@ -57,12 +62,29 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
         }
     }
 
+    public async Task<IActionResult> OnGetSearchStreetsAsync(string? q, CancellationToken ct = default)
+    {
+        var client = httpClientFactory.CreateClient("PrediCopApi");
+        try
+        {
+            var url = string.IsNullOrWhiteSpace(q)
+                ? "/api/streets/paged?pageSize=10&sort=name-asc"
+                : $"/api/streets/paged?search={Uri.EscapeDataString(q)}&pageSize=10&sort=name-asc";
+            var result = await client.GetFromJsonAsync<PagedResult>(url, JsonOpts, ct);
+            return new JsonResult(result?.Streets ?? []);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Street search failed");
+            return new JsonResult(Array.Empty<object>());
+        }
+    }
+
     public async Task<IActionResult> OnPostAsync(Guid? id, CancellationToken ct)
     {
         if (StreetId == Guid.Empty)
         {
             TempData["ErrorMessage"] = "Veuillez sélectionner une rue.";
-            await LoadStreetsAsync(ct);
             EventId = id;
             return Page();
         }
@@ -71,78 +93,49 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
 
         try
         {
+            var body = new
+            {
+                title = Title,
+                description = Description,
+                riskPoints = RiskPoints,
+                eventDate = EventDate.ToUniversalTime(),
+                expiresAt = ExpiresAt.ToUniversalTime(),
+                source = Source,
+                recurrenceType = (int)RecurrenceType,
+                recurrenceEndDate = RecurrenceEndDate?.ToUniversalTime()
+            };
+
+            HttpResponseMessage resp;
             if (id == null)
             {
-                // Create via POST /api/streets/{streetId}/risk-event
-                var body = new
-                {
-                    title = Title,
-                    description = Description,
-                    riskPoints = RiskPoints,
-                    eventDate = EventDate.ToUniversalTime(),
-                    expiresAt = ExpiresAt.ToUniversalTime(),
-                    source = Source
-                };
-                var resp = await client.PostAsJsonAsync($"/api/streets/{StreetId}/risk-event", body);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    var msg = await resp.Content.ReadAsStringAsync();
-                    logger.LogWarning("Erreur création risk-event {Status}: {Body}", (int)resp.StatusCode, msg);
-                    TempData["ErrorMessage"] = "Erreur lors de la création de l'événement.";
-                    await LoadStreetsAsync(ct);
-                    EventId = id;
-                    return Page();
-                }
-                TempData["SuccessMessage"] = "Événement créé avec succès.";
+                resp = await client.PostAsJsonAsync($"/api/streets/{StreetId}/risk-event", body, ct);
             }
             else
             {
-                // Update via PUT /api/streets/{streetId}/risk-events/{eventId}
-                var body = new
-                {
-                    title = Title,
-                    description = Description,
-                    riskPoints = RiskPoints,
-                    eventDate = EventDate.ToUniversalTime(),
-                    expiresAt = ExpiresAt.ToUniversalTime(),
-                    source = Source
-                };
-                var resp = await client.PutAsJsonAsync($"/api/streets/{StreetId}/risk-events/{id}", body);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    var msg = await resp.Content.ReadAsStringAsync();
-                    logger.LogWarning("Erreur mise à jour risk-event {Status}: {Body}", (int)resp.StatusCode, msg);
-                    TempData["ErrorMessage"] = "Erreur lors de la mise à jour de l'événement.";
-                    await LoadStreetsAsync(ct);
-                    EventId = id;
-                    return Page();
-                }
-                TempData["SuccessMessage"] = "Événement mis à jour.";
+                resp = await client.PutAsJsonAsync($"/api/streets/{StreetId}/risk-events/{id}", body, ct);
             }
 
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogWarning("Erreur {Op} risk-event {Status}: {Body}",
+                    id == null ? "création" : "mise à jour", (int)resp.StatusCode, msg);
+                TempData["ErrorMessage"] = id == null
+                    ? $"Erreur lors de la création de l'événement (HTTP {(int)resp.StatusCode}): {msg}"
+                    : $"Erreur lors de la mise à jour de l'événement (HTTP {(int)resp.StatusCode}): {msg}";
+                EventId = id;
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = id == null ? "Événement créé avec succès." : "Événement mis à jour.";
             return RedirectToPage("/Admin/RiskEvents/Index");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Erreur sauvegarde événement de risque");
             TempData["ErrorMessage"] = "Impossible de joindre le serveur.";
-            await LoadStreetsAsync(ct);
             EventId = id;
             return Page();
-        }
-    }
-
-    private async Task LoadStreetsAsync(CancellationToken ct)
-    {
-        try
-        {
-            var client = httpClientFactory.CreateClient("PrediCopApi");
-            var streets = await client.GetFromJsonAsync<List<StreetItem>>("/api/streets", JsonOpts);
-            Streets = streets ?? [];
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Impossible de charger les rues");
         }
     }
 
@@ -159,9 +152,16 @@ public class EditModel(IHttpClientFactory httpClientFactory, ILogger<EditModel> 
         public DateTime ExpiresAt { get; set; }
         public string Source { get; set; } = "";
         public bool IsActive { get; set; }
+        public RecurrenceType RecurrenceType { get; set; }
+        public DateTime? RecurrenceEndDate { get; set; }
     }
 
-    public class StreetItem
+    private class PagedResult
+    {
+        public List<StreetSearchItem> Streets { get; set; } = [];
+    }
+
+    public class StreetSearchItem
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = "";

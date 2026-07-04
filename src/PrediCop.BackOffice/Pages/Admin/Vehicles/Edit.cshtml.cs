@@ -49,7 +49,7 @@ public class EditModel : PageModel
                         LicensePlate = vehicle.LicensePlate,
                         Status = vehicle.Status,
                         BeaconUuid = vehicle.BeaconUuid,
-                        AssignedGeoZoneId = vehicle.AssignedGeoZoneId
+                        AssignedGeoZoneIds = vehicle.AssignedGeoZoneIds
                     };
                 }
                 else
@@ -85,10 +85,10 @@ public class EditModel : PageModel
                 // Mise à jour des informations générales du véhicule
                 await client.PutAsJsonAsync($"/api/vehicles/{Input.Id}", Input);
 
-                // Mise à jour de la zone assignée (endpoint dédié)
+                // Mise à jour des zones assignées (endpoint dédié)
                 await client.PutAsJsonAsync($"/api/vehicles/{Input.Id}/geozone", new
                 {
-                    GeoZoneId = Input.AssignedGeoZoneId
+                    GeoZoneIds = Input.AssignedGeoZoneIds
                 });
 
                 TempData["SuccessMessage"] = $"Véhicule {Input.CallSign} mis à jour avec succès.";
@@ -97,15 +97,15 @@ public class EditModel : PageModel
             {
                 var response = await client.PostAsJsonAsync("/api/vehicles", Input);
 
-                // Si création réussie et une zone est sélectionnée, assigner immédiatement
-                if (response.IsSuccessStatusCode && Input.AssignedGeoZoneId.HasValue)
+                // Si création réussie et des zones sont sélectionnées, les assigner immédiatement
+                if (response.IsSuccessStatusCode && Input.AssignedGeoZoneIds.Count > 0)
                 {
                     var created = await response.Content.ReadFromJsonAsync<VehicleDto>();
                     if (created != null)
                     {
                         await client.PutAsJsonAsync($"/api/vehicles/{created.Id}/geozone", new
                         {
-                            GeoZoneId = Input.AssignedGeoZoneId
+                            GeoZoneIds = Input.AssignedGeoZoneIds
                         });
                     }
                 }
