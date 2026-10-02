@@ -44,7 +44,8 @@
             </Border>
 
             <!-- Statut + distance + timeline -->
-            <Frame BackgroundColor="#243050" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border BackgroundColor="#243050" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="5">
                     <Label Text="{Binding StatusText}"
                            TextColor="{Binding StatusColor}"
@@ -64,11 +65,12 @@
                            TextColor="#6b7a99" FontSize="12"
                            IsVisible="{Binding HasCompletedAt}"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Données de l'appel (main courante) -->
-            <Frame IsVisible="{Binding HasCallDetails}"
-                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding HasCallDetails}"
+                   BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Données de l'appel" TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
 
@@ -107,10 +109,11 @@
                         <Label Grid.Column="1" Text="{Binding CallNotes}" TextColor="#aab0c0" FontSize="13"/>
                     </Grid>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Adresse + location detail + briefing + GPS -->
-            <Frame BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Adresse d'intervention" TextColor="#6b7a99" FontSize="12"/>
                     <Label Text="{Binding TargetAddress}"
@@ -132,28 +135,31 @@
                             HorizontalOptions="Start" Margin="0,6,0,0"
                             Clicked="OnOpenGps"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Rapport narratif (contexte BackOffice) -->
-            <Frame IsVisible="{Binding HasNarrativeReport}"
-                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding HasNarrativeReport}"
+                   BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Rapport narratif" TextColor="#6b7a99" FontAttributes="Bold" FontSize="12"/>
                     <Label Text="{Binding NarrativeReport}"
                            TextColor="#aab0c0" FontSize="14"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Intervenants -->
-            <Frame IsVisible="{Binding HasIntervenants}"
-                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding HasIntervenants}"
+                   BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Personnes impliquées"
                            TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
                     <CollectionView ItemsSource="{Binding Intervenants}" SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Frame BackgroundColor="#152a45" CornerRadius="8" Padding="12" Margin="0,3" HasShadow="False">
+                                <Border BackgroundColor="#152a45" Padding="12" Margin="0,3">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="8"/></Border.StrokeShape>
                                     <VerticalStackLayout Spacing="3">
                                         <Label Text="{Binding Header}"
                                                TextColor="White" FontAttributes="Bold" FontSize="14"/>
@@ -164,16 +170,17 @@
                                                TextColor="#6b7a99" FontSize="12"
                                                IsVisible="{Binding HasNotes}"/>
                                     </VerticalStackLayout>
-                                </Frame>
+                                </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Accepter / Refuser (mission proposée) -->
-            <Frame IsVisible="{Binding ShowAcceptRefuse}"
-                   BackgroundColor="#7f1d1d" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding ShowAcceptRefuse}"
+                   BackgroundColor="#7f1d1d" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Mission proposée — en attente de votre réponse"
                            TextColor="#fca5a5" FontAttributes="Bold" FontSize="14"/>
@@ -186,11 +193,12 @@
                                 CornerRadius="8" Clicked="OnRefuse"/>
                     </Grid>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Notes + Terminer (mission acceptée/en cours) -->
-            <Frame IsVisible="{Binding ShowComplete}"
-                   BackgroundColor="#1e3a5f" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#1e3a5f" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Rapport de clôture"
                            TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
@@ -209,13 +217,14 @@
                             HorizontalOptions="Fill"
                             Clicked="OnComplete"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Upload vidéo (mission en cours) -->
-            <Frame IsVisible="{Binding ShowComplete}"
-                   BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+            <Border IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#152a45" Padding="12">
+                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="Joindre une vidéo" TextColor="#aab0c0" FontSize="13"/>
+                    <Label Text="Joindre une vidéo" TextColor="#6b7a99" FontSize="12"/>
                     <Button Text="Sélectionner une vidéo"
                             BackgroundColor="#374151" TextColor="White"
                             CornerRadius="8" FontSize="13"
@@ -228,13 +237,14 @@
                            TextColor="#93c5fd" FontSize="12"
                            IsVisible="{Binding HasUploadStatus}"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Upload photo (mission en cours) -->
-            <Frame IsVisible="{Binding ShowComplete}"
-                   BackgroundColor="#152a45" CornerRadius="10" Padding="12" HasShadow="False">
+            <Border IsVisible="{Binding ShowComplete}"
+                   BackgroundColor="#152a45" Padding="12">
+                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="Joindre une photo" TextColor="#aab0c0" FontSize="13"/>
+                    <Label Text="Joindre une photo" TextColor="#6b7a99" FontSize="12"/>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button Grid.Column="0" Text="Prendre une photo"
                                 BackgroundColor="#374151" TextColor="White"
@@ -249,21 +259,23 @@
                            TextColor="#93c5fd" FontSize="12"
                            IsVisible="{Binding HasPhotoStatus}"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Rapport de clôture (mission terminée) -->
-            <Frame IsVisible="{Binding HasCompletionReport}"
-                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding HasCompletionReport}"
+                   BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Rapport de clôture" TextColor="#6b7a99" FontAttributes="Bold" FontSize="12"/>
                     <Label Text="{Binding CompletionReport}"
                            TextColor="#aab0c0" FontSize="14"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Modifier le rapport de clôture (mission terminée) -->
-            <Frame IsVisible="{Binding ShowEditReport}"
-                   BackgroundColor="#1e3a5f" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding ShowEditReport}"
+                   BackgroundColor="#1e3a5f" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Modifier le rapport de clôture"
                            TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
@@ -281,11 +293,12 @@
                             HorizontalOptions="Fill"
                             Clicked="OnSaveReport"/>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Timeline des propositions -->
-            <Frame IsVisible="{Binding HasAssignments}"
-                   BackgroundColor="#1e2d4a" CornerRadius="12" Padding="16" HasShadow="False">
+            <Border IsVisible="{Binding HasAssignments}"
+                   BackgroundColor="#1e2d4a" Padding="16">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Historique des propositions"
                            TextColor="#aab0c0" FontAttributes="Bold" FontSize="14"/>
@@ -303,7 +316,7 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
         </VerticalStackLayout>
     </ScrollView>

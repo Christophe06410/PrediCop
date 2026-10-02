@@ -37,7 +37,7 @@ public class IndexModel(IHttpClientFactory httpClientFactory, ILogger<IndexModel
 
             RecentMissions = (completedPaged?.Items ?? [])
                 .Concat(cancelledPaged?.Items ?? [])
-                .OrderByDescending(m => m.CompletedAt ?? m.CreatedAt)
+                .OrderByDescending(m => m.CompletedAt ?? m.CancelledAt ?? m.CreatedAt)
                 .Take(20)
                 .ToList();
 

@@ -15,7 +15,7 @@ public class MediaUploadService(HttpClient http)
         FileResult? picked;
         try
         {
-            picked = await MediaPicker.PickVideoAsync();
+            picked = (await MediaPicker.PickVideosAsync())?.FirstOrDefault();
         }
         catch (FeatureNotSupportedException)
         {
@@ -36,7 +36,7 @@ public class MediaUploadService(HttpClient http)
         FileResult? picked;
         try
         {
-            picked = await MediaPicker.PickPhotoAsync();
+            picked = (await MediaPicker.PickPhotosAsync())?.FirstOrDefault();
         }
         catch (FeatureNotSupportedException)
         {

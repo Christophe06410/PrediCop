@@ -19,11 +19,11 @@ public partial class PatrolPage : ContentPage
         base.OnAppearing();
         ((PatrolViewModel)BindingContext).LoadStreetsCommand.Execute(null);
         WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
-            await DisplayAlert(m.Title, m.Text, "OK"));
+            await DisplayAlertAsync(m.Title, m.Text, "OK"));
         WeakReferenceMessenger.Default.Register<SosConfirmationRequest>(this, async (_, req) =>
         {
             var vm = (PatrolViewModel)BindingContext;
-            var confirmed = await DisplayAlert(
+            var confirmed = await DisplayAlertAsync(
                 "🆘 Alerte SOS",
                 "Êtes-vous en danger ? Envoyer une alerte SOS à tous les opérateurs ?",
                 "Envoyer SOS", "Annuler");
@@ -38,22 +38,20 @@ public partial class PatrolPage : ContentPage
         WeakReferenceMessenger.Default.UnregisterAll(this);
     }
 
-    private void OnPatrolledClicked(object sender, EventArgs e)
+    private void OnPatrolledClicked(object? sender, EventArgs e)
     {
         if (sender is Button btn && btn.CommandParameter is Guid streetId)
             ((PatrolViewModel)BindingContext).MarkPatrolledCommand.Execute(streetId);
     }
 
-    private async void OnViewOnMapClicked(object sender, EventArgs e)
+    private void OnViewOnMapClicked(object? sender, EventArgs e)
     {
         if (sender is not Button btn || btn.CommandParameter is not StreetViewModel street) return;
-        var lat = street.CenterLatitude.ToString("F6", CultureInfo.InvariantCulture);
-        var lng = street.CenterLongitude.ToString("F6", CultureInfo.InvariantCulture);
-        var name = Uri.EscapeDataString(street.Name);
-        await Shell.Current.GoToAsync($"//main/map?centerLat={lat}&centerLng={lng}&markerName={name}");
+        MapPage.PendingFocusFromPatrol = (street.CenterLatitude, street.CenterLongitude, street.Name);
+        AppShell.SwitchToTab("map");
     }
 
-    private async void OnDirectionsClicked(object sender, EventArgs e)
+    private async void OnDirectionsClicked(object? sender, EventArgs e)
     {
         if (sender is not Button btn || btn.CommandParameter is not StreetViewModel street) return;
         try
@@ -62,6 +60,6 @@ public partial class PatrolPage : ContentPage
             var options = new MapLaunchOptions { Name = street.Name };
             await Map.Default.OpenAsync(location, options);
         }
-        catch { await DisplayAlert("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
     }
 }

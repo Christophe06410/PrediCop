@@ -5,21 +5,48 @@ using System.Collections.ObjectModel;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class BeaconPairingViewModel(ApiService api, BleVehicleScanner bleScanner) : ObservableObject
+public partial class BeaconPairingViewModel : ObservableObject
 {
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanScan))]
-    [NotifyPropertyChangedFor(nameof(IsVehicleSelected))]
-    [NotifyPropertyChangedFor(nameof(SelectedVehicleBeacon))]
-    private VehicleItem? selectedVehicle;
+    private readonly ApiService _api;
+    private readonly BleVehicleScanner _bleScanner;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanScan))]
-    private bool isScanning;
+    public BeaconPairingViewModel(ApiService api, BleVehicleScanner bleScanner)
+    {
+        _api = api;
+        _bleScanner = bleScanner;
+        StatusMessage = "Sélectionnez un véhicule puis lancez le scan.";
+    }
 
-    [ObservableProperty] private bool isSaving;
-    [ObservableProperty] private bool hasBeacons;
-    [ObservableProperty] private string statusMessage = "Sélectionnez un véhicule puis lancez le scan.";
+    private VehicleItem? _selectedVehicle;
+    public VehicleItem? SelectedVehicle
+    {
+        get => _selectedVehicle;
+        set
+        {
+            if (SetProperty(ref _selectedVehicle, value))
+            {
+                OnPropertyChanged(nameof(CanScan));
+                OnPropertyChanged(nameof(IsVehicleSelected));
+                OnPropertyChanged(nameof(SelectedVehicleBeacon));
+            }
+        }
+    }
+
+    private bool _isScanning;
+    public bool IsScanning
+    {
+        get => _isScanning;
+        set { if (SetProperty(ref _isScanning, value)) OnPropertyChanged(nameof(CanScan)); }
+    }
+
+    private bool _isSaving;
+    public bool IsSaving { get => _isSaving; set => SetProperty(ref _isSaving, value); }
+
+    private bool _hasBeacons;
+    public bool HasBeacons { get => _hasBeacons; set => SetProperty(ref _hasBeacons, value); }
+
+    private string _statusMessage = "";
+    public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
 
     public bool IsVehicleSelected => SelectedVehicle is not null;
     public bool CanScan => IsVehicleSelected && !IsScanning;
@@ -32,7 +59,7 @@ public partial class BeaconPairingViewModel(ApiService api, BleVehicleScanner bl
     {
         try
         {
-            var list = await api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
+            var list = await _api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
             Vehicles.Clear();
             foreach (var v in list ?? [])
                 Vehicles.Add(new VehicleItem(v.Id, v.CallSign, v.LicensePlate, v.BeaconUuid));
@@ -52,7 +79,7 @@ public partial class BeaconPairingViewModel(ApiService api, BleVehicleScanner bl
         StatusMessage = "Scan Bluetooth en cours (5 s)…";
         try
         {
-            var beacons = await bleScanner.ScanForPairingAsync();
+            var beacons = await _bleScanner.ScanForPairingAsync();
             foreach (var b in beacons)
                 DiscoveredBeacons.Add(b);
             HasBeacons = beacons.Count > 0;
@@ -76,7 +103,7 @@ public partial class BeaconPairingViewModel(ApiService api, BleVehicleScanner bl
         IsSaving = true;
         try
         {
-            await api.PutAsync<object>($"api/vehicles/{SelectedVehicle.Id}", new { BeaconUuid = beacon.Uuid });
+            await _api.PutAsync<object>($"api/vehicles/{SelectedVehicle.Id}", new { BeaconUuid = beacon.Uuid });
             SelectedVehicle = SelectedVehicle with { BeaconUuid = beacon.Uuid };
             StatusMessage = $"✓ Beacon associé à {SelectedVehicle.CallSign}.";
             return true;

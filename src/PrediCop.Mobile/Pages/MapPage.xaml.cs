@@ -14,6 +14,9 @@ public partial class MapPage : ContentPage
     private bool _mapReady;
     private double? _pendingLat, _pendingLng;
     private string? _pendingName;
+
+    // Transit pour la navigation PatrolPage→MapPage sans GoToAsync (query params non supportés via CurrentItem)
+    internal static (double Lat, double Lng, string Name)? PendingFocusFromPatrol;
     private double _focusLat, _focusLng;
 
     // Shared client — Overpass calls happen from C# so the WebView null-origin restriction
@@ -53,6 +56,14 @@ public partial class MapPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        // Transfert du focus envoyé par PatrolPage sans query params
+        if (PendingFocusFromPatrol.HasValue)
+        {
+            (_pendingLat, _pendingLng, _pendingName) = PendingFocusFromPatrol.Value;
+            PendingFocusFromPatrol = null;
+        }
+
         if (!_htmlLoaded)
         {
             _htmlLoaded = true;
@@ -63,6 +74,43 @@ public partial class MapPage : ContentPage
             _ = ApplyFocusAsync(_pendingLat.Value, _pendingLng.Value, _pendingName);
             ClearPending();
         }
+        else if (_mapReady)
+        {
+            _ = TryUpdateGpsStateAsync();
+        }
+    }
+
+    private async Task TryUpdateGpsStateAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+            Location? loc = null;
+            try
+            {
+                loc = await Geolocation.GetLocationAsync(
+                    new GeolocationRequest(GeolocationAccuracy.Low, TimeSpan.FromSeconds(4)), cts.Token);
+            }
+            catch { }
+            loc ??= await Geolocation.GetLastKnownLocationAsync();
+
+            if (loc != null)
+            {
+                // GPS revenu après une absence → recentrer la carte
+                if (GpsWarningLabel.IsVisible)
+                {
+                    GpsWarningLabel.IsVisible = false;
+                    var lat = loc.Latitude.ToString("F6", CultureInfo.InvariantCulture);
+                    var lng = loc.Longitude.ToString("F6", CultureInfo.InvariantCulture);
+                    await MapWebView.EvaluateJavaScriptAsync($"setCenter({lat}, {lng}, 14)");
+                }
+            }
+            else
+            {
+                GpsWarningLabel.IsVisible = true;
+            }
+        }
+        catch { }
     }
 
     private static async Task<string> LoadAssetAsync(string fileName)
@@ -88,6 +136,59 @@ public partial class MapPage : ContentPage
         string html;
         if (!string.IsNullOrEmpty(leafletJs))
         {
+            // Centre initial : position GPS > position naviguation > position véhicule API > France
+            double initLat = 46.2276, initLng = 2.2137;
+            int initZoom = 6;
+            try
+            {
+                // 1. GPS actif avec timeout court (3s)
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                Location? loc = null;
+                try
+                {
+                    loc = await Geolocation.GetLocationAsync(
+                        new GeolocationRequest(GeolocationAccuracy.Low, TimeSpan.FromSeconds(3)), cts.Token);
+                }
+                catch { }
+                // 2. Dernière position connue du téléphone
+                loc ??= await Geolocation.GetLastKnownLocationAsync();
+
+                if (loc == null)
+                    GpsWarningLabel.IsVisible = true;
+
+                if (loc != null)
+                {
+                    initLat = loc.Latitude;
+                    initLng = loc.Longitude;
+                    initZoom = 14;
+                }
+                else if (_pendingLat.HasValue && _pendingLng.HasValue)
+                {
+                    // 3. Position passée par navigation (ex: focus depuis PatrolPage)
+                    initLat = _pendingLat.Value;
+                    initLng = _pendingLng.Value;
+                    initZoom = 15;
+                }
+                else
+                {
+                    // 4. Dernière position connue du véhicule côté serveur
+                    var vehicles = await _api.GetAsync<List<VehicleMapDto>>("api/patrol/vehicles");
+                    var v = vehicles?.FirstOrDefault(x => x.LastLatitude.HasValue && x.LastLongitude.HasValue);
+                    if (v != null)
+                    {
+                        initLat = v.LastLatitude!.Value;
+                        initLng = v.LastLongitude!.Value;
+                        initZoom = 14;
+                    }
+                }
+            }
+            catch { }
+
+            var script = MapScript
+                .Replace("__INIT_LAT__", initLat.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Replace("__INIT_LNG__", initLng.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Replace("__INIT_ZOOM__", initZoom.ToString());
+
             var sb = new System.Text.StringBuilder();
             sb.Append("<!DOCTYPE html><html><head>");
             sb.Append("<meta charset='utf-8'/>");
@@ -105,7 +206,7 @@ public partial class MapPage : ContentPage
             sb.Append("<div id='loading'>Chargement de la carte...</div>");
             sb.Append("<div id='map'></div>");
             sb.Append("<script>"); sb.Append(leafletJs); sb.Append("</script>");
-            sb.Append("<script>"); sb.Append(MapScript); sb.Append("</script>");
+            sb.Append("<script>"); sb.Append(script); sb.Append("</script>");
             sb.Append("</body></html>");
             html = sb.ToString();
         }
@@ -262,12 +363,12 @@ public partial class MapPage : ContentPage
             var options = new MapLaunchOptions { Name = _pendingName ?? "Destination" };
             await Map.Default.OpenAsync(location, options);
         }
-        catch { await DisplayAlert("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
     }
 
-    private async void OnBackToPatrolClicked(object? sender, EventArgs e)
+    private void OnBackToPatrolClicked(object? sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync("//main/patrol");
+        AppShell.SwitchToTab("patrol");
     }
 
     private void OnStreetsColorToggled(object? sender, ToggledEventArgs e)
@@ -386,7 +487,7 @@ function setFocusMarker(lat, lng, name) {
 
 try {
   document.getElementById('loading').style.display = 'none';
-  map = L.map('map', { zoomControl: true }).setView([43.6047, 1.4442], 14);
+  map = L.map('map', { zoomControl: true }).setView([__INIT_LAT__, __INIT_LNG__], __INIT_ZOOM__);
 
   var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
@@ -423,5 +524,11 @@ try {
         public double StartLongitude { get; set; }
         public double EndLatitude { get; set; }
         public double EndLongitude { get; set; }
+    }
+
+    private class VehicleMapDto
+    {
+        public double? LastLatitude { get; set; }
+        public double? LastLongitude { get; set; }
     }
 }

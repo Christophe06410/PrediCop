@@ -5,24 +5,45 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class PatrolActivationViewModel(
-    ApiService api,
-    AuthService auth,
-    GpsTrackingService gps,
-    SignalRService signalR,
-    TenantFeaturesService features) : ObservableObject
+public partial class PatrolActivationViewModel : ObservableObject
 {
-    [ObservableProperty] private ObservableCollection<VehicleItem> vehicles = [];
-    [ObservableProperty] private VehicleItem? selectedVehicle;
-    [ObservableProperty] private string indicatif = "";
-    [ObservableProperty] private ObservableCollection<PatrolTypeItem> patrolTypes = [];
-    [ObservableProperty] private PatrolTypeItem? selectedPatrolType;
-    [ObservableProperty] private ObservableCollection<AgentItem> availableAgents = [];
-    [ObservableProperty] private ObservableCollection<AgentItem> selectedAgents = [];
-    [ObservableProperty] private bool isLoading;
-    [ObservableProperty] private bool isActivating;
-    [ObservableProperty] private string errorMessage = "";
-    [ObservableProperty] private bool hasError;
+    private readonly ApiService _api;
+    private readonly AuthService _auth;
+    private readonly GpsTrackingService _gps;
+    private readonly SignalRService _signalR;
+    private readonly TenantFeaturesService _features;
+
+    public PatrolActivationViewModel(
+        ApiService api,
+        AuthService auth,
+        GpsTrackingService gps,
+        SignalRService signalR,
+        TenantFeaturesService features)
+    {
+        _api = api;
+        _auth = auth;
+        _gps = gps;
+        _signalR = signalR;
+        _features = features;
+        Vehicles = [];
+        Indicatif = "";
+        PatrolTypes = [];
+        AvailableAgents = [];
+        SelectedAgents = [];
+        ErrorMessage = "";
+    }
+
+    [ObservableProperty] private ObservableCollection<VehicleItem> _vehicles;
+    [ObservableProperty] private VehicleItem? _selectedVehicle;
+    [ObservableProperty] private string _indicatif;
+    [ObservableProperty] private ObservableCollection<PatrolTypeItem> _patrolTypes;
+    [ObservableProperty] private PatrolTypeItem? _selectedPatrolType;
+    [ObservableProperty] private ObservableCollection<AgentItem> _availableAgents;
+    [ObservableProperty] private ObservableCollection<AgentItem> _selectedAgents;
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private bool _isActivating;
+    [ObservableProperty] private string _errorMessage;
+    [ObservableProperty] private bool _hasError;
 
     public bool CanActivate =>
         SelectedVehicle != null && !string.IsNullOrWhiteSpace(Indicatif) && SelectedPatrolType != null;
@@ -33,6 +54,22 @@ public partial class PatrolActivationViewModel(
         HasError = false;
         try
         {
+            // Vérifie si on est déjà dans un véhicule actif (reconnexion en cours de service)
+            var activeVehicle = await _api.GetAsync<VehicleItem>("api/patrol/my-active-vehicle");
+            if (activeVehicle != null && !string.IsNullOrEmpty(activeVehicle.Indicatif))
+            {
+                var (success, _) = await _auth.SelectVehicleAsync(activeVehicle.Id);
+                if (success)
+                {
+                    if (_features.Current.GpsTrackingEnabled && _auth.VehicleId.HasValue)
+                        try { await _gps.StartAsync(_auth.VehicleId.Value); } catch { }
+                    if (!_signalR.IsConnected && _auth.Token != null && _auth.VehicleId.HasValue)
+                        try { await _signalR.ConnectAsync(_auth.Token, _auth.VehicleId.Value); } catch { }
+                    AppShell.SwitchToTab("missions");
+                    return;
+                }
+            }
+
             PatrolTypes = new ObservableCollection<PatrolTypeItem>([
                 new PatrolTypeItem("Car",        "Voiture",  "🚔"),
                 new PatrolTypeItem("Motorcycle", "Moto",     "🏍️"),
@@ -41,18 +78,21 @@ public partial class PatrolActivationViewModel(
             ]);
             SelectedPatrolType = PatrolTypes[0];
 
-            var vehicleList = await api.GetAsync<List<VehicleItem>>("api/patrol/vehicles");
+            var vehicleList = await _api.GetAsync<List<VehicleItem>>("api/patrol/vehicles");
             Vehicles = vehicleList != null
                 ? new ObservableCollection<VehicleItem>(vehicleList)
                 : [];
 
-            var agentList = await api.GetAsync<List<AgentItem>>("api/patrol/available-agents");
+            var agentList = await _api.GetAsync<List<AgentItem>>("api/patrol/available-agents");
             AvailableAgents = agentList != null
                 ? new ObservableCollection<AgentItem>(agentList)
                 : [];
         }
         catch (Exception ex)
         {
+#if DEBUG
+            MobileLogger.Log("PatrolActivation", $"LoadAsync ERROR: {ex.GetType().Name}: {ex.Message}");
+#endif
             ErrorMessage = $"Erreur de chargement : {ex.Message}";
             HasError = true;
         }
@@ -83,31 +123,40 @@ public partial class PatrolActivationViewModel(
         try
         {
             var vehicleId = SelectedVehicle.Id;
-            await api.PostAsync($"api/patrol/{vehicleId}/activate", new
+#if DEBUG
+            MobileLogger.Log("PatrolActivation", $"Activate vehicleId={vehicleId} indicatif={Indicatif} type={SelectedPatrolType.Value} agents={SelectedAgents.Count}");
+#endif
+            await _api.PostAsync($"api/patrol/{vehicleId}/activate", new
             {
                 indicatif = Indicatif.Trim(),
                 patrolType = SelectedPatrolType.Value,
                 agentIds = SelectedAgents.Select(a => a.Id).ToList()
             });
+#if DEBUG
+            MobileLogger.Log("PatrolActivation", $"Activate OK vehicleId={vehicleId}");
+#endif
 
             // Sélectionner le véhicule pour que le JWT soit mis à jour
-            var (success, _) = await auth.SelectVehicleAsync(vehicleId);
+            var (success, _) = await _auth.SelectVehicleAsync(vehicleId);
 
             // Démarrer le GPS (mode véhicule = chef met à jour aussi la position du véhicule)
-            if (features.Current.GpsTrackingEnabled && auth.VehicleId.HasValue)
+            if (_features.Current.GpsTrackingEnabled && _auth.VehicleId.HasValue)
             {
-                if (!gps.IsTracking)
-                    try { await gps.StartAsync(auth.VehicleId.Value); } catch { }
+                if (!_gps.IsTracking)
+                    try { await _gps.StartAsync(_auth.VehicleId.Value); } catch { }
             }
 
             // SignalR
-            if (!signalR.IsConnected && auth.Token != null && auth.VehicleId.HasValue)
-                try { await signalR.ConnectAsync(auth.Token, auth.VehicleId.Value); } catch { }
+            if (!_signalR.IsConnected && _auth.Token != null && _auth.VehicleId.HasValue)
+                try { await _signalR.ConnectAsync(_auth.Token, _auth.VehicleId.Value); } catch { }
 
-            await Shell.Current.GoToAsync("//main/missions");
+            AppShell.SwitchToTab("missions");
         }
         catch (Exception ex)
         {
+#if DEBUG
+            MobileLogger.Log("PatrolActivation", $"ERROR: {ex.GetType().Name}: {ex.Message}");
+#endif
             ErrorMessage = $"Erreur d'activation : {ex.Message}";
             HasError = true;
         }
@@ -115,10 +164,11 @@ public partial class PatrolActivationViewModel(
     }
 
     [RelayCommand]
-    private async Task SkipActivationAsync()
+    private Task SkipActivationAsync()
     {
         // Le chef peut passer sans activer (ex : déjà en service)
-        await Shell.Current.GoToAsync("//main/missions");
+        AppShell.SwitchToTab("missions");
+        return Task.CompletedTask;
     }
 }
 

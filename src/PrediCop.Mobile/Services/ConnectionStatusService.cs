@@ -14,6 +14,12 @@ public class ConnectionStatusService : INotifyPropertyChanged, IDisposable
     private readonly SignalRService _signalR;
     private readonly IConnectivityService _connectivity;
 
+    // Grace period : le bandeau dégradé n'apparaît qu'après 30s de déconnexion SignalR,
+    // pour éviter de l'afficher le temps de la connexion initiale (post-login).
+    private const int DegradedGraceSeconds = 30;
+    private bool _isDegradedVisible = false;
+    private CancellationTokenSource? _gracePeriodCts;
+
     public ConnectionStatusService(SignalRService signalR, IConnectivityService connectivity)
     {
         _signalR = signalR;
@@ -32,18 +38,21 @@ public class ConnectionStatusService : INotifyPropertyChanged, IDisposable
     public Level State
     {
         get => _state;
-        private set { if (_state != value) { _state = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusText)); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(IsRealtime)); OnPropertyChanged(nameof(IsDegraded)); } }
+        private set { if (_state != value) { _state = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusText)); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(IsRealtime)); } }
     }
 
     /// <summary>Vrai uniquement quand les notifications temps réel fonctionnent.</summary>
     public bool IsRealtime => State == Level.Realtime;
 
-    /// <summary>Vrai quand le réseau marche mais pas le temps réel → afficher un avertissement.</summary>
-    public bool IsDegraded => State is Level.Degraded or Level.Offline;
+    /// <summary>
+    /// Vrai après 30s de déconnexion SignalR continue (grace period pour éviter le flash au démarrage).
+    /// Utilisé par AppHeader pour afficher le bandeau avertissement.
+    /// </summary>
+    public bool IsDegraded => _isDegradedVisible;
 
     public string StatusText => State switch
     {
-        Level.Realtime   => "TEMPS RÉEL",
+        Level.Realtime   => "CONNECTÉ",
         Level.Connecting => "CONNEXION…",
         Level.Degraded   => "MODE DÉGRADÉ",
         _                => "HORS LIGNE"
@@ -62,15 +71,53 @@ public class ConnectionStatusService : INotifyPropertyChanged, IDisposable
         if (!_connectivity.IsConnected)
         {
             State = Level.Offline;
+            StartGracePeriodIfNeeded();
             return;
         }
 
-        State = _signalR.Status switch
+        var newState = _signalR.Status switch
         {
             SignalRStatus.Connected                                  => Level.Realtime,
             SignalRStatus.Connecting or SignalRStatus.Reconnecting   => Level.Connecting,
             _                                                        => Level.Degraded
         };
+        State = newState;
+
+        if (newState is Level.Realtime or Level.Connecting)
+        {
+            CancelGracePeriod();
+            SetDegradedVisible(false);
+        }
+        else
+        {
+            StartGracePeriodIfNeeded();
+        }
+    }
+
+    private void StartGracePeriodIfNeeded()
+    {
+        if (_gracePeriodCts is not null) return;
+        _gracePeriodCts = new CancellationTokenSource();
+        var token = _gracePeriodCts.Token;
+        Task.Delay(TimeSpan.FromSeconds(DegradedGraceSeconds), token)
+            .ContinueWith(t =>
+            {
+                if (!t.IsCanceled) SetDegradedVisible(true);
+            }, TaskScheduler.Default);
+    }
+
+    private void CancelGracePeriod()
+    {
+        _gracePeriodCts?.Cancel();
+        _gracePeriodCts?.Dispose();
+        _gracePeriodCts = null;
+    }
+
+    private void SetDegradedVisible(bool visible)
+    {
+        if (_isDegradedVisible == visible) return;
+        _isDegradedVisible = visible;
+        OnPropertyChanged(nameof(IsDegraded));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -81,5 +128,6 @@ public class ConnectionStatusService : INotifyPropertyChanged, IDisposable
     {
         _signalR.StatusChanged -= OnSignalRStatusChanged;
         _connectivity.ConnectivityChanged -= OnConnectivityChanged;
+        CancelGracePeriod();
     }
 }

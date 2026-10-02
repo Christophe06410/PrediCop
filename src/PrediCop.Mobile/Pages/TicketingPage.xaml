@@ -36,23 +36,25 @@
             <VerticalStackLayout Padding="16" Spacing="12">
 
                 <!-- Message de statut -->
-                <Frame IsVisible="{Binding HasStatusMessage}"
-                       Padding="12" CornerRadius="8" HasShadow="False" BorderColor="Transparent">
-                    <Frame.Triggers>
-                        <DataTrigger TargetType="Frame" Binding="{Binding IsStatusError}" Value="True">
+                <Border IsVisible="{Binding HasStatusMessage}"
+                        Stroke="Transparent" Padding="12">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="8"/></Border.StrokeShape>
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding IsStatusError}" Value="True">
                             <Setter Property="BackgroundColor" Value="#7f1d1d"/>
                         </DataTrigger>
-                        <DataTrigger TargetType="Frame" Binding="{Binding IsStatusError}" Value="False">
+                        <DataTrigger TargetType="Border" Binding="{Binding IsStatusError}" Value="False">
                             <Setter Property="BackgroundColor" Value="#14532d"/>
                         </DataTrigger>
-                    </Frame.Triggers>
+                    </Border.Triggers>
                     <Label Text="{Binding StatusMessage}" TextColor="White" FontSize="14"
                            FontAttributes="Bold"/>
-                </Frame>
+                </Border>
 
                 <!-- Formulaire nouveau PV -->
-                <Frame IsVisible="{Binding ShowForm}"
-                       BackgroundColor="#243050" CornerRadius="12" Padding="16" HasShadow="False">
+                <Border IsVisible="{Binding ShowForm}"
+                        BackgroundColor="#243050" Padding="16">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="12">
 
                         <Label Text="Nouveau procès-verbal" TextColor="White"
@@ -155,7 +157,7 @@
                         </Button>
 
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Historique (7 derniers jours) -->
                 <Label Text="Mes PV — 7 derniers jours"
@@ -175,11 +177,11 @@
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentTickets}" Spacing="8">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:TicketSummary">
-                            <Frame BackgroundColor="#243050" CornerRadius="10"
-                                   Padding="14,10" HasShadow="False">
-                                <Frame.GestureRecognizers>
+                            <Border BackgroundColor="#243050" Padding="14,10">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
+                                <Border.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnTicketTapped" CommandParameter="{Binding .}"/>
-                                </Frame.GestureRecognizers>
+                                </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
 
                                     <!-- Numéro + plaque -->
@@ -220,7 +222,7 @@
                                     </Grid>
 
                                 </Grid>
-                            </Frame>
+                            </Border>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
                 </VerticalStackLayout>

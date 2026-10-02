@@ -5,31 +5,60 @@ namespace PrediCop.Mobile.ViewModels;
 
 public partial class MissionDetailViewModel : ObservableObject
 {
-    [ObservableProperty] private string reference = "";
+    public MissionDetailViewModel()
+    {
+        Reference = "";
+        CallReference = "";
+        TargetAddress = "";
+        LocationDetail = "";
+        BriefingText = "";
+        NarrativeReport = "";
+        StatusText = "";
+        StatusColor = Colors.Gray;
+        DistanceText = "Calcul de la distance...";
+        CreatedAtText = "";
+        DispatchedAtText = "";
+        ArrivedAtText = "";
+        CompletedAtText = "";
+        CompletionReport = "";
+        Priority = "Routine";
+        Intervenants = [];
+        Assignments = [];
+        UploadStatus = "";
+        PhotoStatus = "";
+        CallerName = "";
+        CallerPhone = "";
+        IncidentCategory = "";
+        IncidentAddressComplement = "";
+        CallNotes = "";
+        ThirdParties = "";
+    }
+
+    [ObservableProperty] private string _reference;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCallReference))]
-    private string callReference = "";
+    private string _callReference;
     public bool HasCallReference => !string.IsNullOrEmpty(CallReference);
-    [ObservableProperty] private string targetAddress = "";
-    [ObservableProperty] private string locationDetail = "";
-    [ObservableProperty] private bool hasLocationDetail;
-    [ObservableProperty] private string briefingText = "";
-    [ObservableProperty] private string narrativeReport = "";
-    [ObservableProperty] private bool hasNarrativeReport;
-    [ObservableProperty] private string statusText = "";
-    [ObservableProperty] private Color statusColor = Colors.Gray;
-    [ObservableProperty] private string distanceText = "Calcul de la distance...";
-    [ObservableProperty] private string createdAtText = "";
-    [ObservableProperty] private string dispatchedAtText = "";
-    [ObservableProperty] private bool hasDispatchedAt;
-    [ObservableProperty] private string arrivedAtText = "";
-    [ObservableProperty] private bool hasArrivedAt;
-    [ObservableProperty] private string completedAtText = "";
-    [ObservableProperty] private bool hasCompletedAt;
-    [ObservableProperty] private string completionReport = "";
-    [ObservableProperty] private bool hasCompletionReport;
-    [ObservableProperty] private bool showAcceptRefuse;
-    [ObservableProperty] private bool showComplete;
+    [ObservableProperty] private string _targetAddress;
+    [ObservableProperty] private string _locationDetail;
+    [ObservableProperty] private bool _hasLocationDetail;
+    [ObservableProperty] private string _briefingText;
+    [ObservableProperty] private string _narrativeReport;
+    [ObservableProperty] private bool _hasNarrativeReport;
+    [ObservableProperty] private string _statusText;
+    [ObservableProperty] private Color _statusColor;
+    [ObservableProperty] private string _distanceText;
+    [ObservableProperty] private string _createdAtText;
+    [ObservableProperty] private string _dispatchedAtText;
+    [ObservableProperty] private bool _hasDispatchedAt;
+    [ObservableProperty] private string _arrivedAtText;
+    [ObservableProperty] private bool _hasArrivedAt;
+    [ObservableProperty] private string _completedAtText;
+    [ObservableProperty] private bool _hasCompletedAt;
+    [ObservableProperty] private string _completionReport;
+    [ObservableProperty] private bool _hasCompletionReport;
+    [ObservableProperty] private bool _showAcceptRefuse;
+    [ObservableProperty] private bool _showComplete;
 
     // Priorité
     [ObservableProperty]
@@ -38,7 +67,7 @@ public partial class MissionDetailViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasPriorityBanner))]
     [NotifyPropertyChangedFor(nameof(SosBannerColor))]
     [NotifyPropertyChangedFor(nameof(SosBannerText))]
-    private string priority = "Routine";
+    private string _priority;
 
     public Color PriorityColor => Priority switch
     {
@@ -68,41 +97,41 @@ public partial class MissionDetailViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasIntervenants))]
-    private ObservableCollection<IntervenantVm> intervenants = [];
+    private ObservableCollection<IntervenantVm> _intervenants;
     public bool HasIntervenants => Intervenants.Count > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAssignments))]
-    private ObservableCollection<AssignmentSummaryVm> assignments = [];
+    private ObservableCollection<AssignmentSummaryVm> _assignments;
     public bool HasAssignments => Assignments.Count > 0;
 
     // Upload médias
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotUploading))]
-    private bool isUploading;
-    [ObservableProperty] private double uploadProgress;
+    private bool _isUploading;
+    [ObservableProperty] private double _uploadProgress;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasUploadStatus))]
-    private string uploadStatus = "";
+    private string _uploadStatus;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPhotoStatus))]
-    private string photoStatus = "";
+    private string _photoStatus;
     public bool IsNotUploading => !IsUploading;
     public bool HasUploadStatus => !string.IsNullOrEmpty(UploadStatus);
     public bool HasPhotoStatus => !string.IsNullOrEmpty(PhotoStatus);
 
-    [ObservableProperty] private bool isOffline;
-    [ObservableProperty] private bool showEditReport;
+    [ObservableProperty] private bool _isOffline;
+    [ObservableProperty] private bool _showEditReport;
 
     // Données de l'appel source (main courante)
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCallDetails))]
-    private string callerName = "";
-    [ObservableProperty] private string callerPhone = "";
-    [ObservableProperty] private string incidentCategory = "";
-    [ObservableProperty] private string incidentAddressComplement = "";
-    [ObservableProperty] private string callNotes = "";
-    [ObservableProperty] private string thirdParties = "";
+    private string _callerName;
+    [ObservableProperty] private string _callerPhone;
+    [ObservableProperty] private string _incidentCategory;
+    [ObservableProperty] private string _incidentAddressComplement;
+    [ObservableProperty] private string _callNotes;
+    [ObservableProperty] private string _thirdParties;
 
     public bool HasCallDetails => !string.IsNullOrEmpty(CallerName)
         || !string.IsNullOrEmpty(CallerPhone)

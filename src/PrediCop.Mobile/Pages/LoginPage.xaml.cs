@@ -44,7 +44,7 @@ public partial class LoginPage : ContentPage
             while (!token.IsCancellationRequested)
             {
                 await MainThread.InvokeOnMainThreadAsync(() =>
-                    RefreshIcon.RotateTo(RefreshIcon.Rotation + 360, 600, Easing.Linear));
+                    RefreshIcon.RotateToAsync(RefreshIcon.Rotation + 360, 600, Easing.Linear));
                 if (token.IsCancellationRequested) break;
             }
         }, token);

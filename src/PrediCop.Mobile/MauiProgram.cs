@@ -21,11 +21,13 @@ public static class MauiProgram
             });
 
 #if DEBUG
-  #if WINDOWS
+#if WINDOWS
         var apiBaseUrl = "https://localhost:7229";
-  #else
-        var apiBaseUrl = "https://192.168.0.92:7229";
-  #endif
+#else
+        var apiBaseUrl = "https://192.168.1.33:7229";       // FREEBOX
+        // var apiBaseUrl = "https://192.168.0.92:7229";    // OLD ON SFR BOX
+        //var apiBaseUrl = "https://10.66.136.59:7229";     // HOTSPOT
+#endif
         var httpHandler = new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback =

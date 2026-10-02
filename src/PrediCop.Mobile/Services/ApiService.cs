@@ -59,6 +59,8 @@ public class ApiService
             _log.LogInformation("POST {Endpoint} → {Status} in {Ms}ms", endpoint, (int)response.StatusCode, sw.ElapsedMilliseconds);
             await HandleErrorResponseAsync(response, "POST", endpoint);
             response.EnsureSuccessStatusCode();
+            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                return default;
             return await response.Content.ReadFromJsonAsync<T>(_jsonOptions, ct);
         }
         catch (Exception ex) when (ex is not HttpRequestException)
@@ -96,6 +98,8 @@ public class ApiService
             _log.LogInformation("PUT {Endpoint} → {Status} in {Ms}ms", endpoint, (int)response.StatusCode, sw.ElapsedMilliseconds);
             await HandleErrorResponseAsync(response, "PUT", endpoint);
             response.EnsureSuccessStatusCode();
+            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                return default;
             return await response.Content.ReadFromJsonAsync<T>(_jsonOptions, ct);
         }
         catch (Exception ex) when (ex is not HttpRequestException)

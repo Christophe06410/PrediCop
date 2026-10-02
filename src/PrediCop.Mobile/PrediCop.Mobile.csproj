@@ -19,6 +19,7 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
 
 		<!-- Enable XAML source generation for faster build times and improved performance.
 		     This generates C# code from XAML at compile time instead of runtime inflation.
@@ -35,14 +36,15 @@
 		<ApplicationId>com.predicop.mobile</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.0.9</ApplicationDisplayVersion>
-		<ApplicationVersion>109</ApplicationVersion>
+    <MinorVersion>16</MinorVersion>
+    <ApplicationDisplayVersion>1.0.$(MinorVersion)</ApplicationDisplayVersion>
+		<ApplicationVersion>10$(MinorVersion)</ApplicationVersion>
 		<!-- Version NuGet/assembly explicite et IDENTIQUE sur tous les TFM.
 		     Sans ça, le head Windows dérive PackageVersion d'ApplicationDisplayVersion (1.09)
 		     tandis qu'Android/iOS gardent 1.0.0 → erreur VS « PackageVersion was expected to
 		     have a single value across all target frameworks ». -->
-		<Version>1.0.9</Version>
-		<PackageVersion>1.0.9</PackageVersion>
+		<Version>1.0.$(MinorVersion)</Version>
+		<PackageVersion>1.0.$(MinorVersion)</PackageVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -79,7 +81,7 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 		<PackageReference Include="Plugin.BLE" Version="3.1.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+		<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
 	</ItemGroup>
 
 	<!-- Firebase Cloud Messaging (Android + iOS uniquement) -->

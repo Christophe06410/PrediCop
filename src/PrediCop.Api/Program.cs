@@ -102,7 +102,13 @@ builder.Services.AddSingleton<PrediCop.Core.Interfaces.INotificationCoordinator,
     PrediCop.Api.Services.NotificationCoordinatorService>();
 
 // ---- SignalR ----
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    // Augmenter les timeouts pour éviter les fausses déconnexions sur Android (réseau mobile fluctuant).
+    // Défauts : KeepAliveInterval=15s, ClientTimeoutInterval=30s.
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(90);
+});
 
 // ---- CORS ----
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];

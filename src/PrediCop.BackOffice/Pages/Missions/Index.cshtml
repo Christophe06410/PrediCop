@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">
         <i class="fa-solid fa-car-side me-2 text-success"></i>Dashboard Missions
-        <span class="badge bg-success ms-2">@Model.ActiveMissions.Count actives</span>
+        <span class="badge bg-success ms-2" id="active-count-h4-badge">@Model.ActiveMissions.Count actives</span>
     </h4>
     <div class="d-flex gap-2 align-items-center">
         <span class="text-muted small">
@@ -26,7 +26,7 @@
         <h6 class="mb-0 fw-semibold">
             <i class="fa-solid fa-circle fa-beat me-2"></i>Missions actives
         </h6>
-        <span class="badge bg-light text-success">@Model.ActiveMissions.Count</span>
+        <span class="badge bg-light text-success" id="active-count-card-badge">@Model.ActiveMissions.Count</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -165,7 +165,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0" data-sortable>
+            <table id="recent-missions-table" class="table table-sm table-hover align-middle mb-0" data-sortable>
                 <thead class="table-light">
                     <tr>
                         <th data-col="0">Référence</th>
@@ -267,13 +267,22 @@
             .then(function (r) { return r.text(); })
             .then(function (html) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
-                var tables = document.querySelectorAll('table');
-                var newTables = doc.querySelectorAll('table');
-                for (var i = 0; i < tables.length && i < newTables.length; i++) {
-                    var oldBody = tables[i].querySelector('tbody');
-                    var newBody = newTables[i].querySelector('tbody');
-                    if (oldBody && newBody) oldBody.innerHTML = newBody.innerHTML;
-                }
+                // Mise à jour des tables par ID — plus fiable que par position
+                ['active-missions-table', 'recent-missions-table'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    var newEl = doc.getElementById(id);
+                    if (el && newEl) {
+                        var tbody = el.querySelector('tbody');
+                        var newTbody = newEl.querySelector('tbody');
+                        if (tbody && newTbody) tbody.innerHTML = newTbody.innerHTML;
+                    }
+                });
+                // Mise à jour des badges de compteur (non inclus dans les <tbody>)
+                ['active-count-h4-badge', 'active-count-card-badge'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    var newEl = doc.getElementById(id);
+                    if (el && newEl) el.textContent = newEl.textContent;
+                });
                 lastRefreshTime = new Date();
                 document.getElementById('last-refresh').textContent = 'à ' + lastRefreshTime.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
             })

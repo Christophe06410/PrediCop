@@ -10,19 +10,21 @@
     <ScrollView Grid.Row="1">
     <VerticalStackLayout Padding="24" Spacing="20">
 
-        <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
+        <Border BackgroundColor="#243050" Padding="20">
+            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
             <VerticalStackLayout Spacing="8">
-                <Label Text="Mon Profil" TextColor="White"
-                       FontSize="18" FontAttributes="Bold"/>
+                <Label Text="Mon Profil"
+                       FontSize="18" FontAttributes="Bold" TextColor="White"/>
                 <Label Text="{Binding UserName}" TextColor="#93c5fd" FontSize="16"/>
                 <Label Text="{Binding Badge}" TextColor="#6b7a99" FontSize="13"/>
             </VerticalStackLayout>
-        </Frame>
+        </Border>
 
-        <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
+        <Border BackgroundColor="#243050" Padding="20">
+            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
             <VerticalStackLayout Spacing="12">
-                <Label Text="Véhicule de service" TextColor="White"
-                       FontSize="16" FontAttributes="Bold"/>
+                <Label Text="Véhicule de service"
+                       FontSize="16" FontAttributes="Bold" TextColor="White"/>
                 <Label Text="{Binding CurrentVehicle}" TextColor="#93c5fd" FontSize="14"/>
                 <Grid ColumnDefinitions="*,Auto">
                     <Button Grid.Column="0"
@@ -55,12 +57,13 @@
                         IsVisible="{Binding IsAdminOrManager}"
                         Clicked="OnBeaconPairingClicked"/>
             </VerticalStackLayout>
-        </Frame>
+        </Border>
 
-        <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
+        <Border BackgroundColor="#243050" Padding="20">
+            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
             <VerticalStackLayout Spacing="12">
-                <Label Text="Paramètres" TextColor="White"
-                       FontSize="16" FontAttributes="Bold"/>
+                <Label Text="Paramètres"
+                       FontSize="16" FontAttributes="Bold" TextColor="White"/>
                 <Grid ColumnDefinitions="*,Auto">
                     <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
                         <Label Text="Son d'alerte mission" TextColor="#aab0c0"/>
@@ -77,23 +80,24 @@
                             OnColor="#2563eb" Toggled="OnGpsToggled"/>
                 </Grid>
             </VerticalStackLayout>
-        </Frame>
+        </Border>
 
         <Button Text="Changer mon mot de passe" BackgroundColor="#1e3a5f" TextColor="White"
                 CornerRadius="12" HeightRequest="50" Clicked="OnChangePasswordClicked"/>
 
-        <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False">
+        <Border BackgroundColor="#243050" Padding="20">
+            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
             <VerticalStackLayout Spacing="12">
-                <Label Text="Fin de service" TextColor="White"
-                       FontSize="16" FontAttributes="Bold"/>
+                <Label Text="Fin de service"
+                       FontSize="16" FontAttributes="Bold" TextColor="White"/>
                 <Label Text="Générez et signez votre rapport de vacation."
                        TextColor="#6b7a99" FontSize="13"/>
                 <Button Text="Rapport de vacation"
-                        BackgroundColor="#7c3aed" TextColor="White"
+                        BackgroundColor="#2563eb" TextColor="White"
                         CornerRadius="10" HeightRequest="44"
                         Clicked="OnShiftReportClicked"/>
             </VerticalStackLayout>
-        </Frame>
+        </Border>
 
         <Button Text="Se déconnecter" BackgroundColor="#374151" TextColor="White"
                 CornerRadius="12" HeightRequest="50" Clicked="OnLogoutClicked"/>

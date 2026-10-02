@@ -6,7 +6,9 @@ namespace PrediCop.Mobile.Services;
 /// </summary>
 public class PushNotificationService(ApiService api)
 {
+#if ANDROID || IOS
     private bool _subscribed;
+#endif
 
     public async Task RegisterAsync()
     {
@@ -77,7 +79,6 @@ public class PushNotificationService(ApiService api)
         if (data == null) return;
         data.TryGetValue("type", out var type);
         if (type == "mission_proposed")
-            MainThread.BeginInvokeOnMainThread(
-                () => _ = Shell.Current?.GoToAsync("//main/missions"));
+            AppShell.SwitchToTab("missions");
     }
 }

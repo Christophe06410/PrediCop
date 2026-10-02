@@ -7,10 +7,20 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class PatrolViewModel(ApiService api, AuthService auth) : ObservableObject
+public partial class PatrolViewModel : ObservableObject
 {
-    [ObservableProperty] private ObservableCollection<StreetViewModel> streets = [];
-    [ObservableProperty] private bool isLoading;
+    private readonly ApiService _api;
+    private readonly AuthService _auth;
+
+    public PatrolViewModel(ApiService api, AuthService auth)
+    {
+        _api = api;
+        _auth = auth;
+        Streets = [];
+    }
+
+    [ObservableProperty] private ObservableCollection<StreetViewModel> _streets;
+    [ObservableProperty] private bool _isLoading;
 
     [RelayCommand]
     public async Task LoadStreetsAsync()
@@ -18,7 +28,7 @@ public partial class PatrolViewModel(ApiService api, AuthService auth) : Observa
         IsLoading = true;
         try
         {
-            var list = await api.GetAsync<List<StreetViewModel>>("api/streets/priority?count=20");
+            var list = await _api.GetAsync<List<StreetViewModel>>("api/streets/priority?count=20");
             Streets = list != null ? new ObservableCollection<StreetViewModel>(list) : [];
         }
         catch { /* show empty state */ }
@@ -30,7 +40,7 @@ public partial class PatrolViewModel(ApiService api, AuthService auth) : Observa
     {
         try
         {
-            await api.PostAsync($"api/streets/{streetId}/patrol", null);
+            await _api.PostAsync($"api/streets/{streetId}/patrol", null);
             await LoadStreetsAsync();
         }
         catch
@@ -43,7 +53,7 @@ public partial class PatrolViewModel(ApiService api, AuthService auth) : Observa
     [RelayCommand]
     private async Task SOSAsync()
     {
-        var vehicleId = auth.VehicleId;
+        var vehicleId = _auth.VehicleId;
         if (vehicleId == null)
         {
             WeakReferenceMessenger.Default.Send(
@@ -60,7 +70,7 @@ public partial class PatrolViewModel(ApiService api, AuthService auth) : Observa
     {
         try
         {
-            await api.PostAsync($"api/vehicles/{vehicleId}/sos", null);
+            await _api.PostAsync($"api/vehicles/{vehicleId}/sos", null);
             WeakReferenceMessenger.Default.Send(
                 new AlertMessage("Alerte SOS", "Alerte SOS envoyée au PC. Les opérateurs ont été notifiés."));
         }

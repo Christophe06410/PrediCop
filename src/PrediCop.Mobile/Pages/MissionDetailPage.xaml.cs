@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using CommunityToolkit.Mvvm.Messaging;
+using PrediCop.Mobile.Messages;
 using PrediCop.Mobile.Models;
 using PrediCop.Mobile.Services;
 using PrediCop.Mobile.ViewModels;
@@ -15,6 +17,7 @@ public partial class MissionDetailPage : ContentPage
     private readonly MediaUploadService? _media;
     private readonly MissionDetailViewModel _vm;
     private readonly Guid _missionId;
+    private bool _isActive;
 
     public MissionDetailPage(Guid missionId, ApiService api, LocalDbService localDb,
         IConnectivityService connectivity, SyncService syncService,
@@ -37,14 +40,48 @@ public partial class MissionDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _isActive = true;
         _vm.IsOffline = !_connectivity.IsConnected;
         await LoadAsync();
+
+        // Bug 4 : mission annulée pendant que la page est ouverte → pop + alerte
+        WeakReferenceMessenger.Default.Register<MissionCancelledMessage>(this, async (_, m) =>
+        {
+            if (!_isActive) return;
+            _isActive = false;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await DisplayAlertAsync("⛔ Mission annulée",
+                    $"Cette mission a été annulée.\n\nMotif : {m.Reason}", "OK");
+                await Navigation.PopAsync();
+            });
+        });
+
+        // Bug 1 : nouvelle mission proposée pendant que le conducteur consulte les détails
+        WeakReferenceMessenger.Default.Register<NewMissionProposedMessage>(this, async (_, _) =>
+        {
+            if (!_isActive) return;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                var goBack = await DisplayAlertAsync(
+                    "Nouvelle mission",
+                    "Une nouvelle mission vient d'être assignée à votre véhicule.",
+                    "Voir la mission", "Continuer");
+                if (goBack)
+                {
+                    _isActive = false;
+                    await Navigation.PopAsync();
+                }
+            });
+        });
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        _isActive = false;
         _connectivity.ConnectivityChanged -= OnConnectivityChanged;
+        WeakReferenceMessenger.Default.UnregisterAll(this);
     }
 
     private async void OnConnectivityChanged(object? sender, bool isConnected)
@@ -98,7 +135,7 @@ public partial class MissionDetailPage : ContentPage
         }
         catch
         {
-            await DisplayAlert("Erreur", "Impossible de charger les détails de la mission.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de charger les détails de la mission.", "OK");
         }
     }
 
@@ -107,7 +144,7 @@ public partial class MissionDetailPage : ContentPage
         var cached = await _localDb.GetCachedMissionAsync(_missionId);
         if (cached == null)
         {
-            await DisplayAlert("Hors ligne", "Mission non disponible hors connexion.", "OK");
+            await DisplayAlertAsync("Hors ligne", "Mission non disponible hors connexion.", "OK");
             return;
         }
 
@@ -237,7 +274,7 @@ public partial class MissionDetailPage : ContentPage
         catch { _vm.DistanceText = "Distance non disponible"; }
     }
 
-    private async void OnOpenGps(object sender, EventArgs e)
+    private async void OnOpenGps(object? sender, EventArgs e)
     {
         try
         {
@@ -245,10 +282,10 @@ public partial class MissionDetailPage : ContentPage
             var options = new MapLaunchOptions { Name = _vm.TargetAddress };
             await Map.Default.OpenAsync(location, options);
         }
-        catch { await DisplayAlert("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible d'ouvrir l'application GPS.", "OK"); }
     }
 
-    private async void OnAccept(object sender, EventArgs e)
+    private async void OnAccept(object? sender, EventArgs e)
     {
         if (_vm.AssignmentId == null) return;
         try
@@ -260,7 +297,7 @@ public partial class MissionDetailPage : ContentPage
             _vm.StatusText = "En cours";
             _vm.StatusColor = Color.FromArgb("#3b82f6");
         }
-        catch { await DisplayAlert("Erreur", "Impossible d'accepter la mission.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible d'accepter la mission.", "OK"); }
     }
 
     private static readonly (string Label, string Code, bool NeedsText)[] RefusalOptions =
@@ -274,12 +311,12 @@ public partial class MissionDetailPage : ContentPage
         ("Autre",                      "Other",            true),
     ];
 
-    private async void OnRefuse(object sender, EventArgs e)
+    private async void OnRefuse(object? sender, EventArgs e)
     {
         if (_vm.AssignmentId == null) return;
 
         var labels = RefusalOptions.Select(r => r.Label).ToArray();
-        var selected = await DisplayActionSheet("Motif de refus", "Annuler", null, labels);
+        var selected = await DisplayActionSheetAsync("Motif de refus", "Annuler", null, labels);
         if (selected == null || selected == "Annuler") return;
 
         var option = RefusalOptions.FirstOrDefault(r => r.Label == selected);
@@ -301,15 +338,15 @@ public partial class MissionDetailPage : ContentPage
                 new { reasonCode = option.Code, reason = string.IsNullOrWhiteSpace(freeText) ? option.Label : freeText });
             await Navigation.PopAsync();
         }
-        catch { await DisplayAlert("Erreur", "Impossible de refuser la mission.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible de refuser la mission.", "OK"); }
     }
 
-    private async void OnComplete(object sender, EventArgs e)
+    private async void OnComplete(object? sender, EventArgs e)
     {
         var notes = (NotesEditor.Text ?? "").Trim();
         if (string.IsNullOrEmpty(notes))
         {
-            await DisplayAlert("Rapport requis", "Veuillez saisir un rapport avant de clôturer la mission.", "OK");
+            await DisplayAlertAsync("Rapport requis", "Veuillez saisir un rapport avant de clôturer la mission.", "OK");
             return;
         }
 
@@ -325,7 +362,7 @@ public partial class MissionDetailPage : ContentPage
                 IsSynced  = false
             });
 
-            await DisplayAlert("Hors ligne",
+            await DisplayAlertAsync("Hors ligne",
                 "Rapport sauvegardé localement. Il sera envoyé automatiquement dès le retour du réseau.", "OK");
             return;
         }
@@ -336,13 +373,13 @@ public partial class MissionDetailPage : ContentPage
             _vm.ShowComplete = false;
             _vm.StatusText = "Terminée";
             _vm.StatusColor = Color.FromArgb("#6b7280");
-            await DisplayAlert("Mission terminée", "La mission a été clôturée avec succès.", "OK");
+            await DisplayAlertAsync("Mission terminée", "La mission a été clôturée avec succès.", "OK");
             await Navigation.PopAsync();
         }
-        catch { await DisplayAlert("Erreur", "Impossible de terminer la mission.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible de terminer la mission.", "OK"); }
     }
 
-    private void OnCallPhone(object sender, EventArgs e)
+    private void OnCallPhone(object? sender, EventArgs e)
     {
         var phone = _vm.CallerPhone;
         if (string.IsNullOrWhiteSpace(phone)) return;
@@ -350,7 +387,7 @@ public partial class MissionDetailPage : ContentPage
         catch { /* plateforme non supportée */ }
     }
 
-    private async void OnUploadVideo(object sender, EventArgs e)
+    private async void OnUploadVideo(object? sender, EventArgs e)
     {
         if (_media == null || _vm.IsUploading) return;
         _vm.IsUploading = true;
@@ -370,7 +407,7 @@ public partial class MissionDetailPage : ContentPage
         finally { _vm.IsUploading = false; _vm.UploadProgress = 0; }
     }
 
-    private async void OnCapturePhoto(object sender, EventArgs e)
+    private async void OnCapturePhoto(object? sender, EventArgs e)
     {
         if (_media == null) return;
         _vm.PhotoStatus = "Prise de photo...";
@@ -383,7 +420,7 @@ public partial class MissionDetailPage : ContentPage
         catch { _vm.PhotoStatus = "Erreur lors de l'envoi."; }
     }
 
-    private async void OnPickPhoto(object sender, EventArgs e)
+    private async void OnPickPhoto(object? sender, EventArgs e)
     {
         if (_media == null) return;
         _vm.PhotoStatus = "Envoi en cours...";
@@ -397,7 +434,7 @@ public partial class MissionDetailPage : ContentPage
         catch { _vm.PhotoStatus = "Erreur lors de l'envoi."; }
     }
 
-    private async void OnSaveReport(object sender, EventArgs e)
+    private async void OnSaveReport(object? sender, EventArgs e)
     {
         var report = EditReportEditor.Text ?? "";
         try
@@ -406,9 +443,9 @@ public partial class MissionDetailPage : ContentPage
                 new { completionReport = report });
             _vm.CompletionReport = report;
             _vm.HasCompletionReport = !string.IsNullOrEmpty(report);
-            await DisplayAlert("Enregistré", "Le rapport a été mis à jour.", "OK");
+            await DisplayAlertAsync("Enregistré", "Le rapport a été mis à jour.", "OK");
         }
-        catch { await DisplayAlert("Erreur", "Impossible d'enregistrer le rapport.", "OK"); }
+        catch { await DisplayAlertAsync("Erreur", "Impossible d'enregistrer le rapport.", "OK"); }
     }
 
     private static string RefusalCodeToLabel(string? code) => code switch

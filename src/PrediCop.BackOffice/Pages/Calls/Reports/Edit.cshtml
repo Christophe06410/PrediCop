@@ -115,7 +115,7 @@ const TEMPLATES = Object.fromEntries(Object.entries(TEMPLATES_DATA).map(([k, v])
 
 tinymce.init({
     selector: '#Input_Body',
-    base_url: '/lib/tinymce',
+    base_url: '@Url.Content("~/lib/tinymce")',
     suffix: '.min',
     language: 'fr_FR',
     height: 580,

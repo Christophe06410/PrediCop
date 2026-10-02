@@ -6,46 +6,68 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class TicketingViewModel(
-    ApiService api,
-    AuthService auth,
-    TenantFeaturesService tenantFeatures,
-    ILogger<TicketingViewModel> log) : ObservableObject
+public partial class TicketingViewModel : ObservableObject
 {
-    public ApiService ApiServiceRef => api;
-    public string CurrencySymbol => tenantFeatures.Current.CurrencySymbol;
+    private readonly ApiService _api;
+    private readonly AuthService _auth;
+    private readonly TenantFeaturesService _tenantFeatures;
+    private readonly ILogger<TicketingViewModel> _log;
+
+    public TicketingViewModel(
+        ApiService api,
+        AuthService auth,
+        TenantFeaturesService tenantFeatures,
+        ILogger<TicketingViewModel> log)
+    {
+        _api = api;
+        _auth = auth;
+        _tenantFeatures = tenantFeatures;
+        _log = log;
+        StatusMessage = "";
+        PlateNumber = "";
+        Address = "";
+        FineAmountText = "";
+        VehicleMake = "";
+        VehicleModel = "";
+        VehicleColor = "";
+        Notes = "";
+        RecentTickets = [];
+    }
+
+    public ApiService ApiServiceRef => _api;
+    public string CurrencySymbol => _tenantFeatures.Current.CurrencySymbol;
 
     // ── UI state ──────────────────────────────────────────────────────────────
 
-    [ObservableProperty] private bool showForm;
+    [ObservableProperty] private bool _showForm;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotSubmitting))]
-    private bool isSubmitting;
+    private bool _isSubmitting;
     public bool IsNotSubmitting => !IsSubmitting;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotLoadingLocation))]
-    private bool isLoadingLocation;
+    private bool _isLoadingLocation;
     public bool IsNotLoadingLocation => !IsLoadingLocation;
-    [ObservableProperty] private bool isLoadingHistory;
+    [ObservableProperty] private bool _isLoadingHistory;
 
-    [ObservableProperty] private string statusMessage = "";
-    [ObservableProperty] private bool hasStatusMessage;
-    [ObservableProperty] private bool isStatusError;
+    [ObservableProperty] private string _statusMessage;
+    [ObservableProperty] private bool _hasStatusMessage;
+    [ObservableProperty] private bool _isStatusError;
 
     // ── Form fields ───────────────────────────────────────────────────────────
 
-    [ObservableProperty] private string plateNumber = "";
-    [ObservableProperty] private string address = "";
-    [ObservableProperty] private string fineAmountText = "";
-    [ObservableProperty] private string vehicleMake = "";
-    [ObservableProperty] private string vehicleModel = "";
-    [ObservableProperty] private string vehicleColor = "";
-    [ObservableProperty] private string notes = "";
+    [ObservableProperty] private string _plateNumber;
+    [ObservableProperty] private string _address;
+    [ObservableProperty] private string _fineAmountText;
+    [ObservableProperty] private string _vehicleMake;
+    [ObservableProperty] private string _vehicleModel;
+    [ObservableProperty] private string _vehicleColor;
+    [ObservableProperty] private string _notes;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FineAmountText))]
-    private InfractionItem? selectedInfraction;
+    private InfractionItem? _selectedInfraction;
 
     partial void OnSelectedInfractionChanged(InfractionItem? value)
     {
@@ -55,11 +77,11 @@ public partial class TicketingViewModel(
 
     // ── History ───────────────────────────────────────────────────────────────
 
-    [ObservableProperty] private ObservableCollection<TicketSummary> recentTickets = [];
-    [ObservableProperty] private bool hasNoTickets;
+    [ObservableProperty] private ObservableCollection<TicketSummary> _recentTickets;
+    [ObservableProperty] private bool _hasNoTickets;
 
     public List<InfractionItem> InfractionTypes =>
-        GetInfractionTypesForCountry(tenantFeatures.Current.CountryCode);
+        GetInfractionTypesForCountry(_tenantFeatures.Current.CountryCode);
 
     public static List<InfractionItem> DefaultInfractionTypes => _infractionTypesFr;
 
@@ -121,7 +143,7 @@ public partial class TicketingViewModel(
         }
         catch (Exception ex)
         {
-            log.LogWarning(ex, "Impossible de récupérer la position GPS.");
+            _log.LogWarning(ex, "Impossible de récupérer la position GPS.");
         }
         finally { IsLoadingLocation = false; }
     }
@@ -150,7 +172,7 @@ public partial class TicketingViewModel(
         {
             var body = new
             {
-                IssuedById   = auth.CurrentUser!.Id,
+                IssuedById   = _auth.CurrentUser!.Id,
                 IssuedAtAddress = Address.Trim(),
                 PlateNumber  = PlateNumber.Trim().ToUpperInvariant(),
                 VehicleMake  = VehicleMake.Trim(),
@@ -161,7 +183,7 @@ public partial class TicketingViewModel(
                 Notes        = Notes.Trim()
             };
 
-            await api.PostAsync("/api/tickets", body);
+            await _api.PostAsync("/api/tickets", body);
 
             SetStatus($"PV émis — {PlateNumber.Trim().ToUpperInvariant()}", isError: false);
             ClearForm();
@@ -170,7 +192,7 @@ public partial class TicketingViewModel(
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Erreur lors de la création du PV.");
+            _log.LogError(ex, "Erreur lors de la création du PV.");
             SetStatus("Erreur lors de l'émission du PV.", isError: true);
         }
         finally { IsSubmitting = false; }
@@ -185,15 +207,14 @@ public partial class TicketingViewModel(
         try
         {
             var from = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
-            var agentId = auth.CurrentUser?.Id;
+            var agentId = _auth.CurrentUser?.Id;
             var url = $"/api/tickets?dateFrom={from}&agentId={agentId}";
 
-            var list = await api.GetAsync<List<TicketDto>>(url);
+            var list = await _api.GetAsync<List<TicketDto>>(url);
             if (list is null || list.Count == 0) { HasNoTickets = true; return; }
 
-            var currency = tenantFeatures.Current.CurrencySymbol;
-            foreach (var t in list)
-                RecentTickets.Add(new TicketSummary(
+            var currency = _tenantFeatures.Current.CurrencySymbol;
+            var items = list.Select(t => new TicketSummary(
                     t.Id,
                     t.TicketNumber,
                     t.PlateNumber,
@@ -203,11 +224,13 @@ public partial class TicketingViewModel(
                     GetStatusColor(t.Status),
                     t.IssuedAt.ToLocalTime().ToString("dd/MM HH:mm"),
                     t.IssuedAt.ToLocalTime().Date == DateTime.Today,
-                    currency));
+                    currency))
+                .ToList();
+            RecentTickets = new ObservableCollection<TicketSummary>(items);
         }
         catch (Exception ex)
         {
-            log.LogWarning(ex, "Impossible de charger les PV récents.");
+            _log.LogWarning(ex, "Impossible de charger les PV récents.");
             HasNoTickets = true;
         }
         finally { IsLoadingHistory = false; }

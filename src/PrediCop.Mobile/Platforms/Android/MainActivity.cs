@@ -16,6 +16,8 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnCreate(savedInstanceState);
         ApplyFullScreen();
+        // Pan window so the focused field stays visible when the keyboard opens
+        Window?.SetSoftInputMode(Android.Views.SoftInput.AdjustPan);
         // App lancée via un tap sur notification (app était tuée)
         HandleFirebaseIntent(Intent);
     }

@@ -22,16 +22,16 @@
                    IsVisible="False"/>
 
             <!-- Badge statut -->
-            <Frame x:Name="StatusFrame"
-                   BackgroundColor="#243050" CornerRadius="8"
-                   Padding="10,6" HasShadow="False" IsVisible="False">
+            <Border x:Name="StatusFrame"
+                    BackgroundColor="#243050" Padding="10,6" IsVisible="False">
+                <Border.StrokeShape><RoundRectangle CornerRadius="8"/></Border.StrokeShape>
                 <Label x:Name="StatusLabel" TextColor="White" FontSize="13" FontAttributes="Bold"/>
-            </Frame>
+            </Border>
 
             <!-- Champs du PV -->
-            <Frame x:Name="FormFrame"
-                   BackgroundColor="#243050" CornerRadius="12"
-                   Padding="16" HasShadow="False" IsVisible="False">
+            <Border x:Name="FormFrame"
+                    BackgroundColor="#243050" Padding="16" IsVisible="False">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <VerticalStackLayout Spacing="12">
 
                     <!-- Plaque -->
@@ -82,7 +82,7 @@
                             PlaceholderColor="#4a5568"/>
 
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Annuler ce PV (visible uniquement si créé aujourd'hui) -->
             <Button x:Name="CancelTicketButton"

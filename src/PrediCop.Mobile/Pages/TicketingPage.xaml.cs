@@ -26,7 +26,7 @@ public partial class TicketingPage : ContentPage
         _vm.LoadRecentCommand.Execute(null);
     }
 
-    private void OnPlateTextChanged(object sender, TextChangedEventArgs e)
+    private void OnPlateTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (e.NewTextValue is null) return;
         var upper = e.NewTextValue.ToUpperInvariant();
@@ -56,7 +56,7 @@ public partial class TicketingPage : ContentPage
         });
     }
 
-    private async void OnTicketTapped(object sender, TappedEventArgs e)
+    private async void OnTicketTapped(object? sender, TappedEventArgs e)
     {
         if (e.Parameter is not TicketSummary summary) return;
         await Navigation.PushAsync(new TicketDetailPage(summary.Id, _vm.ApiServiceRef, summary.IsToday));

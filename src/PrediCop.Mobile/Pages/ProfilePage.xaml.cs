@@ -16,29 +16,32 @@ public partial class ProfilePage : ContentPage
         BindingContext = vm;
     }
 
-    protected override async void OnAppearing()
+    protected override void OnAppearing()
     {
         base.OnAppearing();
         _vm.LoadProfile();
 
-        // Pré-demander la permission GPS dès l'ouverture de l'onglet,
-        // avant toute sélection de véhicule, pour éviter le gel de l'UI au moment du choix.
-        await ProfileViewModel.EnsureLocationPermissionAsync();
+        // Pré-demander la permission GPS. Les API Permissions.* de MAUI DOIVENT être appelées
+        // depuis le thread principal (elles interagissent avec l'Activity/le dispatcher UI) :
+        // un Task.Run() ici causait un blocage/exception silencieuse pouvant geler l'UI (ANR).
+        // CheckStatusAsync est un simple check PackageManager (rapide) ; RequestAsync n'affiche
+        // une boîte de dialogue que si nécessaire — aucun des deux ne bloque durablement l'UI.
+        _ = ProfileViewModel.EnsureLocationPermissionAsync();
 
         // Récupérer la plaque d'immatriculation depuis l'API si elle n'est pas encore dans le cache.
-        await _vm.RefreshVehicleLabelAsync();
+        _ = _vm.RefreshVehicleLabelAsync();
     }
 
-    private void OnGpsToggled(object sender, ToggledEventArgs e)
+    private void OnGpsToggled(object? sender, ToggledEventArgs e)
     {
         if (!e.Value) _vm.StopGps();
     }
 
-    private async void OnDetectVehicleClicked(object sender, EventArgs e)
+    private async void OnDetectVehicleClicked(object? sender, EventArgs e)
     {
         if (_bleScanner is null)
         {
-            await DisplayAlert("Non disponible", "La détection BLE n'est pas disponible sur cette plateforme.", "OK");
+            await DisplayAlertAsync("Non disponible", "La détection BLE n'est pas disponible sur cette plateforme.", "OK");
             return;
         }
 
@@ -51,11 +54,11 @@ public partial class ProfilePage : ContentPage
             if (callSign is not null)
             {
                 _vm.CurrentVehicle = callSign;
-                await DisplayAlert("Véhicule détecté", $"Véhicule {callSign} détecté et assigné automatiquement.", "OK");
+                await DisplayAlertAsync("Véhicule détecté", $"Véhicule {callSign} détecté et assigné automatiquement.", "OK");
             }
             else
             {
-                await DisplayAlert(
+                await DisplayAlertAsync(
                     "Aucun véhicule détecté",
                     "Aucun beacon BLE reconnu à proximité. Vérifiez que le Bluetooth est activé et que vous êtes bien dans le véhicule, ou sélectionnez manuellement.",
                     "OK");
@@ -63,7 +66,7 @@ public partial class ProfilePage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Erreur", $"Erreur lors du scan BLE : {ex.Message}", "OK");
+            await DisplayAlertAsync("Erreur", $"Erreur lors du scan BLE : {ex.Message}", "OK");
         }
         finally
         {
@@ -72,17 +75,17 @@ public partial class ProfilePage : ContentPage
         }
     }
 
-    private async void OnSelectVehicleClicked(object sender, EventArgs e)
+    private async void OnSelectVehicleClicked(object? sender, EventArgs e)
     {
         var vehicles = await _vm.LoadVehiclesAsync();
         if (vehicles.Count == 0)
         {
-            await DisplayAlert("Véhicules", "Aucun véhicule disponible.", "OK");
+            await DisplayAlertAsync("Véhicules", "Aucun véhicule disponible.", "OK");
             return;
         }
 
         var labels = vehicles.Select(v => v.IsCurrent ? $"✓ {v.Label}" : v.Label).ToArray();
-        var selected = await DisplayActionSheet("Sélectionner votre véhicule", "Annuler", null, labels);
+        var selected = await DisplayActionSheetAsync("Sélectionner votre véhicule", "Annuler", null, labels);
         if (selected == null || selected == "Annuler") return;
 
         var item = vehicles.FirstOrDefault(v =>
@@ -91,12 +94,12 @@ public partial class ProfilePage : ContentPage
 
         var success = await _vm.SelectVehicleAsync(item.Id, item.Label);
         if (success)
-            await DisplayAlert("Véhicule", $"Véhicule {item.Label} sélectionné.", "OK");
+            await DisplayAlertAsync("Véhicule", $"Véhicule {item.Label} sélectionné.", "OK");
         else
-            await DisplayAlert("Erreur", "Impossible de sélectionner ce véhicule.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de sélectionner ce véhicule.", "OK");
     }
 
-    private async void OnChangePasswordClicked(object sender, EventArgs e)
+    private async void OnChangePasswordClicked(object? sender, EventArgs e)
     {
         var current = await DisplayPromptAsync("Mot de passe", "Mot de passe actuel :",
             keyboard: Keyboard.Default, maxLength: 100);
@@ -108,7 +111,7 @@ public partial class ProfilePage : ContentPage
 
         if (newPwd.Length < 8)
         {
-            await DisplayAlert("Erreur", "Le mot de passe doit faire au moins 8 caractères.", "OK");
+            await DisplayAlertAsync("Erreur", "Le mot de passe doit faire au moins 8 caractères.", "OK");
             return;
         }
 
@@ -118,7 +121,7 @@ public partial class ProfilePage : ContentPage
 
         if (confirm != newPwd)
         {
-            await DisplayAlert("Erreur", "Les mots de passe ne correspondent pas.", "OK");
+            await DisplayAlertAsync("Erreur", "Les mots de passe ne correspondent pas.", "OK");
             return;
         }
 
@@ -126,12 +129,12 @@ public partial class ProfilePage : ContentPage
         if (api == null) return;
         var (success, error) = await api.ChangePasswordAsync(current, newPwd);
         if (success)
-            await DisplayAlert("Succès", "Mot de passe modifié avec succès.", "OK");
+            await DisplayAlertAsync("Succès", "Mot de passe modifié avec succès.", "OK");
         else
-            await DisplayAlert("Erreur", error ?? "Impossible de modifier le mot de passe.", "OK");
+            await DisplayAlertAsync("Erreur", error ?? "Impossible de modifier le mot de passe.", "OK");
     }
 
-    private async void OnBeaconPairingClicked(object sender, EventArgs e)
+    private async void OnBeaconPairingClicked(object? sender, EventArgs e)
     {
         var services = Handler?.MauiContext?.Services;
         if (services is null) return;
@@ -139,7 +142,7 @@ public partial class ProfilePage : ContentPage
         await Navigation.PushAsync(page);
     }
 
-    private async void OnShiftReportClicked(object sender, EventArgs e)
+    private async void OnShiftReportClicked(object? sender, EventArgs e)
     {
         var services = Handler?.MauiContext?.Services;
         if (services is null) return;
@@ -147,22 +150,22 @@ public partial class ProfilePage : ContentPage
         await Navigation.PushAsync(page);
     }
 
-    private async void OnLeavePatrolClicked(object sender, EventArgs e)
+    private async void OnLeavePatrolClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlert("Quitter la patrouille",
+        var confirm = await DisplayAlertAsync("Quitter la patrouille",
             "Vous allez quitter l'équipage de ce véhicule. Continuer ?", "Quitter", "Annuler");
         if (!confirm) return;
 
         var success = await _vm.LeavePatrolAsync();
         if (success)
-            await DisplayAlert("Patrouille", "Vous avez quitté l'équipage.", "OK");
+            await DisplayAlertAsync("Patrouille", "Vous avez quitté l'équipage.", "OK");
         else
-            await DisplayAlert("Erreur", "Impossible de quitter la patrouille. Réessayez.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de quitter la patrouille. Réessayez.", "OK");
     }
 
-    private async void OnLogoutClicked(object sender, EventArgs e)
+    private async void OnLogoutClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlert("Déconnexion", "Se déconnecter ?", "Oui", "Annuler");
+        var confirm = await DisplayAlertAsync("Déconnexion", "Se déconnecter ?", "Oui", "Annuler");
         if (!confirm) return;
         await _vm.LogoutCommand.ExecuteAsync(null);
     }

@@ -26,9 +26,6 @@ public partial class AppHeader : ContentView
 
         _alertService = Handler.MauiContext?.Services.GetService<MissionAlertService>();
         _connectionStatus = Handler.MauiContext?.Services.GetService<ConnectionStatusService>();
-#if DEBUG
-        MobileLogger.Log("AppHeader", $"OnHandlerChanged handler={Handler is not null}, alertService={_alertService is not null}");
-#endif
 
         if (_connectionStatus is not null)
         {
@@ -119,9 +116,9 @@ public partial class AppHeader : ContentView
     private void OnDismissAlertTapped(object? sender, TappedEventArgs e) =>
         _alertService?.Dismiss();
 
-    private async void OnGoToMissionsClicked(object sender, EventArgs e)
+    private void OnGoToMissionsClicked(object? sender, EventArgs e)
     {
         _alertService?.Dismiss();
-        try { await Shell.Current.GoToAsync("//main/missions"); } catch { }
+        AppShell.SwitchToTab("missions");
     }
 }

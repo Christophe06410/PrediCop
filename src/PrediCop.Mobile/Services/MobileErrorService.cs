@@ -7,7 +7,7 @@ namespace PrediCop.Mobile.Services;
 /// afin qu'elles soient persistées en base de données.
 /// Les erreurs sont envoyées en fire-and-forget pour ne jamais bloquer l'UI.
 /// </summary>
-public class MobileErrorService(ApiService api, AuthService auth, ILogger<MobileErrorService> log)
+public class MobileErrorService(ApiService api, ILogger<MobileErrorService> log)
 {
     private static readonly string AppVersion =
         AppInfo.VersionString ?? "?";

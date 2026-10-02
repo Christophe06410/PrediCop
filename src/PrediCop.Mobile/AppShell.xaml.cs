@@ -24,10 +24,17 @@ public partial class AppShell : Shell
                          || string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(role, "PatrolAgent", StringComparison.OrdinalIgnoreCase);
 
-        TabMissions.IsVisible = isPatrolRole;
-        TabPatrol.IsVisible   = isPatrolRole;
-        TabMap.IsVisible      = isPatrolRole;
-        TabTickets.IsVisible  = verbalisationEnabled;
+        bool isAdmin = string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
+
+        // Admin/Manager voient tout pour le monitoring terrain
+        bool showPatrolTabs = isPatrolRole || isAdmin;
+
+        TabMissions.IsVisible = showPatrolTabs;
+        TabPatrol.IsVisible   = showPatrolTabs;
+        TabMap.IsVisible      = showPatrolTabs;
+        TabTickets.IsVisible  = verbalisationEnabled || isAdmin;
         // TabProfile toujours visible
     }
 
@@ -50,20 +57,52 @@ public partial class AppShell : Shell
             if (loginVm != null)
                 await loginVm.ConnectServicesAsync();
 
-            var dest = GetFirstRoute(auth.CurrentUser?.Role ?? "");
-            await GoToAsync(dest);
+            await NavigateAfterLoginAsync(auth.CurrentUser?.Role ?? "");
         }
         else
             await GoToAsync("//login");
     }
 
-    /// <summary>Retourne la route de démarrage selon le rôle.</summary>
-    public static string GetFirstRoute(string role)
+    /// <summary>
+    /// Sélectionne un onglet du TabBar principal sans GoToAsync.
+    /// GoToAsync("//main/tab") est instable en release — on pilote CurrentItem directement.
+    /// Thread-safe : dispatch automatique sur le thread UI si nécessaire.
+    /// </summary>
+    public static void SwitchToTab(string tabRoute)
     {
-        if (string.Equals(role, "Verbalisateur", StringComparison.OrdinalIgnoreCase))
-            return "//main/tickets";
+        if (Current is not AppShell shell) return;
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            shell.CurrentItem = shell.MainTabBar;
+            var tab = shell.MainTabBar.Items.FirstOrDefault(t => t.Route == tabRoute);
+            if (tab != null)
+                shell.MainTabBar.CurrentItem = tab;
+        });
+    }
+
+    /// <summary>
+    /// Navigation post-login fiable. GoToAsync("//main/tab") est instable en release
+    /// pour les TabBar — on pilote CurrentItem directement pour les onglets.
+    /// </summary>
+    public static async Task NavigateAfterLoginAsync(string role)
+    {
+        if (Current is not AppShell shell) return;
+
         if (string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase))
-            return "//patrol-activation"; // Page d'activation avant les onglets principaux
-        return "//main/missions";
+        {
+            await shell.GoToAsync("//patrol-activation");
+            return;
+        }
+
+        string tabRoute = string.Equals(role, "Verbalisateur", StringComparison.OrdinalIgnoreCase)
+            ? "tickets" : "missions";
+
+        await MainThread.InvokeOnMainThreadAsync(() =>
+        {
+            shell.CurrentItem = shell.MainTabBar;
+            var tab = shell.MainTabBar.Items.FirstOrDefault(t => t.Route == tabRoute);
+            if (tab != null)
+                shell.MainTabBar.CurrentItem = tab;
+        });
     }
 }

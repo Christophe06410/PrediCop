@@ -5,8 +5,9 @@
              BackgroundColor="#1a2035"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="*,Auto,*" Padding="32">
-        <VerticalStackLayout Grid.Row="1" Spacing="20">
+    <ScrollView>
+        <VerticalStackLayout Padding="32" Spacing="20" VerticalOptions="Center"
+                             MinimumHeightRequest="500">
 
             <Image Source="logo_pm.png" HeightRequest="100" HorizontalOptions="Center" />
 
@@ -17,21 +18,24 @@
                    FontSize="14" TextColor="#aab0c0"
                    HorizontalTextAlignment="Center" Margin="0,0,0,20"/>
 
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <Entry Text="{Binding Email}"
                        Placeholder="Email" PlaceholderColor="#6b7a99"
                        TextColor="White" BackgroundColor="Transparent"
                        Keyboard="Email" Margin="16,4" />
-            </Frame>
+            </Border>
 
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <Entry Text="{Binding Password}"
                        Placeholder="Mot de passe" PlaceholderColor="#6b7a99"
                        TextColor="White" BackgroundColor="Transparent"
                        IsPassword="True" Margin="16,4" />
-            </Frame>
+            </Border>
 
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="12" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                 <Grid ColumnDefinitions="*,Auto" Margin="16,0">
                     <Picker Grid.Column="0"
                             Title="Sélectionnez votre ville"
@@ -59,7 +63,7 @@
                         </Label>
                     </Grid>
                 </Grid>
-            </Frame>
+            </Border>
 
             <Label Text="{Binding ErrorMessage}" TextColor="#ff4444"
                    HorizontalTextAlignment="Center"
@@ -75,5 +79,5 @@
                                IsVisible="{Binding IsLoading}"
                                Color="White" />
         </VerticalStackLayout>
-    </Grid>
+    </ScrollView>
 </ContentPage>

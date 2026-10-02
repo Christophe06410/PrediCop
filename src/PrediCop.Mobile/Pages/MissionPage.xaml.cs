@@ -41,7 +41,7 @@ public partial class MissionPage : ContentPage
 
         WeakReferenceMessenger.Default.Unregister<AlertMessage>(this);
         WeakReferenceMessenger.Default.Register<AlertMessage>(this, async (_, m) =>
-            await MainThread.InvokeOnMainThreadAsync(() => DisplayAlert(m.Title, m.Text, "OK")));
+            await MainThread.InvokeOnMainThreadAsync(() => DisplayAlertAsync(m.Title, m.Text, "OK")));
     }
 
     protected override void OnDisappearing()
@@ -53,13 +53,13 @@ public partial class MissionPage : ContentPage
     public void ShowMissionProposal(MissionInfo mission) =>
         ViewModel.SetMissionProposal(mission);
 
-    private async void OnViewMissionDetails(object sender, EventArgs e)
+    private async void OnViewMissionDetails(object? sender, EventArgs e)
     {
         if (ViewModel.CurrentMissionId is not { } missionId) return;
         await Navigation.PushAsync(new MissionDetailPage(missionId, _api, _localDb, _connectivity, _syncService, _media));
     }
 
-    private async void OnViewHistoryClicked(object sender, EventArgs e)
+    private async void OnViewHistoryClicked(object? sender, EventArgs e)
     {
         await Navigation.PushAsync(new MissionHistoryPage(_api, _localDb, _connectivity, _syncService));
     }
@@ -75,10 +75,10 @@ public partial class MissionPage : ContentPage
         ("Autre",                      "Other",            true),
     ];
 
-    private async void OnRefuseMission(object sender, EventArgs e)
+    private async void OnRefuseMission(object? sender, EventArgs e)
     {
         var labels = RefusalOptions.Select(r => r.Label).ToArray();
-        var selected = await DisplayActionSheet("Motif de refus", "Annuler", null, labels);
+        var selected = await DisplayActionSheetAsync("Motif de refus", "Annuler", null, labels);
         if (selected == null || selected == "Annuler") return;
 
         var option = RefusalOptions.FirstOrDefault(r => r.Label == selected);
@@ -96,7 +96,7 @@ public partial class MissionPage : ContentPage
         await ViewModel.RefuseMissionAsync(option.Code, freeText);
     }
 
-    private async void OnCompleteMission(object sender, EventArgs e)
+    private async void OnCompleteMission(object? sender, EventArgs e)
     {
         var report = await DisplayPromptAsync(
             "Fin de mission", "Rapport de fin de mission:", "Terminer", "Annuler", "");
@@ -104,28 +104,28 @@ public partial class MissionPage : ContentPage
         await ViewModel.CompleteMissionAsync(report);
     }
 
-    private async void OnVehicleLabelTapped(object sender, TappedEventArgs e)
+    private void OnVehicleLabelTapped(object? sender, TappedEventArgs e)
     {
-        await Shell.Current.GoToAsync("//main/profile");
+        AppShell.SwitchToTab("profile");
     }
 
-    private async void OnAssignVehicleClicked(object sender, EventArgs e)
+    private async void OnAssignVehicleClicked(object? sender, EventArgs e)
     {
         var auth = Handler?.MauiContext?.Services.GetService<AuthService>();
         if (auth is null) return;
 
         List<ApiVehicleItem>? vehicles;
         try { vehicles = await _api.GetAsync<List<ApiVehicleItem>>("api/vehicles"); }
-        catch { await DisplayAlert("Erreur", "Impossible de charger les véhicules.", "OK"); return; }
+        catch { await DisplayAlertAsync("Erreur", "Impossible de charger les véhicules.", "OK"); return; }
 
         if (vehicles is null or { Count: 0 })
         {
-            await DisplayAlert("Véhicules", "Aucun véhicule disponible.", "OK");
+            await DisplayAlertAsync("Véhicules", "Aucun véhicule disponible.", "OK");
             return;
         }
 
         var labels = vehicles.Select(v => $"{v.CallSign} — {v.LicensePlate}").ToArray();
-        var selected = await DisplayActionSheet("Sélectionner votre véhicule", "Annuler", null, labels);
+        var selected = await DisplayActionSheetAsync("Sélectionner votre véhicule", "Annuler", null, labels);
         if (selected is null or "Annuler") return;
 
         var vehicle = vehicles.FirstOrDefault(v => selected.StartsWith(v.CallSign));
@@ -135,7 +135,7 @@ public partial class MissionPage : ContentPage
         if (success)
             ViewModel.RefreshVehicleLabel();
         else
-            await DisplayAlert("Erreur", "Impossible d'assigner ce véhicule.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible d'assigner ce véhicule.", "OK");
     }
 
     private class ApiVehicleItem

@@ -6,29 +6,53 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class LoginViewModel(
-    AuthService auth,
-    TenantFeaturesService features,
-    SignalRService signalR,
-    GpsTrackingService gps,
-    PushNotificationService push,
-    ILogger<LoginViewModel> log) : ObservableObject
+public partial class LoginViewModel : ObservableObject
 {
-#if DEBUG
-    [ObservableProperty] private string email = "officier@predicop.fr";
-    [ObservableProperty] private string password = "Officer123!";
-#else
-    [ObservableProperty] private string email = "";
-    [ObservableProperty] private string password = "";
-#endif
+    private readonly AuthService _auth;
+    private readonly TenantFeaturesService _features;
+    private readonly SignalRService _signalR;
+    private readonly GpsTrackingService _gps;
+    private readonly PushNotificationService _push;
+    private readonly ILogger<LoginViewModel> _log;
 
-    [ObservableProperty] private string errorMessage = "";
-    [ObservableProperty] private bool hasError;
-    [ObservableProperty] private bool isLoading;
-    [ObservableProperty] private bool isLoadingTenants;
-    [ObservableProperty] private bool tenantsLoadFailed;
-    [ObservableProperty] private ObservableCollection<TenantItem> tenants = [];
-    [ObservableProperty] private TenantItem? selectedTenant;
+    public LoginViewModel(
+        AuthService auth,
+        TenantFeaturesService features,
+        SignalRService signalR,
+        GpsTrackingService gps,
+        PushNotificationService push,
+        ILogger<LoginViewModel> log)
+    {
+        _auth = auth;
+        _features = features;
+        _signalR = signalR;
+        _gps = gps;
+        _push = push;
+        _log = log;
+#if DEBUG
+        Email = "officier@predicop.fr";
+        Password = "Officer123!";
+#else
+        Email = "";
+        Password = "";
+#endif
+        ErrorMessage = "";
+        Tenants = [];
+    }
+
+    [ObservableProperty]
+    private string _email;
+
+    [ObservableProperty]
+    private string _password;
+
+    [ObservableProperty] private string _errorMessage;
+    [ObservableProperty] private bool _hasError;
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private bool _isLoadingTenants;
+    [ObservableProperty] private bool _tenantsLoadFailed;
+    [ObservableProperty] private ObservableCollection<TenantItem> _tenants;
+    [ObservableProperty] private TenantItem? _selectedTenant;
 
     private const string LastTenantKey = "login_last_tenant_slug";
 
@@ -38,7 +62,14 @@ public partial class LoginViewModel(
         TenantsLoadFailed = false;
         try
         {
-            var list = await auth.GetTenantsAsync();
+            List<TenantItem> list = [];
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                if (attempt > 0) await Task.Delay(2000);
+                list = await _auth.GetTenantsAsync();
+                if (list.Count > 0) break;
+            }
+
             Tenants = new ObservableCollection<TenantItem>(list);
 
             if (Tenants.Count == 0)
@@ -77,43 +108,46 @@ public partial class LoginViewModel(
     /// </summary>
     public async Task ConnectServicesAsync()
     {
-        if (auth.Token == null || auth.CurrentUser == null) return;
+        if (_auth.Token == null || _auth.CurrentUser == null) return;
 
-        var role = auth.CurrentUser.Role;
+        var role = _auth.CurrentUser.Role;
         bool isOfficer      = string.Equals(role, "Officer",      StringComparison.OrdinalIgnoreCase);
         bool isPatrolLeader = string.Equals(role, "PatrolLeader", StringComparison.OrdinalIgnoreCase);
         bool isPatrolAgent  = string.Equals(role, "PatrolAgent",  StringComparison.OrdinalIgnoreCase);
         bool isPatrolRole   = isOfficer || isPatrolLeader || isPatrolAgent;
 
         // Features et SignalR en parallèle — SignalR ne dépend pas des feature flags
-        var featuresTask = features.LoadAsync();
-        var signalRTask  = isPatrolRole && auth.VehicleId.HasValue && !signalR.IsConnected
-            ? signalR.ConnectAsync(auth.Token, auth.VehicleId.Value).ContinueWith(_ => { })
+        var featuresTask = _features.LoadAsync();
+        var signalRTask  = isPatrolRole && _auth.VehicleId.HasValue && !_signalR.IsConnected
+            ? _signalR.ConnectAsync(_auth.Token, _auth.VehicleId.Value).ContinueWith(_ => { })
             : Task.CompletedTask;
 
         try { await Task.WhenAll(featuresTask, signalRTask); } catch { }
 
-        // BuildTabs nécessite les features chargées
+        // BuildTabs nécessite les features chargées et doit s'exécuter sur le thread UI
         if (Shell.Current is AppShell shell)
-            shell.BuildTabs(auth.CurrentUser.Role, features.Current.ModuleVerbalisationEnabled);
+        {
+            var verbalisationEnabled = _features.Current.ModuleVerbalisationEnabled;
+            await MainThread.InvokeOnMainThreadAsync(() => shell.BuildTabs(role, verbalisationEnabled));
+        }
 
         // Push notifications — enregistre le device token FCM (best-effort, ne bloque pas)
-        _ = push.RegisterAsync();
+        _ = _push.RegisterAsync();
 
         // GPS nécessite GpsTrackingEnabled — démarre après features
-        if (features.Current.GpsTrackingEnabled)
+        if (_features.Current.GpsTrackingEnabled)
         {
-            if (isOfficer && auth.VehicleId.HasValue)
+            if (isOfficer && _auth.VehicleId.HasValue)
             {
                 // Officer classique : GPS lié au véhicule
-                if (!gps.IsTracking)
-                    try { await gps.StartAsync(auth.VehicleId.Value); } catch { }
+                if (!_gps.IsTracking)
+                    try { await _gps.StartAsync(_auth.VehicleId.Value); } catch { }
             }
             else if (isPatrolLeader || isPatrolAgent)
             {
                 // Chef et agents : GPS individuel immédiatement (même avant activation du véhicule)
-                if (!gps.IsTracking)
-                    try { await gps.StartAgentTrackingAsync(); } catch { }
+                if (!_gps.IsTracking)
+                    try { await _gps.StartAgentTrackingAsync(); } catch { }
             }
         }
     }
@@ -130,41 +164,42 @@ public partial class LoginViewModel(
 
         HasError = false;
         IsLoading = true;
-        log.LogInformation("Login attempt for '{Email}' on tenant '{Slug}'", Email.Trim(), SelectedTenant.Slug);
+        _log.LogInformation("Login attempt for '{Email}' on tenant '{Slug}'", Email.Trim(), SelectedTenant.Slug);
         try
         {
-            var success = await auth.LoginAsync(Email.Trim(), Password, SelectedTenant.Slug);
+            var success = await _auth.LoginAsync(Email.Trim(), Password, SelectedTenant.Slug);
             if (success)
             {
-                log.LogInformation("Login succeeded — role={Role}", auth.CurrentUser?.Role);
+                _log.LogInformation("Login succeeded — role={Role}", _auth.CurrentUser?.Role);
                 Preferences.Set(LastTenantKey, SelectedTenant.Slug);
                 await ConnectServicesAsync();
 
-                var dest = AppShell.GetFirstRoute(auth.CurrentUser?.Role ?? "");
-                await Shell.Current.GoToAsync(dest);
+                await AppShell.NavigateAfterLoginAsync(_auth.CurrentUser?.Role ?? "");
             }
             else
             {
-                log.LogWarning("Login returned false (bad credentials)");
+                _log.LogWarning("Login returned false (bad credentials)");
                 ErrorMessage = "Identifiants incorrects.";
                 HasError = true;
             }
         }
         catch (HttpRequestException ex)
         {
-            log.LogError(ex, "HTTP error during login");
-            ErrorMessage = $"Erreur HTTP {(int?)ex.StatusCode}: {ex.Message}";
+            _log.LogError(ex, "HTTP error during login");
+            ErrorMessage = ex.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                ? "Email ou mot de passe incorrect."
+                : $"Erreur de connexion ({(int?)ex.StatusCode}). Vérifiez le réseau.";
             HasError = true;
         }
         catch (TaskCanceledException ex)
         {
-            log.LogError(ex, "Timeout during login");
+            _log.LogError(ex, "Timeout during login");
             ErrorMessage = "Délai d'attente dépassé. Vérifiez l'IP/port du serveur.";
             HasError = true;
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Unexpected error during login");
+            _log.LogError(ex, "Unexpected error during login");
             ErrorMessage = $"[{ex.GetType().Name}] {ex.Message}";
             HasError = true;
         }

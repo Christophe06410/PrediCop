@@ -29,8 +29,9 @@
                                    Color="#2563eb" HeightRequest="40"/>
 
                 <!-- Formulaire (caché une fois le rapport généré) -->
-                <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False"
+                <Border BackgroundColor="#243050" Padding="20"
                        IsVisible="{Binding HasReport, Converter={StaticResource InvertBoolConverter}}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="14">
                         <Label Text="Plage horaire de la vacation" TextColor="White"
                                FontSize="16" FontAttributes="Bold"/>
@@ -80,11 +81,12 @@
                                            IsVisible="{Binding IsGenerating}"
                                            Color="#2563eb" HeightRequest="36"/>
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Rapport affiché après génération -->
-                <Frame BackgroundColor="#243050" CornerRadius="16" Padding="20" HasShadow="False"
+                <Border BackgroundColor="#243050" Padding="20"
                        IsVisible="{Binding HasReport}">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="16">
                         <Label Text="Rapport de Vacation" TextColor="White"
                                FontSize="18" FontAttributes="Bold"/>
@@ -135,7 +137,7 @@
                                 CornerRadius="12" HeightRequest="44"
                                 Command="{Binding ResetCommand}"/>
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
             </VerticalStackLayout>
         </ScrollView>

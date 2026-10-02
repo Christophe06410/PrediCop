@@ -12,6 +12,7 @@ public partial class MissionHistoryPage : ContentPage
     private readonly SyncService _syncService;
 
     private DateOnly _currentDay = DateOnly.FromDateTime(DateTime.Today);
+    private bool _showingRange = true; // vue initiale = 3 derniers jours
     private List<MissionItem> _items = [];
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web)
@@ -37,9 +38,17 @@ public partial class MissionHistoryPage : ContentPage
 
     private async Task LoadAsync()
     {
-        DateLabel.Text = _currentDay == DateOnly.FromDateTime(DateTime.Today)
-            ? "Aujourd'hui"
-            : _currentDay.ToString("dddd d MMMM", new System.Globalization.CultureInfo("fr-FR"));
+        var fr = new System.Globalization.CultureInfo("fr-FR");
+        if (_showingRange)
+        {
+            DateLabel.Text = "3 derniers jours";
+        }
+        else
+        {
+            DateLabel.Text = _currentDay == DateOnly.FromDateTime(DateTime.Today)
+                ? "Aujourd'hui"
+                : _currentDay.ToString("dddd d MMMM", fr);
+        }
 
         LoadingIndicator.IsVisible = true;
         LoadingIndicator.IsRunning = true;
@@ -47,12 +56,23 @@ public partial class MissionHistoryPage : ContentPage
 
         try
         {
-            // Convertir la journée locale en plage UTC pour éviter le décalage horaire
-            var localStart = new DateTime(_currentDay.Year, _currentDay.Month, _currentDay.Day,
-                0, 0, 0, DateTimeKind.Local);
-            var utcFrom = localStart.ToUniversalTime();
-            var utcTo = localStart.AddDays(1).ToUniversalTime();
-            var url = $"api/missions?status=Completed&dateFrom={utcFrom:yyyy-MM-ddTHH:mm:ss}Z&dateTo={utcTo:yyyy-MM-ddTHH:mm:ss}Z&size=100";
+            DateTime utcFrom, utcTo;
+            if (_showingRange)
+            {
+                // 3 derniers jours (aujourd'hui inclus)
+                var rangeStart = DateTime.Today.AddDays(-2);
+                utcFrom = new DateTime(rangeStart.Year, rangeStart.Month, rangeStart.Day,
+                    0, 0, 0, DateTimeKind.Local).ToUniversalTime();
+                utcTo = DateTime.Today.AddDays(1).ToUniversalTime();
+            }
+            else
+            {
+                var localStart = new DateTime(_currentDay.Year, _currentDay.Month, _currentDay.Day,
+                    0, 0, 0, DateTimeKind.Local);
+                utcFrom = localStart.ToUniversalTime();
+                utcTo = localStart.AddDays(1).ToUniversalTime();
+            }
+            var url = $"api/missions?status=Completed&dateFrom={utcFrom:yyyy-MM-ddTHH:mm:ss}Z&dateTo={utcTo:yyyy-MM-ddTHH:mm:ss}Z&size=200";
             var result = await _api.GetAsync<PagedResult<ApiMissionDto>>(url);
 
             _items = (result?.Items ?? [])
@@ -64,7 +84,7 @@ public partial class MissionHistoryPage : ContentPage
         }
         catch
         {
-            await DisplayAlert("Erreur", "Impossible de charger l'historique.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de charger l'historique.", "OK");
         }
         finally
         {
@@ -74,22 +94,37 @@ public partial class MissionHistoryPage : ContentPage
         }
     }
 
-    private async void OnRefreshing(object sender, EventArgs e) => await LoadAsync();
+    private async void OnRefreshing(object? sender, EventArgs e) => await LoadAsync();
 
-    private async void OnPrevDay(object sender, EventArgs e)
+    private async void OnPrevDay(object? sender, EventArgs e)
     {
-        _currentDay = _currentDay.AddDays(-1);
+        if (_showingRange)
+        {
+            // Sortir du mode 3 jours : reculer d'un jour avant la plage
+            _showingRange = false;
+            _currentDay = DateOnly.FromDateTime(DateTime.Today.AddDays(-3));
+        }
+        else
+        {
+            _currentDay = _currentDay.AddDays(-1);
+        }
         await LoadAsync();
     }
 
-    private async void OnNextDay(object sender, EventArgs e)
+    private async void OnNextDay(object? sender, EventArgs e)
     {
-        if (_currentDay >= DateOnly.FromDateTime(DateTime.Today)) return;
+        if (_showingRange) return; // déjà sur la plage la plus récente
         _currentDay = _currentDay.AddDays(1);
+        if (_currentDay >= DateOnly.FromDateTime(DateTime.Today))
+        {
+            // Retour à la vue 3 jours
+            _showingRange = true;
+            _currentDay = DateOnly.FromDateTime(DateTime.Today);
+        }
         await LoadAsync();
     }
 
-    private async void OnMissionSelected(object sender, SelectionChangedEventArgs e)
+    private async void OnMissionSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.CurrentSelection.FirstOrDefault() is not MissionItem item) return;
         MissionsCollection.SelectedItem = null;
@@ -138,7 +173,7 @@ public partial class MissionHistoryPage : ContentPage
         };
 
         public string TimeLabel { get; } = m.CompletedAt.HasValue
-            ? $"Terminée à {m.CompletedAt.Value.ToLocalTime():HH:mm}"
-            : $"Créée à {m.CreatedAt.ToLocalTime():HH:mm}";
+            ? $"Terminée le {m.CompletedAt.Value.ToLocalTime():dd/MM à HH:mm}"
+            : $"Créée le {m.CreatedAt.ToLocalTime():dd/MM à HH:mm}";
     }
 }

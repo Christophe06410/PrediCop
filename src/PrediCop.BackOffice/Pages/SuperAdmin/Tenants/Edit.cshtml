@@ -35,11 +35,11 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold small">Nom de la ville</label>
-                        <input asp-for="CreateRequest.Name" class="form-control" placeholder="Ex : Bordeaux" required />
+                        <input asp-for="CreateRequest.Name" id="cityName" class="form-control" placeholder="Ex : Bordeaux" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold small">Slug (identifiant unique)</label>
-                        <input asp-for="CreateRequest.Slug" class="form-control font-monospace" placeholder="Ex : bordeaux" required
+                        <input asp-for="CreateRequest.Slug" id="citySlug" class="form-control font-monospace" placeholder="Ex : bordeaux" required
                                pattern="[a-z0-9\-]+" title="Minuscules, chiffres et tirets uniquement" />
                         <div class="form-text">Minuscules sans accents, tirets autorisés.</div>
                     </div>
@@ -99,6 +99,32 @@
                     <a asp-page="Index" class="btn btn-outline-secondary">Annuler</a>
                 </div>
             </form>
+
+            <script>
+                (function () {
+                    var nameInput = document.getElementById('cityName');
+                    var slugInput = document.getElementById('citySlug');
+                    var slugEdited = false;
+
+                    slugInput.addEventListener('input', function () {
+                        slugEdited = this.value !== '';
+                    });
+
+                    nameInput.addEventListener('input', function () {
+                        if (slugEdited) return;
+                        slugInput.value = toSlug(this.value);
+                    });
+
+                    function toSlug(s) {
+                        return s
+                            .normalize('NFD')
+                            .replace(/[̀-ͯ]/g, '')  // supprime les diacritiques
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]+/g, '-')      // remplace tout caractère non alphanumérique par -
+                            .replace(/^-+|-+$/g, '');         // retire les tirets en début/fin
+                    }
+                }());
+            </script>
         }
         else
         {

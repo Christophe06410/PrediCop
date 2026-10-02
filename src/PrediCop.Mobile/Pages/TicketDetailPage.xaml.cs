@@ -55,7 +55,7 @@ public partial class TicketDetailPage : ContentPage
         try
         {
             var ticket = await _api.GetAsync<TicketDetailDto>($"api/tickets/{_ticketId}");
-            if (ticket is null) { await DisplayAlert("Erreur", "PV introuvable.", "OK"); return; }
+            if (ticket is null) { await DisplayAlertAsync("Erreur", "PV introuvable.", "OK"); return; }
 
             Title = $"PV {ticket.TicketNumber}";
             TicketNumberLabel.Text    = ticket.TicketNumber;
@@ -79,7 +79,7 @@ public partial class TicketDetailPage : ContentPage
         }
         catch
         {
-            await DisplayAlert("Erreur", "Impossible de charger le PV.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de charger le PV.", "OK");
         }
         finally
         {
@@ -88,7 +88,7 @@ public partial class TicketDetailPage : ContentPage
         }
     }
 
-    private void OnPlateTextChanged(object sender, TextChangedEventArgs e)
+    private void OnPlateTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (!_isToday || e.NewTextValue is null) return;
         var upper = e.NewTextValue.ToUpperInvariant();
@@ -99,7 +99,7 @@ public partial class TicketDetailPage : ContentPage
         entry.CursorPosition = Math.Min(cursor, upper.Length);
     }
 
-    private void OnInfractionChanged(object sender, EventArgs e)
+    private void OnInfractionChanged(object? sender, EventArgs e)
     {
         if (!_isToday) return;
         if (InfractionPicker.SelectedItem is not InfractionItem item) return;
@@ -110,7 +110,7 @@ public partial class TicketDetailPage : ContentPage
             EntryFine.Text = item.DefaultFine.ToString("F2");
     }
 
-    private async void OnSaveClicked(object sender, EventArgs e)
+    private async void OnSaveClicked(object? sender, EventArgs e)
     {
         if (!_isToday) return;
 
@@ -118,19 +118,19 @@ public partial class TicketDetailPage : ContentPage
         var address = EntryAddress.Text?.Trim() ?? "";
 
         if (string.IsNullOrWhiteSpace(plate))
-        { await DisplayAlert("Erreur", "Plaque requise.", "OK"); return; }
+        { await DisplayAlertAsync("Erreur", "Plaque requise.", "OK"); return; }
 
         if (string.IsNullOrWhiteSpace(address))
-        { await DisplayAlert("Erreur", "Adresse requise.", "OK"); return; }
+        { await DisplayAlertAsync("Erreur", "Adresse requise.", "OK"); return; }
 
         if (!decimal.TryParse(EntryFine.Text?.Replace(",", "."),
                 System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture,
                 out var fine) || fine < 0)
-        { await DisplayAlert("Erreur", "Montant invalide.", "OK"); return; }
+        { await DisplayAlertAsync("Erreur", "Montant invalide.", "OK"); return; }
 
         if (InfractionPicker.SelectedItem is not InfractionItem infraction)
-        { await DisplayAlert("Erreur", "Sélectionnez un type d'infraction.", "OK"); return; }
+        { await DisplayAlertAsync("Erreur", "Sélectionnez un type d'infraction.", "OK"); return; }
 
         try
         {
@@ -147,16 +147,16 @@ public partial class TicketDetailPage : ContentPage
             };
 
             await _api.PutAsync<object>($"api/tickets/{_ticketId}", body);
-            await DisplayAlert("Succès", "PV mis à jour.", "OK");
+            await DisplayAlertAsync("Succès", "PV mis à jour.", "OK");
             await Navigation.PopAsync();
         }
         catch
         {
-            await DisplayAlert("Erreur", "Impossible de sauvegarder les modifications.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible de sauvegarder les modifications.", "OK");
         }
     }
 
-    private async void OnCancelTicketClicked(object sender, EventArgs e)
+    private async void OnCancelTicketClicked(object? sender, EventArgs e)
     {
         var reason = await DisplayPromptAsync(
             "Annulation", "Motif d'annulation (optionnel) :", "Confirmer", "Retour", "");
@@ -167,12 +167,12 @@ public partial class TicketDetailPage : ContentPage
             await _api.PutAsync<object>(
                 $"api/tickets/{_ticketId}/status",
                 new { Status = "Cancelled", Notes = reason.Trim() });
-            await DisplayAlert("PV annulé", "Le PV a bien été annulé.", "OK");
+            await DisplayAlertAsync("PV annulé", "Le PV a bien été annulé.", "OK");
             await Navigation.PopAsync();
         }
         catch
         {
-            await DisplayAlert("Erreur", "Impossible d'annuler ce PV.", "OK");
+            await DisplayAlertAsync("Erreur", "Impossible d'annuler ce PV.", "OK");
         }
     }
 

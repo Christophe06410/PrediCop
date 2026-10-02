@@ -40,8 +40,9 @@
                         BackgroundColor="Transparent">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame Margin="12,6" Padding="0" CornerRadius="12"
-                           BackgroundColor="#1e2d4a" HasShadow="False">
+                    <Border Margin="12,6" Padding="0"
+                            BackgroundColor="#1e2d4a">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
                         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="8,*,Auto" ColumnSpacing="0">
 
                             <!-- Barre de couleur risque -->
@@ -90,7 +91,7 @@
                             </Grid>
 
                         </Grid>
-                    </Frame>
+                    </Border>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>

@@ -20,11 +20,14 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
 
-  <Target Name="InstallAndCopyTinyMCE" BeforeTargets="Build"
+  <!-- Installe toutes les dépendances npm et copie les assets dans wwwroot/lib/ -->
+  <Target Name="InstallFrontendDeps" BeforeTargets="Build"
           Inputs="package.json"
-          Outputs="wwwroot\lib\tinymce\tinymce.min.js">
-    <Message Text="npm install (TinyMCE)..." Importance="high" />
+          Outputs="wwwroot\lib\tinymce\tinymce.min.js;wwwroot\lib\fontawesome\css\all.min.css;wwwroot\lib\leaflet\leaflet.js;wwwroot\lib\chartjs\chart.umd.js;wwwroot\lib\signalr\signalr.min.js">
+    <Message Text="npm install (frontend deps)..." Importance="high" />
     <Exec Command="npm install --prefer-offline" WorkingDirectory="$(ProjectDir)" />
+
+    <!-- TinyMCE -->
     <ItemGroup>
       <TinyMCEFiles Include="$(ProjectDir)node_modules\tinymce\**\*.*" />
       <TinyMCELangs Include="$(ProjectDir)node_modules\tinymce-i18n\langs7\fr_FR.js" />
@@ -35,7 +38,47 @@
     <Copy SourceFiles="@(TinyMCELangs)"
           DestinationFolder="$(ProjectDir)wwwroot\lib\tinymce\langs\"
           SkipUnchangedFiles="true" />
-    <Message Text="TinyMCE copié dans wwwroot/lib/tinymce" Importance="high" />
+
+    <!-- Font Awesome -->
+    <ItemGroup>
+      <FAFiles Include="$(ProjectDir)node_modules\@fortawesome\fontawesome-free\css\all.min.css" />
+      <FAFiles Include="$(ProjectDir)node_modules\@fortawesome\fontawesome-free\webfonts\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="$(ProjectDir)node_modules\@fortawesome\fontawesome-free\css\all.min.css"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\fontawesome\css\"
+          SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <FAWebfonts Include="$(ProjectDir)node_modules\@fortawesome\fontawesome-free\webfonts\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FAWebfonts)"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\fontawesome\webfonts\"
+          SkipUnchangedFiles="true" />
+
+    <!-- Leaflet -->
+    <Copy SourceFiles="$(ProjectDir)node_modules\leaflet\dist\leaflet.css"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\leaflet\"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)node_modules\leaflet\dist\leaflet.js"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\leaflet\"
+          SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <LeafletImages Include="$(ProjectDir)node_modules\leaflet\dist\images\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LeafletImages)"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\leaflet\images\"
+          SkipUnchangedFiles="true" />
+
+    <!-- Chart.js -->
+    <Copy SourceFiles="$(ProjectDir)node_modules\chart.js\dist\chart.umd.js"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\chartjs\"
+          SkipUnchangedFiles="true" />
+
+    <!-- SignalR JS client -->
+    <Copy SourceFiles="$(ProjectDir)node_modules\@microsoft\signalr\dist\browser\signalr.min.js"
+          DestinationFolder="$(ProjectDir)wwwroot\lib\signalr\"
+          SkipUnchangedFiles="true" />
+
+    <Message Text="Dépendances frontend copiées dans wwwroot/lib/" Importance="high" />
   </Target>
 
 </Project>

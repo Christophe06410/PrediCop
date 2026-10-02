@@ -106,6 +106,22 @@ public class MissionService(
 
         context.MissionAssignments.Add(assignment);
 
+        // Vérification anti-race : s'assurer que le véhicule est toujours Available
+        // entre la recherche FindNearbyAvailable et l'écriture (reconnexion concurrente, etc.)
+        var currentStatus = await context.PatrolVehicles
+            .AsNoTracking()
+            .Where(v => v.Id == next.VehicleId)
+            .Select(v => v.Status)
+            .FirstOrDefaultAsync(ct);
+        if (currentStatus != VehicleStatus.Available)
+        {
+            context.MissionAssignments.Remove(assignment);
+            logger.LogWarning(
+                "Dispatch {MissionId}: véhicule {VehicleId} n'est plus Available (status={Status}) — abandon",
+                missionId, next.VehicleId, currentStatus);
+            throw new InvalidOperationException($"Vehicle {next.VehicleId} is no longer available (status={currentStatus}).");
+        }
+
         // La mission reste Pending jusqu'à acceptation
 
         await context.SaveChangesAsync(ct);
@@ -141,6 +157,34 @@ public class MissionService(
             var vehicle = await context.PatrolVehicles.FindAsync([assignment.VehicleId], ct);
             if (vehicle is not null)
                 vehicle.Status = VehicleStatus.OnMission;
+
+            // Si le même véhicule était proposé à d'autres missions simultanément (race condition
+            // au dispatch), refuser automatiquement ces propositions en attente et tenter de les
+            // re-dispatcher à d'autres véhicules disponibles.
+            var conflictingProposals = await context.MissionAssignments
+                .Where(a =>
+                    a.VehicleId == assignment.VehicleId
+                    && a.MissionId != assignment.MissionId
+                    && a.Status == MissionStatus.Proposed)
+                .ToListAsync(ct);
+
+            var missionsToRedispatch = new List<Guid>();
+            foreach (var conflict in conflictingProposals)
+            {
+                conflict.Status = MissionStatus.Refused;
+                conflict.RefusalReasonCode = RefusalReasonCode.OnAnotherMission;
+                conflict.RefusalReason = "Véhicule affecté à une autre mission";
+                conflict.RespondedAt = DateTime.UtcNow;
+                missionsToRedispatch.Add(conflict.MissionId);
+            }
+
+            await context.SaveChangesAsync(ct);
+
+            foreach (var missionId in missionsToRedispatch)
+            {
+                try { await ProposeToNextVehicleAsync(missionId, ct); }
+                catch { /* Aucun autre véhicule disponible — la mission reste en attente */ }
+            }
         }
         else
         {
@@ -153,7 +197,6 @@ public class MissionService(
             return assignment;
         }
 
-        await context.SaveChangesAsync(ct);
         return assignment;
     }
 
@@ -187,7 +230,19 @@ public class MissionService(
         {
             var vehicle = await context.PatrolVehicles.FindAsync([vehicleId], ct);
             if (vehicle is not null)
-                vehicle.Status = VehicleStatus.Available;
+            {
+                // Ne remettre en Available que si le véhicule n'est pas sur une autre mission active.
+                var hasOtherActiveMission = await context.MissionAssignments
+                    .AnyAsync(a =>
+                        a.VehicleId == vehicleId
+                        && a.MissionId != missionId
+                        && (a.Status == MissionStatus.Accepted || a.Status == MissionStatus.InProgress)
+                        && a.Mission.Status != MissionStatus.Completed
+                        && a.Mission.Status != MissionStatus.Cancelled, ct);
+
+                if (!hasOtherActiveMission)
+                    vehicle.Status = VehicleStatus.Available;
+            }
         }
 
         var call = await context.Calls.FindAsync([mission.CallId], ct);
@@ -195,6 +250,27 @@ public class MissionService(
             call.Status = CallStatus.Closed;
 
         await context.SaveChangesAsync(ct);
+
+        // Profiter de la disponibilité retrouvée pour dispatcher les missions en attente sans
+        // équipage (Pending sans aucune assignation active), par ordre de priorité.
+        var pendingMissionIds = await context.Missions
+            .Where(m => m.TenantId == mission.TenantId
+                && m.Status == MissionStatus.Pending
+                && !m.Assignments.Any(a =>
+                    a.Status == MissionStatus.Proposed
+                    || a.Status == MissionStatus.Accepted
+                    || a.Status == MissionStatus.InProgress))
+            .OrderByDescending(m => (int)m.Priority).ThenBy(m => m.CreatedAt)
+            .Take(5)
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+
+        foreach (var pendingId in pendingMissionIds)
+        {
+            try { await ProposeToNextVehicleAsync(pendingId, ct); }
+            catch { /* Aucun véhicule disponible pour cette mission — reste en attente */ }
+        }
+
         return mission;
     }
 

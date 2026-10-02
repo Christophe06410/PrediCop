@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -41,6 +42,23 @@ public partial class MissionViewModel : ObservableObject
         // Filet de sécurité : quand le temps réel (SignalR) est indisponible, on poll l'API
         // pour ne pas rater une mission proposée pendant la coupure.
         _ = StartRealtimeFallbackAsync();
+
+        IsAvailable = true;
+        StatusText = "DISPONIBLE";
+        StatusColor = Color.FromArgb("#22c55e");
+        VehicleLabel = "Véhicule: --";
+        ShowNoMission = true;
+        ProposalAddress = "";
+        ProposalDescription = "";
+        ProposalDistance = "";
+        ActiveMissionRef = "";
+        ActiveMissionAddress = "";
+        ActiveMissionBriefing = "";
+        ActiveMissionPriority = "Routine";
+        ProposalPriority = "Routine";
+        ActiveMissionDistance = "";
+        UploadStatus = "";
+        PhotoStatus = "";
     }
 
     /// <summary>
@@ -93,11 +111,40 @@ public partial class MissionViewModel : ObservableObject
 #endif
                 _missionAlert.Show(title, address);
             }
+
+            // Bug 1 : si MissionDetailPage est ouverte, lui signaler qu'une nouvelle mission attend
+            if (ShowMissionProposal)
+                WeakReferenceMessenger.Default.Send(new NewMissionProposedMessage());
         });
     }
 
     private void OnSignalRMissionStatusChanged(object? sender, string e)
     {
+        // Bug 5 : détecter une annulation de la mission courante AVANT de recharger l'état
+        bool isCancellationOfCurrentMission = false;
+        string? cancellationReason = null;
+        var capturedMissionId = _currentMissionId; // lecture avant le reload
+
+        if (capturedMissionId.HasValue)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(e);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("id", out var idEl) &&
+                    idEl.TryGetGuid(out var missionId) &&
+                    missionId == capturedMissionId.Value &&
+                    root.TryGetProperty("status", out var statusEl) &&
+                    statusEl.GetString() == "Cancelled")
+                {
+                    isCancellationOfCurrentMission = true;
+                    if (root.TryGetProperty("cancellationReason", out var reasonEl))
+                        cancellationReason = reasonEl.GetString();
+                }
+            }
+            catch { }
+        }
+
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             await LoadCurrentMissionAsync();
@@ -107,40 +154,59 @@ public partial class MissionViewModel : ObservableObject
                 _alertSound.StopAlert();
                 _missionAlert.Dismiss();
             }
+
+            if (isCancellationOfCurrentMission)
+            {
+                // Bug 5 : alerte sonore + vibration à l'annulation
+                if (AppPreferences.AlertSoundEnabled)
+                {
+                    try { _alertSound.PlayAlert(); } catch { }
+                    try { Vibration.Default.Vibrate(TimeSpan.FromMilliseconds(600)); } catch { }
+                }
+
+                var reason = string.IsNullOrWhiteSpace(cancellationReason)
+                    ? "Mission annulée par le dispatch."
+                    : cancellationReason;
+
+                // MissionDetailPage ouverte → navigue en arrière + dialog (bug 4)
+                WeakReferenceMessenger.Default.Send(new MissionCancelledMessage(reason));
+                // MissionPage active → dialog via AlertMessage
+                WeakReferenceMessenger.Default.Send(new AlertMessage("⛔ Mission annulée", reason));
+            }
         });
     }
 
     // Status bar
-    [ObservableProperty] private bool isAvailable = true;
-    [ObservableProperty] private string statusText = "DISPONIBLE";
-    [ObservableProperty] private Color statusColor = Color.FromArgb("#22c55e");
-    [ObservableProperty] private string vehicleLabel = "Véhicule: --";
-    [ObservableProperty] private bool showAssignVehicleButton;
+    [ObservableProperty] private bool _isAvailable;
+    [ObservableProperty] private string _statusText;
+    [ObservableProperty] private Color _statusColor;
+    [ObservableProperty] private string _vehicleLabel;
+    [ObservableProperty] private bool _showAssignVehicleButton;
 
     // Frame visibility
-    [ObservableProperty] private bool showMissionProposal;
-    [ObservableProperty] private bool showActiveMission;
-    [ObservableProperty] private bool showNoMission = true;
+    [ObservableProperty] private bool _showMissionProposal;
+    [ObservableProperty] private bool _showActiveMission;
+    [ObservableProperty] private bool _showNoMission;
 
     // Mission proposal
-    [ObservableProperty] private string proposalAddress = "";
-    [ObservableProperty] private string proposalDescription = "";
-    [ObservableProperty] private string proposalDistance = "";
+    [ObservableProperty] private string _proposalAddress;
+    [ObservableProperty] private string _proposalDescription;
+    [ObservableProperty] private string _proposalDistance;
 
     // Formal vs. soft proposal
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSoftProposal))]
     [NotifyPropertyChangedFor(nameof(ProposalTitle))]
     [NotifyPropertyChangedFor(nameof(ProposalFrameColor))]
-    private bool isFormalProposal;
+    private bool _isFormalProposal;
     public bool IsSoftProposal => !IsFormalProposal;
     public string ProposalTitle => IsFormalProposal ? "NOUVELLE MISSION" : "EN ATTENTE DE DISPATCH";
     public Color ProposalFrameColor => IsFormalProposal ? Color.FromArgb("#dc2626") : Color.FromArgb("#92400e");
 
     // Active mission
-    [ObservableProperty] private string activeMissionRef = "";
-    [ObservableProperty] private string activeMissionAddress = "";
-    [ObservableProperty] private string activeMissionBriefing = "";
+    [ObservableProperty] private string _activeMissionRef;
+    [ObservableProperty] private string _activeMissionAddress;
+    [ObservableProperty] private string _activeMissionBriefing;
 
     // Priorité mission active
     [ObservableProperty]
@@ -149,7 +215,7 @@ public partial class MissionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ActiveMissionHasPriorityBanner))]
     [NotifyPropertyChangedFor(nameof(ActiveMissionSosBannerColor))]
     [NotifyPropertyChangedFor(nameof(ActiveMissionSosBannerText))]
-    private string activeMissionPriority = "Routine";
+    private string _activeMissionPriority;
 
     public Color ActiveMissionPriorityColor => ActiveMissionPriority switch
     {
@@ -180,7 +246,7 @@ public partial class MissionViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProposalPriorityColor))]
     [NotifyPropertyChangedFor(nameof(ProposalPriorityEmoji))]
-    private string proposalPriority = "Routine";
+    private string _proposalPriority;
     public Color ProposalPriorityColor => ProposalPriority switch
     {
         "SOS"      => Colors.Red,
@@ -199,7 +265,7 @@ public partial class MissionViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasActiveDistance))]
-    private string activeMissionDistance = "";
+    private string _activeMissionDistance;
     public bool HasActiveDistance => !string.IsNullOrEmpty(ActiveMissionDistance);
 
     private double _activeMissionLat, _activeMissionLng;
@@ -208,20 +274,20 @@ public partial class MissionViewModel : ObservableObject
     // Upload state
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotUploading))]
-    private bool isUploading;
+    private bool _isUploading;
 
-    [ObservableProperty] private double uploadProgress;
+    [ObservableProperty] private double _uploadProgress;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasUploadStatus))]
-    private string uploadStatus = "";
+    private string _uploadStatus;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPhotoStatus))]
-    private string photoStatus = "";
+    private string _photoStatus;
 
     /// <summary>Vrai si le véhicule est marqué OnMission sur le serveur sans mission visible — état fantôme.</summary>
-    [ObservableProperty] private bool isVehicleStuck;
+    [ObservableProperty] private bool _isVehicleStuck;
 
     public bool IsNotUploading => !IsUploading;
     public bool HasUploadStatus => !string.IsNullOrEmpty(UploadStatus);
@@ -386,6 +452,11 @@ public partial class MissionViewModel : ObservableObject
         ShowActiveMission = true;
         ShowMissionProposal = false;
         ShowNoMission = false;
+        // Badge statut : EN MISSION, switch indisponible
+        // IsAvailable=false d'abord (OnIsAvailableChanged surchargerait StatusText sinon)
+        IsAvailable = false;
+        StatusText = "EN MISSION";
+        StatusColor = Color.FromArgb("#ef4444");
         _ = ComputeActiveDistanceAsync(mission.Latitude, mission.Longitude);
     }
 
@@ -419,12 +490,15 @@ public partial class MissionViewModel : ObservableObject
     private void SetNoMission()
     {
         _alertSound.StopAlert();
+        _missionAlert.Dismiss(); // Bug 4 : dismiss la bannière même en cas de reconnexion
         ShowNoMission = true;
         ShowMissionProposal = false;
         ShowActiveMission = false;
         IsFormalProposal = false;
         _currentMissionId = null;
         _currentAssignmentId = null;
+        // Retour à l'état disponible
+        IsAvailable = true;
     }
 
     [RelayCommand]
@@ -495,7 +569,9 @@ public partial class MissionViewModel : ObservableObject
         try
         {
             await _api.PostAsync($"api/missions/{_currentMissionId}/complete", new { report });
-            SetNoMission();
+            // Rafraîchir l'état : si une autre mission est déjà acceptée (ex. double dispatch),
+            // elle sera affichée correctement plutôt que d'appeler SetNoMission() en aveugle.
+            await LoadCurrentMissionAsync();
         }
         catch
         {

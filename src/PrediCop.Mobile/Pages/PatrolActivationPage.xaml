@@ -21,7 +21,8 @@
 
             <!-- Sélection du véhicule -->
             <Label Text="Véhicule" TextColor="#aab0c0" FontSize="13" />
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                 <Picker Title="Sélectionnez un véhicule"
                         TitleColor="#6b7a99"
                         TextColor="White"
@@ -30,20 +31,22 @@
                         ItemDisplayBinding="{Binding DisplayName}"
                         SelectedItem="{Binding SelectedVehicle}"
                         Margin="16,4"/>
-            </Frame>
+            </Border>
 
             <!-- Indicatif radio -->
             <Label Text="Indicatif radio (ex : Sierra 1)" TextColor="#aab0c0" FontSize="13" />
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                 <Entry Text="{Binding Indicatif}"
                        Placeholder="Indicatif radio" PlaceholderColor="#6b7a99"
                        TextColor="White" BackgroundColor="Transparent"
                        Margin="16,4" />
-            </Frame>
+            </Border>
 
             <!-- Type de patrouille -->
             <Label Text="Type de patrouille" TextColor="#aab0c0" FontSize="13" />
-            <Frame BackgroundColor="#243050" BorderColor="Transparent" CornerRadius="10" Padding="0">
+            <Border Stroke="Transparent" BackgroundColor="#243050" Padding="0">
+                <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                 <Picker Title="Type de patrouille"
                         TitleColor="#6b7a99"
                         TextColor="White"
@@ -52,7 +55,7 @@
                         ItemDisplayBinding="{Binding DisplayName}"
                         SelectedItem="{Binding SelectedPatrolType}"
                         Margin="16,4"/>
-            </Frame>
+            </Border>
 
             <!-- Agents -->
             <Label Text="Agents de la patrouille" TextColor="#aab0c0" FontSize="13" />

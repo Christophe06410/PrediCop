@@ -136,7 +136,13 @@ public class PatrolController(
                 patrolType = vehicle.PatrolType!.ToString()
             }, ct);
 
-        return Ok(MapToResponse(vehicle));
+        // Recharger le véhicule pour que les Users des nouveaux VehicleOfficers soient chargés
+        var updatedVehicle = await db.PatrolVehicles
+            .Include(v => v.Officers.Where(o => o.IsActive))
+                .ThenInclude(o => o.User)
+            .FirstOrDefaultAsync(v => v.Id == vehicleId, ct);
+
+        return Ok(MapToResponse(updatedVehicle!));
     }
 
     /// <summary>
@@ -171,6 +177,27 @@ public class PatrolController(
             .SendAsync("PatrolDeactivated", new { vehicleId }, ct);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Retourne le véhicule actif de l'utilisateur courant (si session en cours), sinon null.
+    /// Utilisé par l'app mobile pour éviter de redemander l'indicatif à chaque reconnexion.
+    /// </summary>
+    [HttpGet("my-active-vehicle")]
+    public async Task<ActionResult<VehicleResponse?>> GetMyActiveVehicle(CancellationToken ct)
+    {
+        var assignment = await db.VehicleOfficers
+            .Include(vo => vo.Vehicle)
+                .ThenInclude(v => v.Officers.Where(o => o.IsActive))
+                    .ThenInclude(o => o.User)
+            .FirstOrDefaultAsync(vo =>
+                vo.UserId == UserId
+                && vo.IsActive
+                && vo.Vehicle.TenantId == TenantId
+                && vo.Vehicle.SessionStartedAt != null, ct);
+
+        if (assignment is null) return Ok(null);
+        return Ok(MapToResponse(assignment.Vehicle));
     }
 
     /// <summary>

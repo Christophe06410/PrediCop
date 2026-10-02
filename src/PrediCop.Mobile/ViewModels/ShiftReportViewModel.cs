@@ -4,31 +4,52 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class ShiftReportViewModel(ApiService api, AuthService auth) : ObservableObject
+public partial class ShiftReportViewModel : ObservableObject
 {
+    private readonly ApiService _api;
+    private readonly AuthService _auth;
+
+    public ShiftReportViewModel(ApiService api, AuthService auth)
+    {
+        _api = api;
+        _auth = auth;
+        ShiftStartDate = DateTime.Today;
+        ShiftStartTime = new TimeSpan(8, 0, 0);
+        ShiftEndDate = DateTime.Today;
+        ShiftEndTime = TimeSpan.Zero;
+        Notes = "";
+        ErrorMessage = "";
+        ReportVehicle = "";
+        ReportOfficers = "";
+        ReportMissions = "";
+        ReportKm = "";
+        ReportDocuments = "";
+        ReportSignedInfo = "";
+    }
+
     // --- Formulaire ---
-    [ObservableProperty] private DateTime shiftStartDate = DateTime.Today;
-    [ObservableProperty] private TimeSpan shiftStartTime = new TimeSpan(8, 0, 0);
-    [ObservableProperty] private DateTime shiftEndDate = DateTime.Today;
-    [ObservableProperty] private TimeSpan shiftEndTime = TimeSpan.Zero;
-    [ObservableProperty] private string notes = "";
+    [ObservableProperty] private DateTime _shiftStartDate;
+    [ObservableProperty] private TimeSpan _shiftStartTime;
+    [ObservableProperty] private DateTime _shiftEndDate;
+    [ObservableProperty] private TimeSpan _shiftEndTime;
+    [ObservableProperty] private string _notes;
 
     // --- États ---
-    [ObservableProperty] private bool isLoading;
-    [ObservableProperty] private bool isGenerating;
-    [ObservableProperty] private bool isSigning;
-    [ObservableProperty] private bool hasReport;
-    [ObservableProperty] private bool hasError;
-    [ObservableProperty] private string errorMessage = "";
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private bool _isGenerating;
+    [ObservableProperty] private bool _isSigning;
+    [ObservableProperty] private bool _hasReport;
+    [ObservableProperty] private bool _hasError;
+    [ObservableProperty] private string _errorMessage;
 
     // --- Rapport affiché (flat pour éviter les problèmes de binding imbriqué) ---
-    [ObservableProperty] private string reportVehicle = "";
-    [ObservableProperty] private string reportOfficers = "";
-    [ObservableProperty] private string reportMissions = "";
-    [ObservableProperty] private string reportKm = "";
-    [ObservableProperty] private string reportDocuments = "";
-    [ObservableProperty] private bool reportIsSigned;
-    [ObservableProperty] private string reportSignedInfo = "";
+    [ObservableProperty] private string _reportVehicle;
+    [ObservableProperty] private string _reportOfficers;
+    [ObservableProperty] private string _reportMissions;
+    [ObservableProperty] private string _reportKm;
+    [ObservableProperty] private string _reportDocuments;
+    [ObservableProperty] private bool _reportIsSigned;
+    [ObservableProperty] private string _reportSignedInfo;
 
     private Guid _reportId;
 
@@ -42,9 +63,9 @@ public partial class ShiftReportViewModel(ApiService api, AuthService auth) : Ob
 
         try
         {
-            if (auth.VehicleId.HasValue)
+            if (_auth.VehicleId.HasValue)
             {
-                var vehicle = await api.GetAsync<VehicleSessionDto>($"api/vehicles/{auth.VehicleId.Value}");
+                var vehicle = await _api.GetAsync<VehicleSessionDto>($"api/vehicles/{_auth.VehicleId.Value}");
                 if (vehicle?.SessionStartedAt.HasValue == true)
                 {
                     var localStart = vehicle.SessionStartedAt.Value.ToLocalTime();
@@ -74,7 +95,7 @@ public partial class ShiftReportViewModel(ApiService api, AuthService auth) : Ob
         HasError = false;
         try
         {
-            var report = await api.PostAsync<ShiftReportMobileDto>("api/shift-reports/my", new
+            var report = await _api.PostAsync<ShiftReportMobileDto>("api/shift-reports/my", new
             {
                 shiftStart = start.ToUniversalTime(),
                 shiftEnd = end.ToUniversalTime(),
@@ -109,8 +130,8 @@ public partial class ShiftReportViewModel(ApiService api, AuthService auth) : Ob
         HasError = false;
         try
         {
-            await api.PostAsync($"api/shift-reports/{_reportId}/sign", null);
-            var updated = await api.GetAsync<ShiftReportMobileDto>($"api/shift-reports/{_reportId}");
+            await _api.PostAsync($"api/shift-reports/{_reportId}/sign", null);
+            var updated = await _api.GetAsync<ShiftReportMobileDto>($"api/shift-reports/{_reportId}");
             if (updated != null) PopulateFromDto(updated);
         }
         catch (Exception ex)

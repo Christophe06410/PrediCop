@@ -30,12 +30,13 @@
                     Clicked="OnAssignVehicleClicked"
                     Margin="8,0,0,0"
                     VerticalOptions="Center"/>
-            <Frame Grid.Column="2"
-                   BackgroundColor="{Binding StatusColor}"
-                   CornerRadius="20" Padding="12,6" HasShadow="False">
+            <Border Grid.Column="2"
+                    BackgroundColor="{Binding StatusColor}"
+                    Padding="12,6">
+                <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
                 <Label Text="{Binding StatusText}"
                        TextColor="White" FontAttributes="Bold" FontSize="12"/>
-            </Frame>
+            </Border>
         </Grid>
 
         <!-- Toggle disponibilité -->
@@ -56,9 +57,9 @@
             <VerticalStackLayout Padding="16" Spacing="12">
 
                 <!-- Notification de mission proposée -->
-                <Frame IsVisible="{Binding ShowMissionProposal}"
-                       BackgroundColor="{Binding ProposalFrameColor}" CornerRadius="16" Padding="16"
-                       HasShadow="True">
+                <Border IsVisible="{Binding ShowMissionProposal}"
+                        BackgroundColor="{Binding ProposalFrameColor}" Padding="16">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <Label Grid.Column="0" Text="{Binding ProposalTitle}" TextColor="White"
@@ -95,11 +96,12 @@
                                 CornerRadius="8" FontSize="13"
                                 Clicked="OnViewMissionDetails"/>
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Mission active -->
-                <Frame IsVisible="{Binding ShowActiveMission}"
-                       BackgroundColor="#1e3a5f" CornerRadius="16" Padding="16">
+                <Border IsVisible="{Binding ShowActiveMission}"
+                        BackgroundColor="#1e3a5f" Padding="16">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="10">
                         <!-- Bannière priorité SOS/Critique/Urgent -->
                         <Border IsVisible="{Binding ActiveMissionHasPriorityBanner}"
@@ -140,11 +142,12 @@
                                     Clicked="OnCompleteMission"/>
                         </Grid>
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Aucune mission -->
-                <Frame IsVisible="{Binding ShowNoMission}"
-                       BackgroundColor="#243050" CornerRadius="16" Padding="24">
+                <Border IsVisible="{Binding ShowNoMission}"
+                        BackgroundColor="#243050" Padding="24">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                     <VerticalStackLayout Spacing="12">
                         <Label Text="En attente de mission" TextColor="#6b7a99"
                                FontSize="16" HorizontalTextAlignment="Center"/>
@@ -153,9 +156,9 @@
                                HorizontalTextAlignment="Center"/>
 
                         <!-- Avertissement véhicule bloqué en OnMission sans mission visible -->
-                        <Frame IsVisible="{Binding IsVehicleStuck}"
-                               BackgroundColor="#7f1d1d" CornerRadius="10"
-                               Padding="14,10" HasShadow="False">
+                        <Border IsVisible="{Binding IsVehicleStuck}"
+                                BackgroundColor="#7f1d1d" Padding="14,10">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="10"/></Border.StrokeShape>
                             <VerticalStackLayout Spacing="8">
                                 <Label Text="⚠️ Votre véhicule est marqué EN MISSION sur le serveur mais aucune mission n'est détectée. Le Back Office ne peut pas dispatcher."
                                        TextColor="#fca5a5" FontSize="12"
@@ -165,9 +168,9 @@
                                         CornerRadius="8" FontSize="13"
                                         Command="{Binding ReleaseStickyVehicleCommand}"/>
                             </VerticalStackLayout>
-                        </Frame>
+                        </Border>
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
 
                 <!-- Accès historique -->
                 <Button Text="Voir les missions terminées"

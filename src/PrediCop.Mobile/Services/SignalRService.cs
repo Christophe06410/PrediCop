@@ -87,6 +87,11 @@ public class SignalRService : IAsyncDisposable
             .WithAutomaticReconnect(new InfiniteRetryPolicy())
             .Build();
 
+        // Augmenter le timeout client pour éviter les fausses déconnexions sur Android.
+        // Défaut = 30s : trop court si Android throttle le réseau en arrière-plan.
+        _connection.ServerTimeout = TimeSpan.FromSeconds(120);
+        _connection.KeepAliveInterval = TimeSpan.FromSeconds(30);
+
         _connection.On<System.Text.Json.JsonElement>("MissionProposed", data =>
         {
             Log("Event reçu : MissionProposed");

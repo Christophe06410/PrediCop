@@ -872,7 +872,8 @@ namespace PrediCop.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalDays")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -1824,9 +1825,6 @@ namespace PrediCop.Infrastructure.Migrations
                     b.Property<Guid>("MissionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("MissionId1")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Reference")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1854,8 +1852,6 @@ namespace PrediCop.Infrastructure.Migrations
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("MissionId");
-
-                    b.HasIndex("MissionId1");
 
                     b.HasIndex("TenantId", "MissionId");
 
@@ -2685,14 +2681,10 @@ namespace PrediCop.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("PrediCop.Core.Entities.Mission", "Mission")
-                        .WithMany()
+                        .WithMany("TrackingDocuments")
                         .HasForeignKey("MissionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("PrediCop.Core.Entities.Mission", null)
-                        .WithMany("TrackingDocuments")
-                        .HasForeignKey("MissionId1");
 
                     b.HasOne("PrediCop.Core.Entities.Tenant", "Tenant")
                         .WithMany()

@@ -149,6 +149,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                     .HasQueryFilter(BuildIsDeletedFilter(entityType.ClrType));
             }
         }
+
+        // Filtres correspondants sur les entités BaseEntity côté dépendant de relations
+        // avec des TenantEntity filtrées, pour éviter les résultats imprévisibles EF10622.
+        modelBuilder.Entity<GeoZoneVertex>()
+            .HasQueryFilter(v => !v.GeoZone.IsDeleted);
+        modelBuilder.Entity<MissionAssignment>()
+            .HasQueryFilter(ma => !ma.Mission.IsDeleted);
+        modelBuilder.Entity<VehicleOfficer>()
+            .HasQueryFilter(vo => !vo.User.IsDeleted);
+
+        // Précision explicite pour éviter la troncature silencieuse (EF30000)
+        modelBuilder.Entity<LeaveEntitlement>()
+            .Property(e => e.TotalDays)
+            .HasPrecision(10, 2);
     }
 
     private static System.Linq.Expressions.LambdaExpression BuildIsDeletedFilter(Type type)

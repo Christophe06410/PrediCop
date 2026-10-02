@@ -75,8 +75,11 @@ public class MissionsController(
 
         var totalCount = await query.CountAsync(ct);
 
-        var missions = await query
-            .OrderByDescending(m => m.Priority).ThenByDescending(m => m.CreatedAt)
+        // Pour les missions terminées/annulées, trier par date de fin décroissante afin que
+        // les missions récentes remontent en tête quelle que soit leur priorité.
+        var missions = await (status is MissionStatus.Completed or MissionStatus.Cancelled
+            ? query.OrderByDescending(m => m.CompletedAt ?? m.CreatedAt)
+            : query.OrderByDescending(m => m.Priority).ThenByDescending(m => m.CreatedAt))
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync(ct);

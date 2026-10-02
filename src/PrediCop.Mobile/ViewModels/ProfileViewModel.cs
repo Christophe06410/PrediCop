@@ -4,18 +4,35 @@ using PrediCop.Mobile.Services;
 
 namespace PrediCop.Mobile.ViewModels;
 
-public partial class ProfileViewModel(
-    AuthService auth,
-    ApiService api,
-    GpsTrackingService gps,
-    SignalRService signalR) : ObservableObject
+public partial class ProfileViewModel : ObservableObject
 {
-    [ObservableProperty] private string userName = "";
-    [ObservableProperty] private string badge = "";
-    [ObservableProperty] private string currentVehicle = "Aucun véhicule sélectionné";
-    [ObservableProperty] private bool isLoadingVehicles;
-    [ObservableProperty] private bool alertSoundEnabled = AppPreferences.AlertSoundEnabled;
-    [ObservableProperty] private bool isInPatrol;
+    private readonly AuthService _auth;
+    private readonly ApiService _api;
+    private readonly GpsTrackingService _gps;
+    private readonly SignalRService _signalR;
+
+    public ProfileViewModel(
+        AuthService auth,
+        ApiService api,
+        GpsTrackingService gps,
+        SignalRService signalR)
+    {
+        _auth = auth;
+        _api = api;
+        _gps = gps;
+        _signalR = signalR;
+        UserName = "";
+        Badge = "";
+        CurrentVehicle = "Aucun véhicule sélectionné";
+        AlertSoundEnabled = AppPreferences.AlertSoundEnabled;
+    }
+
+    [ObservableProperty] private string _userName;
+    [ObservableProperty] private string _badge;
+    [ObservableProperty] private string _currentVehicle;
+    [ObservableProperty] private bool _isLoadingVehicles;
+    [ObservableProperty] private bool _alertSoundEnabled;
+    [ObservableProperty] private bool _isInPatrol;
 
     partial void OnAlertSoundEnabledChanged(bool value)
     {
@@ -25,39 +42,39 @@ public partial class ProfileViewModel(
     public List<VehicleItem> AvailableVehicles { get; private set; } = [];
 
     public bool IsAdminOrManager =>
-        auth.CurrentUser?.Role is "Manager" or "Admin";
+        _auth.CurrentUser?.Role is "Manager" or "Admin";
 
     public void LoadProfile()
     {
-        if (auth.CurrentUser == null) return;
-        UserName = auth.CurrentUser.FullName;
-        Badge = $"Rôle : {auth.CurrentUser.Role}";
-        CurrentVehicle = auth.VehicleDisplayLabel ?? auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
-        IsInPatrol = auth.VehicleId.HasValue;
+        if (_auth.CurrentUser == null) return;
+        UserName = _auth.CurrentUser.FullName;
+        Badge = $"Rôle : {_auth.CurrentUser.Role}";
+        CurrentVehicle = _auth.VehicleDisplayLabel ?? _auth.VehicleCallSign ?? "Aucun véhicule sélectionné";
+        IsInPatrol = _auth.VehicleId.HasValue;
     }
 
     /// <summary>Si un véhicule est assigné mais que le label ne contient pas encore la plaque,
     /// on va chercher l'info dans l'API et on met à jour l'affichage + le cache.</summary>
     public async Task RefreshVehicleLabelAsync()
     {
-        if (auth.VehicleId is null) return;
+        if (_auth.VehicleId is null) return;
 
         // La plaque est déjà dans le label (format "CallSign — Plaque") — rien à faire
-        if (auth.VehicleDisplayLabel?.Contains('—') == true)
+        if (_auth.VehicleDisplayLabel?.Contains('—') == true)
         {
-            CurrentVehicle = auth.VehicleDisplayLabel;
+            CurrentVehicle = _auth.VehicleDisplayLabel;
             return;
         }
 
         try
         {
-            var vehicles = await api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
-            var match = vehicles?.FirstOrDefault(v => v.Id == auth.VehicleId);
+            var vehicles = await _api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
+            var match = vehicles?.FirstOrDefault(v => v.Id == _auth.VehicleId);
             if (match is null) return;
 
             var label = $"{match.CallSign} — {match.LicensePlate}";
             CurrentVehicle = label;
-            auth.SetVehicleDisplayLabel(label);
+            _auth.SetVehicleDisplayLabel(label);
         }
         catch (Exception ex)
         {
@@ -71,10 +88,10 @@ public partial class ProfileViewModel(
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var vehicles = await api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
+            var vehicles = await _api.GetAsync<List<ApiVehicleDto>>("api/vehicles");
             System.Diagnostics.Debug.WriteLine($"[ProfileVM] GET api/vehicles: {sw.ElapsedMilliseconds}ms — {vehicles?.Count ?? 0} véhicule(s)");
             AvailableVehicles = vehicles?
-                .Select(v => new VehicleItem(v.Id, $"{v.CallSign} — {v.LicensePlate}", v.Id == auth.VehicleId))
+                .Select(v => new VehicleItem(v.Id, $"{v.CallSign} — {v.LicensePlate}", v.Id == _auth.VehicleId))
                 .ToList() ?? [];
             return AvailableVehicles;
         }
@@ -90,13 +107,13 @@ public partial class ProfileViewModel(
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        var (success, _) = await auth.SelectVehicleAsync(vehicleId);
+        var (success, _) = await _auth.SelectVehicleAsync(vehicleId);
         System.Diagnostics.Debug.WriteLine($"[ProfileVM] auth.SelectVehicleAsync: {sw.ElapsedMilliseconds}ms");
         if (!success) return false;
 
         CurrentVehicle = callSign;
         IsInPatrol = true;
-        auth.SetVehicleDisplayLabel(callSign);
+        _auth.SetVehicleDisplayLabel(callSign);
 
         // SignalR + GPS se reconnectent en arrière-plan : ne pas bloquer l'UI
         _ = Task.Run(async () =>
@@ -104,7 +121,7 @@ public partial class ProfileViewModel(
             var bgSw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                await signalR.ConnectAsync(auth.Token!, vehicleId);
+                await _signalR.ConnectAsync(_auth.Token!, vehicleId);
                 System.Diagnostics.Debug.WriteLine($"[ProfileVM] signalR.ConnectAsync: {bgSw.ElapsedMilliseconds}ms");
             }
             catch (Exception ex)
@@ -115,8 +132,8 @@ public partial class ProfileViewModel(
             bgSw.Restart();
             try
             {
-                gps.Stop();
-                await gps.StartAsync(vehicleId);
+                _gps.Stop();
+                await _gps.StartAsync(vehicleId);
                 System.Diagnostics.Debug.WriteLine($"[ProfileVM] gps.StartAsync: {bgSw.ElapsedMilliseconds}ms");
             }
             catch (Exception ex)
@@ -142,9 +159,9 @@ public partial class ProfileViewModel(
     {
         try
         {
-            await api.PostAsync("api/patrol/leave", null);
-            gps.Stop();
-            auth.ClearVehicle();
+            await _api.PostAsync("api/patrol/leave", null);
+            _gps.Stop();
+            _auth.ClearVehicle();
             CurrentVehicle = "Aucun véhicule sélectionné";
             IsInPatrol = false;
             return true;
@@ -156,13 +173,13 @@ public partial class ProfileViewModel(
         }
     }
 
-    public void StopGps() => gps.Stop();
+    public void StopGps() => _gps.Stop();
 
     [RelayCommand]
     private async Task LogoutAsync()
     {
-        auth.Logout();
-        gps.Stop();
+        _auth.Logout();
+        _gps.Stop();
         await Shell.Current.GoToAsync("//login");
     }
 

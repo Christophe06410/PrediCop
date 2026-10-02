@@ -16,7 +16,7 @@ public class TrackingDocumentConfiguration : IEntityTypeConfiguration<TrackingDo
         builder.Property(d => d.Title).IsRequired().HasMaxLength(300);
 
         builder.HasOne(d => d.Mission)
-            .WithMany()
+            .WithMany(m => m.TrackingDocuments)
             .HasForeignKey(d => d.MissionId)
             .OnDelete(DeleteBehavior.Restrict);
 

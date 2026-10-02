@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="120" height="132">
+  <!-- Buste Marianne stylisé -->
+  <!-- Corps -->
+  <ellipse cx="100" cy="175" rx="52" ry="38" fill="#003189"/>
+  <!-- Cou -->
+  <rect x="88" y="128" width="24" height="20" fill="#e8c89a"/>
+  <!-- Tête -->
+  <ellipse cx="100" cy="112" rx="28" ry="32" fill="#e8c89a"/>
+  <!-- Bonnet phrygien -->
+  <path d="M72 100 Q80 55 100 48 Q120 55 128 100 Z" fill="#E1000F"/>
+  <path d="M72 100 Q100 92 128 100" fill="none" stroke="#E1000F" stroke-width="2"/>
+  <!-- Sommet bonnet pointu -->
+  <path d="M100 48 Q105 38 108 30 Q104 42 100 48 Z" fill="#E1000F"/>
+  <!-- Bandeau du bonnet -->
+  <path d="M74 98 Q100 90 126 98 Q100 104 74 98 Z" fill="#003189"/>
+  <!-- Visage traits -->
+  <ellipse cx="91" cy="110" rx="3.5" ry="4" fill="#7a5c3a"/>
+  <ellipse cx="109" cy="110" rx="3.5" ry="4" fill="#7a5c3a"/>
+  <path d="M93 124 Q100 129 107 124" fill="none" stroke="#c0896a" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Nez -->
+  <path d="M100 113 Q97 119 100 121 Q103 119 100 113" fill="none" stroke="#c0896a" stroke-width="1"/>
+  <!-- Cheveux -->
+  <path d="M73 108 Q70 90 78 80" fill="none" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M127 108 Q130 90 122 80" fill="none" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/>
+  <!-- Col blanc veste -->
+  <path d="M80 145 Q100 155 120 145 L124 148 Q100 162 76 148 Z" fill="white"/>
+  <!-- Écharpe tricolore -->
+  <path d="M84 148 Q100 156 116 148 L116 154 Q100 162 84 154 Z" fill="#003189"/>
+  <path d="M84 154 Q100 162 116 154 L116 160 Q100 168 84 160 Z" fill="white"/>
+  <path d="M84 160 Q100 168 116 160 L116 166 Q100 174 84 166 Z" fill="#E1000F"/>
+
+  <!-- Texte REPUBLIQUE FRANÇAISE -->
+  <text x="100" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#003189" letter-spacing="1">RÉPUBLIQUE FRANÇAISE</text>
+  <!-- Devise -->
+  <text x="100" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="7" fill="#333" letter-spacing="0.5">Liberté · Égalité · Fraternité</text>
+</svg>

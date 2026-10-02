@@ -5,44 +5,47 @@ namespace PrediCop.Mobile.Platforms.Android;
 
 public class AlertSoundService : IAlertSoundService
 {
-    private Ringtone? _ringtone;
+    private MediaPlayer? _player;
     private volatile CancellationTokenSource _cts = new();
 
     public void PlayAlert()
     {
-        StopAlert(); // annule et stoppe tout son précédent
+        StopAlert();
         try
         {
-            var uri = RingtoneManager.GetDefaultUri(RingtoneType.Alarm)
-                   ?? RingtoneManager.GetDefaultUri(RingtoneType.Notification);
-            if (uri == null) return;
+            var ctx = global::Android.App.Application.Context;
+            var resId = ctx.Resources!.GetIdentifier("new_mission", "raw", ctx.PackageName);
+            if (resId == 0) return;
 
-            _ringtone = RingtoneManager.GetRingtone(
-                global::Android.App.Application.Context, uri);
-            if (_ringtone == null) return;
-
-            // Stream ALARM : joue même en mode silencieux/vibreur
+            // Définir les attributs audio AVANT prepare() pour qu'ils soient pris en compte
             var attrs = new global::Android.Media.AudioAttributes.Builder()
-                .SetUsage(global::Android.Media.AudioUsageKind.Alarm)
-                .SetContentType(global::Android.Media.AudioContentType.Sonification)
+                .SetUsage(global::Android.Media.AudioUsageKind.Alarm)!
+                .SetContentType(global::Android.Media.AudioContentType.Sonification)!
                 .Build()!;
-            _ringtone.AudioAttributes = attrs;
 
+            var player = new MediaPlayer();
+            player.SetAudioAttributes(attrs);
+
+            var fd = ctx.Resources.OpenRawResourceFd(resId)!;
+            player.SetDataSource(fd.FileDescriptor, fd.StartOffset, fd.Length);
+            fd.Close();
+            player.Prepare();
+
+            _player = player;
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
-            var ringtone = _ringtone;
 
-            ringtone.Play();
+            player.Start();
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(1200, token);
-                    ringtone.Play();
-                    await Task.Delay(1200, token);
-                    ringtone.Play();
+                    await Task.Delay(1500, token);
+                    if (!token.IsCancellationRequested) { player.SeekTo(0); player.Start(); }
+                    await Task.Delay(1500, token);
+                    if (!token.IsCancellationRequested) { player.SeekTo(0); player.Start(); }
                 }
-                catch { /* annulé ou erreur périphérique */ }
+                catch { }
             });
         }
         catch { }
@@ -51,6 +54,6 @@ public class AlertSoundService : IAlertSoundService
     public void StopAlert()
     {
         _cts.Cancel();
-        try { _ringtone?.Stop(); } catch { }
+        try { _player?.Stop(); _player?.Release(); _player = null; } catch { }
     }
 }
